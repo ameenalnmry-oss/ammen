@@ -6,10 +6,12 @@ on:
       - main
       - master
       - codex-review
+
   pull_request:
     branches:
       - main
       - master
+
   workflow_dispatch:
 
 permissions:
@@ -25,61 +27,76 @@ jobs:
         shell: pwsh
 
     steps:
-      # ------------------------------------------------------------
-      # 1. Checkout exact repository content
-      # ------------------------------------------------------------
+      # ============================================================
+      # 1. CHECKOUT
+      # ============================================================
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           clean: true
 
-      # ------------------------------------------------------------
-      # 2. Diagnose byte-exact checkout before any restore/build
-      # ------------------------------------------------------------
+      # ============================================================
+      # 2. CHECK BYTE-INTEGRITY IMMEDIATELY AFTER CHECKOUT
+      # ============================================================
       - name: Diagnose checked-out source hashes
+        shell: pwsh
         run: |
-          Write-Host "=== Git environment ==="
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "========================================"
+          Write-Host " Git environment"
+          Write-Host "========================================"
+
           git --version
 
+          Write-Host ""
           Write-Host "core.autocrlf:"
           git config --get core.autocrlf
 
           Write-Host ""
-          Write-Host "=== .gitattributes ==="
+          Write-Host "========================================"
+          Write-Host " Root .gitattributes"
+          Write-Host "========================================"
+
           if (Test-Path ".gitattributes") {
               Get-Content ".gitattributes"
           }
           else {
-              Write-Host "NO ROOT .gitattributes FOUND"
+              Write-Host "No root .gitattributes file found."
           }
 
           Write-Host ""
-          Write-Host "=== .gitignore EOL state ==="
+          Write-Host "========================================"
+          Write-Host " .gitignore Git EOL state"
+          Write-Host "========================================"
+
           git ls-files --eol PharmaLIMS/.gitignore
 
           Write-Host ""
-          Write-Host "=== Actual checkout SHA-256 ==="
-          $actual = (Get-FileHash `
-              "PharmaLIMS/.gitignore" `
-              -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "========================================"
+          Write-Host " .gitignore source hash"
+          Write-Host "========================================"
 
-          Write-Host "CHECKOUT_HASH=$actual"
+          $actual = (
+              Get-FileHash `
+                  -LiteralPath "PharmaLIMS/.gitignore" `
+                  -Algorithm SHA256
+          ).Hash.ToLowerInvariant()
 
-          Write-Host ""
-          Write-Host "=== Manifest entry ==="
           $manifestLine = Select-String `
               -Path "PharmaLIMS/SOURCE_MANIFEST_SHA256.txt" `
-              -Pattern "\.gitignore$"
-
-          $manifestLine.Line
+              -Pattern "\s\.gitignore$"
 
           if (-not $manifestLine) {
-              throw ".gitignore was not found in SOURCE_MANIFEST_SHA256.txt"
+              throw ".gitignore is missing from SOURCE_MANIFEST_SHA256.txt."
           }
 
-          $expected = ($manifestLine.Line -split '\s+')[0].ToLowerInvariant()
+          $expected = (
+              ($manifestLine.Line -split '\s+')[0]
+          ).ToLowerInvariant()
 
+          Write-Host "CHECKOUT_HASH=$actual"
           Write-Host "EXPECTED_HASH=$expected"
           Write-Host "ACTUAL_HASH=$actual"
 
@@ -89,59 +106,82 @@ jobs:
 
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
-      # ------------------------------------------------------------
-      # 3. Install required .NET SDK
-      # ------------------------------------------------------------
+      # ============================================================
+      # 3. INSTALL .NET
+      # ============================================================
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # ------------------------------------------------------------
-      # 4. Confirm controlled source is pristine BEFORE restore/build
-      # ------------------------------------------------------------
-      - name: Validate controlled source manifest before build
-        working-directory: PharmaLIMS
-        run: |
-          ./scripts/Test-SourceManifest.ps1
-
-          if ($LASTEXITCODE -ne 0) {
-              throw "Controlled source manifest validation failed before restore/build."
-          }
-
-      # ------------------------------------------------------------
-      # 5. Run the project's authoritative validation pipeline
+      # ============================================================
+      # 4. VERIFY CONTROLLED SOURCE BEFORE ANY RESTORE / BUILD
       #
       # IMPORTANT:
-      # We deliberately do NOT perform a separate dotnet restore
-      # before this step. That previously created obj/ files before
-      # delivery/source validation and caused prohibited-artifact
-      # failures.
-      # ------------------------------------------------------------
-      - name: Unified source build SQL WPF runtime validation
+      # Do not inspect $LASTEXITCODE here.
+      # The PowerShell script itself is authoritative.
+      # ============================================================
+      - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS
+        shell: pwsh
         run: |
-          ./scripts/Invoke-ReleaseValidation.ps1 `
-            -RunDatabaseIntegration `
-            -RunRuntimeSmoke
+          $ErrorActionPreference = "Stop"
 
-          if ($LASTEXITCODE -ne 0) {
-              throw "Release validation failed with native exit code $LASTEXITCODE."
+          Write-Host "Running controlled source-manifest verification..."
+
+          & ./scripts/Test-SourceManifest.ps1
+
+          if (-not $?) {
+              throw "Controlled source manifest verification did not complete successfully."
           }
 
-      # ------------------------------------------------------------
-      # 6. NuGet vulnerability gate
-      # ------------------------------------------------------------
+          Write-Host "Controlled source manifest validation passed."
+
+      # ============================================================
+      # 5. AUTHORITATIVE PHARMALIMS RELEASE VALIDATION
+      #
+      # This script owns source/build/SQL/runtime validation.
+      # Do not run a separate restore beforehand because restore can
+      # create obj/ artifacts before delivery-package validation.
+      # ============================================================
+      - name: Unified source build SQL WPF runtime validation
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "Starting PharmaLIMS authoritative release validation..."
+
+          & ./scripts/Invoke-ReleaseValidation.ps1 `
+              -RunDatabaseIntegration `
+              -RunRuntimeSmoke
+
+          if (-not $?) {
+              throw "PharmaLIMS release validation did not complete successfully."
+          }
+
+          Write-Host "PharmaLIMS release validation passed."
+
+      # ============================================================
+      # 6. NUGET VULNERABILITY GATE
+      # ============================================================
       - name: Reject vulnerable NuGet packages
         working-directory: PharmaLIMS
+        shell: pwsh
         run: |
-          $output = dotnet list package --vulnerable --include-transitive
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "Checking NuGet dependency vulnerabilities..."
+
+          $output = & dotnet list package `
+              --vulnerable `
+              --include-transitive 2>&1
 
           $output | ForEach-Object {
               Write-Host $_
           }
 
-          if ($LASTEXITCODE -ne 0) {
+          if (-not $?) {
               throw "NuGet vulnerability inspection failed."
           }
 
@@ -155,11 +195,16 @@ jobs:
               throw "Vulnerable NuGet package(s) detected."
           }
 
-      # ------------------------------------------------------------
-      # 7. Reject accidental build/local artifacts in Git state
-      # ------------------------------------------------------------
+          Write-Host "NuGet vulnerability gate passed."
+
+      # ============================================================
+      # 7. REJECT ACCIDENTALLY TRACKED BUILD / LOCAL ARTIFACTS
+      # ============================================================
       - name: Reject tracked build artifacts
+        shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           $tracked = git ls-files
 
           $prohibited = $tracked | Where-Object {
@@ -168,25 +213,70 @@ jobs:
           }
 
           if ($prohibited) {
-              Write-Host "Tracked prohibited artifacts:"
+              Write-Host "Tracked prohibited artifacts were detected:"
+
               $prohibited | ForEach-Object {
-                  Write-Host $_
+                  Write-Host " - $_"
               }
 
-              throw "Repository contains tracked local/build artifacts."
+              throw "Repository contains prohibited tracked local/build artifacts."
           }
 
           Write-Host "No prohibited tracked build artifacts detected."
 
-      # ------------------------------------------------------------
-      # 8. Final Git cleanliness evidence
-      # ------------------------------------------------------------
+      # ============================================================
+      # 8. VERIFY CONTROLLED MIGRATION MANIFEST STILL EXISTS
+      # ============================================================
+      - name: Verify migration manifest presence
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $manifest = "Database/MigrationManifest.json"
+
+          if (-not (Test-Path $manifest)) {
+              throw "Database/MigrationManifest.json is missing."
+          }
+
+          Write-Host "Migration manifest present."
+
+          $migrationCount = (
+              Get-Content $manifest -Raw |
+              ConvertFrom-Json
+          ).migrations.Count
+
+          Write-Host "Controlled migration entries: $migrationCount"
+
+          if ($migrationCount -lt 1) {
+              throw "Migration manifest contains no migrations."
+          }
+
+      # ============================================================
+      # 9. SHOW BUILD / SOURCE STATE
+      # ============================================================
       - name: Show final repository status
         if: always()
+        shell: pwsh
         run: |
-          Write-Host "=== HEAD ==="
+          Write-Host "========================================"
+          Write-Host " HEAD"
+          Write-Host "========================================"
+
           git log -1 --oneline --decorate
 
           Write-Host ""
-          Write-Host "=== Git status ==="
+          Write-Host "========================================"
+          Write-Host " Git status"
+          Write-Host "========================================"
+
           git status --short
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " Branch / ref"
+          Write-Host "========================================"
+
+          Write-Host "GITHUB_REF=$env:GITHUB_REF"
+          Write-Host "GITHUB_SHA=$env:GITHUB_SHA"
+          Write-Host "GITHUB_EVENT_NAME=$env:GITHUB_EVENT_NAME"
