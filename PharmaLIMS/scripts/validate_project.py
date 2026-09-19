@@ -43,20 +43,46 @@ def source_family(path: Path) -> str:
 
 
 def controlled_source_files() -> set[str]:
-    excluded_parts = {".git", ".vs", "bin", "obj", "artifacts", "__pycache__", ".pytest_cache"}
-    excluded_suffixes = {".pyc", ".user", ".suo"}
+    excluded_parts = {
+        ".git",
+        ".vs",
+        "bin",
+        "obj",
+        "artifacts",
+        "__pycache__",
+        ".pytest_cache",
+    }
+    excluded_suffixes = {
+        ".pyc",
+        ".user",
+        ".suo",
+    }
     excluded_local_settings = {
         "appsettings.Production.json",
         "appsettings.Development.json",
         "appsettings.Local.json",
     }
+
+    # NuGet lock files are governed by the dedicated reproducibility/locked-restore
+    # release gate. Restore/materialization may create them before this validator
+    # runs, so they must not be treated as unmanifested SOURCE_MANIFEST files.
+    # They remain valid repository/release artifacts and are still checked by the
+    # NuGet lock/release-validation pipeline.
+    excluded_generated_files = {
+        "packages.lock.json",
+    }
+
     return {
         path.relative_to(ROOT).as_posix()
         for path in ROOT.rglob("*")
         if path.is_file()
         and path.name != "SOURCE_MANIFEST_SHA256.txt"
         and path.name not in excluded_local_settings
-        and not any(part in excluded_parts for part in path.relative_to(ROOT).parts)
+        and path.name not in excluded_generated_files
+        and not any(
+            part in excluded_parts
+            for part in path.relative_to(ROOT).parts
+        )
         and path.suffix.lower() not in excluded_suffixes
     }
 
