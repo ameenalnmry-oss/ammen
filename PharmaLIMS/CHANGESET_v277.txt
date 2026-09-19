@@ -1,0 +1,13 @@
+PharmaLIMS 2026.9.14.277 - Compile Fix
+
+Scope
+- Corrects the reported CS0103 CultureInfo compile failure in Infrastructure/SystemPreflightService.cs.
+- Preserves all v276 PRM UAT hardening, database migrations, and Water workflows.
+
+Correction
+- Uses System.Globalization.CultureInfo.InvariantCulture explicitly for PRM preflight version/count formatting.
+- No database migration or workflow logic change.
+
+Verification boundary
+- Source/regression and delivery-package validation are executed in the review environment.
+- Windows WPF/MSBuild compilation remains a site gate because the Windows Desktop SDK is unavailable here.

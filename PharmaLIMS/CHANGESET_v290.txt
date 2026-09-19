@@ -1,0 +1,9 @@
+PharmaLIMS 2026.9.17.290 - Deep Review Corrected
+Base: 2026.9.17.289
+
+- Reject no-op User Management updates before mutation, AuditTrail, or electronic signature.
+- Strengthen UserAdministrationSignatures startup postcondition to an exact fail-closed schema contract.
+- Strengthen Full System Preflight with the same exact schema contract.
+- Add dedicated DatabaseIntegration exact-schema verification.
+- Preserve historical migration 20260917_001 bytes/checksum unchanged.
+- Preserve Water/EM/PRM domain logic.

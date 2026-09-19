@@ -1,0 +1,468 @@
+﻿<Window x:Class="PharmaLIMS.ResultsEntry"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="Results Entry"
+        Height="820"
+        Width="1200"
+        MinWidth="1050"
+        MinHeight="720"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        Background="#F8FAFC">
+
+    <Window.Resources>
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="#166534"
+                CornerRadius="12"
+                Padding="16"
+                Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Results Entry"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="White"/>
+
+                    <TextBlock Text="Microbiology LIMS - Result entry, review, approval, and certificate workflow"
+                               FontSize="12"
+                               Foreground="#DCFCE7"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1"
+                           Text="MQC-G-0018"
+                           Foreground="White"
+                           FontFamily="Consolas"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"
+                           Margin="20,0,0,0"/>
+            </Grid>
+        </Border>
+
+        <!-- Search Card -->
+        <Border Grid.Row="1"
+                Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="Sample Number:"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="#334155"
+                           Margin="0,0,10,0"/>
+
+                <TextBox x:Name="txtSearchSample"
+                         Grid.Column="1"
+                         Width="180"/>
+
+                <Button x:Name="BtnSearch"
+                        Grid.Column="2"
+                        Content="Search"
+                        Width="95"
+                        Click="BtnSearch_Click"
+                        Background="#2563EB"
+                        Style="{StaticResource PrimaryButtonStyle}"/>
+
+                <Button x:Name="BtnLoadPending"
+                        Grid.Column="3"
+                        Content="Load Open Water"
+                        Width="170"
+                        Click="BtnLoadPending_Click"
+                        Background="#EA580C"
+                        Style="{StaticResource PrimaryButtonStyle}"/>
+
+                <TextBlock Grid.Column="4"
+                           Text="Search by sample number, then complete the workflow in order."
+                           Foreground="#64748B"
+                           VerticalAlignment="Center"
+                           Margin="15,0,0,0"/>
+            </Grid>
+        </Border>
+
+        <!-- Sample Info + Actions -->
+        <Grid Grid.Row="2"
+              Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="1.15*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sample Information Card -->
+            <Border Grid.Column="0"
+                    Style="{StaticResource CardBorderStyle}"
+                    Margin="0,0,10,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="Sample Information"
+                               FontSize="15"
+                               FontWeight="Bold"
+                               Foreground="#0F172A"
+                               Margin="0,0,0,10"/>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="34"/>
+                            <RowDefinition Height="34"/>
+                            <RowDefinition Height="34"/>
+                            <RowDefinition Height="38"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="Sample Number:"
+                                   Grid.Row="0"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="#64748B"/>
+
+                        <TextBlock x:Name="lblSampleNumber"
+                                   Grid.Row="0"
+                                   Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   FontWeight="Bold"
+                                   Foreground="#1E293B"
+                                   FontFamily="Consolas"/>
+
+                        <TextBlock Text="Sample Type:"
+                                   Grid.Row="0"
+                                   Grid.Column="2"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="#64748B"/>
+
+                        <TextBlock x:Name="lblSampleType"
+                                   Grid.Row="0"
+                                   Grid.Column="3"
+                                   VerticalAlignment="Center"
+                                   Foreground="#1E293B"/>
+
+                        <TextBlock Text="Sampling Point:"
+                                   Grid.Row="1"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="#64748B"/>
+
+                        <TextBlock x:Name="lblSamplingPoint"
+                                   Grid.Row="1"
+                                   Grid.Column="1"
+                                   Grid.ColumnSpan="3"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Foreground="#1E293B"/>
+
+                        <TextBlock Text="Sampling Date:"
+                                   Grid.Row="2"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="#64748B"/>
+
+                        <TextBlock x:Name="lblSamplingDate"
+                                   Grid.Row="2"
+                                   Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   FontFamily="Consolas"
+                                   Foreground="#1E293B"/>
+
+                        <TextBlock Text="Sampled By:"
+                                   Grid.Row="2"
+                                   Grid.Column="2"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="#64748B"/>
+
+                        <TextBlock x:Name="lblSampledBy"
+                                   Grid.Row="2"
+                                   Grid.Column="3"
+                                   VerticalAlignment="Center"
+                                   Foreground="#1E293B"/>
+
+                        <TextBlock Text="Status:"
+                                   Grid.Row="3"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="#64748B"/>
+
+                        <Border x:Name="statusBorder"
+                                Grid.Row="3"
+                                Grid.Column="1"
+                                CornerRadius="12"
+                                Padding="10,4"
+                                HorizontalAlignment="Left"
+                                Background="#94A3B8">
+                            <TextBlock x:Name="lblStatusText"
+                                       Text=""
+                                       Foreground="White"
+                                       FontWeight="Bold"
+                                       FontSize="12"/>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Workflow Actions Card -->
+            <Border Grid.Column="1"
+                    Style="{StaticResource CardBorderStyle}"
+                    Margin="10,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="Workflow Actions"
+                               FontSize="15"
+                               FontWeight="Bold"
+                               Foreground="#0F172A"
+                               Margin="0,0,0,10"/>
+
+                    <UniformGrid Columns="2">
+                        <Button x:Name="BtnStartAnalysis"
+                                Content="Start Analysis"
+                                Click="BtnStartAnalysis_Click"
+                                Background="#2563EB"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnCorrectTimes"
+                                Content="Correct Times"
+                                Click="BtnCorrectTimes_Click"
+                                Background="#475569"
+                                ToolTip="Controlled water timestamp correction with electronic signature and audit trail"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnSaveResults"
+                                Content="Save Results"
+                                Click="BtnSaveResults_Click"
+                                Background="#16A34A"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnSubmitReview"
+                                Content="Submit Review"
+                                Click="BtnSubmitReview_Click"
+                                Background="#EA580C"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnReview"
+                                Content="Review Sample"
+                                Click="BtnReview_Click"
+                                Background="#0D9488"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnApprove"
+                                Content="Approve"
+                                Click="BtnApprove_Click"
+                                Background="#7C3AED"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnPrintReport"
+                                Content="Print Report"
+                                Click="BtnPrintReport_Click"
+                                Background="#0284C7"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnQualityEvent"
+                                Content="Quality Event"
+                                Click="BtnQualityEvent_Click"
+                                Background="#B91C1C"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnCertificate"
+                                Content="Certificate"
+                                Click="BtnCertificate_Click"
+                                Background="#059669"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnCancelCOA"
+                                Content="Cancel COA"
+                                Click="BtnCancelCOA_Click"
+                                Background="#DC2626"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+                    </UniformGrid>
+
+                    <Border Background="#F8FAFC"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10"
+                            Margin="0,12,0,0">
+                        <TextBlock Text="Workflow: enter results, submit review, supervisor review, QA approval, then issue certificate."
+                                   TextWrapping="Wrap"
+                                   FontSize="11"
+                                   Foreground="#64748B"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Results Card -->
+        <Border Grid.Row="3"
+                Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Test Results"
+                           FontSize="15"
+                           FontWeight="Bold"
+                           Foreground="#0F172A"
+                           Margin="0,0,0,10"/>
+
+                <DataGrid x:Name="dgResults"
+                          Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          RowHeight="38"
+                          FontSize="13"
+                          BorderBrush="#E2E8F0"
+                          BorderThickness="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Test Name"
+                                            Binding="{Binding TestName}"
+                                            Width="2.2*"
+                                            MinWidth="230"
+                                            IsReadOnly="True"/>
+
+                        <DataGridTextColumn Header="Unit"
+                                            Binding="{Binding Unit}"
+                                            Width="0.7*"
+                                            MinWidth="80"
+                                            IsReadOnly="True"/>
+
+                        <DataGridTextColumn Header="Alert Limit"
+                                            Binding="{Binding AlertLimit}"
+                                            Width="0.8*"
+                                            MinWidth="90"
+                                            IsReadOnly="True"/>
+
+                        <DataGridTextColumn Header="Action Limit"
+                                            Binding="{Binding ActionLimit}"
+                                            Width="0.8*"
+                                            MinWidth="95"
+                                            IsReadOnly="True"/>
+
+                        <DataGridTemplateColumn Header="Result"
+                                                Width="1.2*"
+                                                MinWidth="170">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding ResultValue, UpdateSourceTrigger=PropertyChanged}"
+                                             Width="150"
+                                             HorizontalAlignment="Left"
+                                             TextAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Pass/Fail"
+                                            Binding="{Binding PassFail}"
+                                            Width="0.9*"
+                                            MinWidth="100"
+                                            IsReadOnly="True"/>
+
+                        <DataGridTemplateColumn Header="Remarks"
+                                                Width="1.7*"
+                                                MinWidth="220">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}"
+                                             Width="210"
+                                             FontSize="12"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="4"
+                   Margin="0,8,0,0"
+                   VerticalAlignment="Bottom"
+                   Background="#F1F5F9">
+            <StatusBarItem>
+                <TextBlock x:Name="lblStatus"
+                           Text="Ready"
+                           Foreground="#64748B"
+                           FontSize="11"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

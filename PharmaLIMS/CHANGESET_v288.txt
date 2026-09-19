@@ -1,0 +1,10 @@
+PharmaLIMS 2026.9.17.288 - User Administration write compatibility
+
+Base: 2026.9.16.287
+
+1. Added controlled migration 20260917_000 for legacy dbo.Users CreatedAt/UpdatedAt compatibility.
+2. Preserved unknown legacy CreatedAt as NULL rather than fabricating historical timestamps.
+3. Added bounded Development startup application and Production read-only verification for the new migration.
+4. Added System Preflight checks for both write-path metadata columns.
+5. Added regression tests covering Save User / Reset Password / Unlock / Change Password schema dependencies.
+6. No Water, EM, PRM domain logic or historical authentication migration SQL bytes were changed.

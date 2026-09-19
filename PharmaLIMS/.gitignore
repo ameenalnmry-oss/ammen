@@ -1,0 +1,54 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains
+.idea/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+__pycache__/
+*.pyc
+
+# NuGet
+*.nupkg
+packages/
+
+# Published output
+publish/
+artifacts/
+
+# Local database files
+*.mdf
+*.ldf
+
+# Archives
+*.zip
+*.rar
+*.7z
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Application local settings
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json

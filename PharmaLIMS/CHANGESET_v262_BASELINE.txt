@@ -1,0 +1,11 @@
+PharmaLIMS 2026.9.11.262 - MERGED REVIEW CANDIDATE
+Base: programmer 2026.9.10.260 candidate (based on 259).
+Restored source controls: v261 effective account locks, credential-bound failed attempts,
+lossless water display, pre-sign/write precision guards, water and EM post-write integrity.
+Retained: rowversion set protection, single success/credential-upgrade CAS, DECIMAL(28,12)
+EM calculation, common historical evidence, trend integrity exclusions, PRM interval parser.
+SQL: all 96 candidate SQL files and the 76 migration entries retained byte-for-byte/in full.
+MigrationManifest application metadata updated only; no new v262 SQL migration.
+All 27 XAML files, logo and example site configurations retained byte-for-byte.
+See docs/MERGE_REVIEW_v262.md, docs/RUNTIME_ACCEPTANCE_v262_AR.md and Verification.
+Not a compiled build, operational acceptance, or authorization for Production.

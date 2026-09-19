@@ -1,0 +1,751 @@
+<Window x:Class="PharmaLIMS.NewSampleDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Register New Sample / EM Event"
+        Height="860"
+        Width="1280"
+        MinWidth="980"
+        MinHeight="680"
+        WindowStartupLocation="CenterOwner" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        Background="#EEF2F7"
+        FontFamily="Segoe UI"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#12395A"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#16A34A"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#D8E0EA"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="SoftBrush" Color="#F8FAFC"/>
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style x:Key="MiniCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Margin" Value="0,4,0,4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Margin" Value="0,4,0,4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+
+        <Style TargetType="DatePicker">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,4,0,4"/>
+        </Style>
+
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="MinWidth" Value="150"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{StaticResource PrimaryBrush}"
+                Padding="26,18"
+                CornerRadius="0,0,22,22">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Width="58"
+                        Height="58"
+                        Background="White"
+                        CornerRadius="16"
+                        Margin="0,0,16,0">
+                    <TextBlock Text="EM"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               FontSize="18"
+                               FontWeight="Black"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Register New Sample / Environmental Monitoring Event"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="White"/>
+
+                    <TextBlock Text="Water samples use WaterSamplingPoints. EM events use EM_Areas and auto-create plates from EM_AreaTemplates."
+                               FontSize="13"
+                               Foreground="#BFDBFE"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <Border Grid.Column="2"
+                        Background="#DBEAFE"
+                        CornerRadius="18"
+                        Padding="14,8"
+                        VerticalAlignment="Center">
+                    <TextBlock x:Name="lblModeSummary"
+                               Text="PW / PTW / EM"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               FontSize="12"
+                               FontWeight="Bold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto">
+            <Grid Margin="22">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.15*"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Margin="0,0,18,0">
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="1. Registration Type" Style="{StaticResource SectionTitleStyle}"/>
+
+                            <UniformGrid Columns="3">
+                                <RadioButton x:Name="rbPurifiedWater"
+                                             Content="Purified Water (PWS)"
+                                             FontSize="15"
+                                             FontWeight="Bold"
+                                             Margin="4,4,14,4"
+                                             Checked="RegistrationType_Checked"/>
+
+                                <RadioButton x:Name="rbPotableWater"
+                                             Content="Potable Water (PTWS)"
+                                             FontSize="15"
+                                             FontWeight="Bold"
+                                             Margin="4,4,14,4"
+                                             Checked="RegistrationType_Checked"/>
+
+                                <RadioButton x:Name="rbEnvironmental"
+                                             Content="Environmental Monitoring"
+                                             FontSize="15"
+                                             FontWeight="Bold"
+                                             Margin="4"
+                                             Checked="RegistrationType_Checked"/>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="2. Sampling Point / EM Area"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock x:Name="lblPointCode"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="Sample Point No.:"
+                                           Style="{StaticResource FieldLabelStyle}"/>
+
+                                <ComboBox x:Name="cboPointCode"
+                                          Grid.Row="0"
+                                          Grid.Column="1"
+                                          SelectionChanged="CboPointCode_SelectionChanged"/>
+
+                                <TextBlock x:Name="lblPointDescription"
+                                           Grid.Row="1"
+                                           Grid.Column="0"
+                                           Text="Point Location / Description:"
+                                           Style="{StaticResource FieldLabelStyle}"/>
+
+                                <TextBox x:Name="txtPointDescription"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         IsReadOnly="True"
+                                         Background="#F8FAFC"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="grpEmDetails"
+                            Style="{StaticResource CardStyle}"
+                            Visibility="Collapsed">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="3. Environmental Monitoring Details"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Area Group" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboAreaGroup" Grid.Row="0" Grid.Column="1" SelectionChanged="EmFilter_Changed"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="3" Text="Grade" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboGrade" Grid.Row="0" Grid.Column="4" SelectionChanged="EmFilter_Changed"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Method" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboMethod" Grid.Row="1" Grid.Column="1" SelectionChanged="CboMethod_SelectionChanged">
+                                    <ComboBoxItem x:Name="itemBothMethods" Content="Both Methods" IsSelected="True"/>
+                                    <ComboBoxItem x:Name="itemSettlePlate" Content="Settle Plate"/>
+                                    <ComboBoxItem x:Name="itemActiveAir" Content="Active Air Sampling"/>
+                                    <ComboBoxItem x:Name="itemContactPlate" Content="Contact Plate"/>
+                                    <ComboBoxItem x:Name="itemSurfaceSwab" Content="Surface Swab"/>
+                                    <ComboBoxItem x:Name="itemPersonnelMonitoring" Content="Personnel Monitoring"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="1" Grid.Column="3" Text="Expected Plates" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtExpectedPlates" Grid.Row="1" Grid.Column="4" IsReadOnly="True" Background="#DCFCE7" Foreground="#047857" FontWeight="Bold" ToolTip="If this shows 0, the selected area has no active templates in EM_AreaTemplates."/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Activity / Condition" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboActivity" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" IsEditable="True" SelectionChanged="CboActivity_SelectionChanged" Text="Normal Operation">
+                                    <ComboBoxItem Content="Normal Operation" IsSelected="True"/>
+                                    <ComboBoxItem Content="During Production"/>
+                                    <ComboBoxItem Content="After Cleaning"/>
+                                    <ComboBoxItem Content="After Sanitization"/>
+                                    <ComboBoxItem Content="At Rest"/>
+                                    <ComboBoxItem Content="Dynamic Condition"/>
+                                </ComboBox>
+
+                                <TextBlock x:Name="lblSamplingTimeFrom" Grid.Row="3" Grid.Column="0" Text="Exposure Start Time" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSamplingTimeFrom" Grid.Row="3" Grid.Column="1"/>
+
+                                <TextBlock x:Name="lblSamplingTimeTo" Grid.Row="3" Grid.Column="3" Text="Exposure End Time" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSamplingTimeTo" Grid.Row="3" Grid.Column="4"/>
+
+                                <TextBlock x:Name="lblAirSamplerNo" Grid.Row="4" Grid.Column="0" Text="Air Sampler No." Style="{StaticResource FieldLabelStyle}" Visibility="Collapsed"/>
+                                <TextBox x:Name="txtAirSamplerNo" Grid.Row="4" Grid.Column="1" Visibility="Collapsed"/>
+
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Sanitization Details" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSanitizationDetails" Grid.Row="5" Grid.Column="1"/>
+
+                                <TextBlock Grid.Row="5" Grid.Column="3" Text="Sanitization Time" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSanitizationTime" Grid.Row="5" Grid.Column="4"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="grpEmExtendedContext"
+                            Style="{StaticResource CardStyle}"
+                            Visibility="Collapsed">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="4. Personnel / Surface Monitoring Context"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock x:Name="lblEmployeeId" Grid.Row="0" Grid.Column="0" Text="Employee ID" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtEmployeeId" Grid.Row="0" Grid.Column="1"/>
+                                <TextBlock x:Name="lblEmployeeName" Grid.Row="0" Grid.Column="3" Text="Employee Name" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtEmployeeName" Grid.Row="0" Grid.Column="4"/>
+
+                                <TextBlock x:Name="lblEmployeeDepartment" Grid.Row="1" Grid.Column="0" Text="Department" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtEmployeeDepartment" Grid.Row="1" Grid.Column="1"/>
+                                <TextBlock x:Name="lblEmployeeShift" Grid.Row="1" Grid.Column="3" Text="Shift" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboEmployeeShift" Grid.Row="1" Grid.Column="4" IsEditable="True">
+                                    <ComboBoxItem Content="Morning"/>
+                                    <ComboBoxItem Content="Evening"/>
+                                    <ComboBoxItem Content="Night"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Sampling Stage" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboSamplingStage" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="4">
+                                    <ComboBoxItem Content="Before Operation"/>
+                                    <ComboBoxItem Content="During Operation"/>
+                                    <ComboBoxItem Content="After Operation" IsSelected="True"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Material / Product" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtEmMaterialName" Grid.Row="3" Grid.Column="1"/>
+                                <TextBlock Grid.Row="3" Grid.Column="3" Text="Batch No." Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtEmBatchNo" Grid.Row="3" Grid.Column="4"/>
+
+                                <TextBlock x:Name="lblSurfaceLocation" Grid.Row="4" Grid.Column="0" Text="Surface / Sample Site" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSurfaceLocation" Grid.Row="4" Grid.Column="1"/>
+                                <TextBlock x:Name="lblSurfaceArea" Grid.Row="4" Grid.Column="3" Text="Surface Area (cm²)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSurfaceAreaCm2" Grid.Row="4" Grid.Column="4" Text="25"/>
+
+                                <TextBlock x:Name="lblSwabKitLot" Grid.Row="5" Grid.Column="0" Text="Swab Kit Lot" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSwabKitLot" Grid.Row="5" Grid.Column="1"/>
+                                <TextBlock x:Name="lblDiluentLot" Grid.Row="5" Grid.Column="3" Text="Diluent Lot / Recovery Volume" Style="{StaticResource FieldLabelStyle}"/>
+                                <StackPanel Grid.Row="5" Grid.Column="4" Orientation="Horizontal">
+                                    <TextBox x:Name="txtDiluentLot" Width="120" Margin="0,0,8,0"/>
+                                    <TextBox x:Name="txtRecoveryVolumeMl" Width="70" Text="10" ToolTip="Recovery volume in mL"/>
+                                </StackPanel>
+
+                                <TextBlock x:Name="lblSurfaceType" Grid.Row="6" Grid.Column="0" Text="Surface Type" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboSurfaceType" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="3">
+                                    <ComboBoxItem Content="Flat Surface"/>
+                                    <ComboBoxItem Content="Curved / Uneven Surface"/>
+                                    <ComboBoxItem Content="Machine Internal Surface"/>
+                                </ComboBox>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="grpEmMedia"
+                            Style="{StaticResource CardStyle}"
+                            Visibility="Collapsed">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="5. EM Media and Incubation"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Media Used" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtMediaUsed" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Text="Tryptone Soy Agar"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Released Media Preparation No. *" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtMediaLotNo" Grid.Row="1" Grid.Column="1" ToolTip="Enter the released prepared-media number from Culture Media Management. Raw dehydrated-media lot numbers and equipment IDs are not accepted."/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="3" Text="Incubation Program" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtIncubationTemp" Grid.Row="1" Grid.Column="4" Text="Fungi 22.5 °C / Bacteria 32.5 °C" ToolTip="Same EM plates: fungi 3 days then bacteria 2 days. Editable if SOP changes."/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Bacteria Incubator ID" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtBacteriaIncubator" Grid.Row="2" Grid.Column="1"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="3" Text="Fungi Incubator ID" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtFungiIncubator" Grid.Row="2" Grid.Column="4"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="5. Registration Information"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sample / Event No." Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSampleNo" Grid.Row="0" Grid.Column="1" IsReadOnly="True" Background="#E2E8F0" FontFamily="Consolas" FontWeight="Bold"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="3" Text="System Registration" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSystemRegisteredAt" Grid.Row="0" Grid.Column="4" IsReadOnly="True" Background="#F8FAFC" ToolTip="Automatic system registration timestamp. The actual CreatedDate is saved by SQL Server at registration."/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Sampling Date" Style="{StaticResource FieldLabelStyle}"/>
+                                <DatePicker x:Name="dpSamplingDate" Grid.Row="1" Grid.Column="1"/>
+
+                                <TextBlock x:Name="lblSamplingTime" Grid.Row="1" Grid.Column="3" Text="Sampling Time" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSamplingTime" Grid.Row="1" Grid.Column="4" ToolTip="Manual actual sampling time. Use HH:mm, e.g. 08:30"/>
+
+                                <TextBlock x:Name="lblReceivedDate" Grid.Row="2" Grid.Column="0" Text="Received in Lab Date" Style="{StaticResource FieldLabelStyle}"/>
+                                <DatePicker x:Name="dpReceivedDate" Grid.Row="2" Grid.Column="1"/>
+
+                                <TextBlock x:Name="lblReceivedTime" Grid.Row="2" Grid.Column="3" Text="Received in Lab Time" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtReceivedTime" Grid.Row="2" Grid.Column="4" ToolTip="Manual actual sample receipt time in lab. Use HH:mm, e.g. 08:45"/>
+
+                                <TextBlock x:Name="lblAnalysisStartedDate" Grid.Row="3" Grid.Column="0" Text="Incubation Start Date" Style="{StaticResource FieldLabelStyle}"/>
+                                <DatePicker x:Name="dpAnalysisStartedDate" Grid.Row="3" Grid.Column="1" ToolTip="Actual date the inoculated plate or membrane was placed in the incubator."/>
+
+                                <TextBlock x:Name="lblAnalysisStartedTime" Grid.Row="3" Grid.Column="3" Text="Incubation Start Time" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtAnalysisStartedTime" Grid.Row="3" Grid.Column="4" ToolTip="Actual incubation start time. Use HH:mm, e.g. 09:00"/>
+
+                                <TextBlock x:Name="lblWaterIncubationProgram" Grid.Row="4" Grid.Column="0" Text="Incubation Program" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboWaterIncubationProgram" Grid.Row="4" Grid.Column="1" SelectionChanged="WaterIncubationProgram_SelectionChanged">
+                                    <ComboBoxItem Content="Water TAMC — 30–35 °C / 5 days" Tag="5" IsSelected="True"/>
+                                    <ComboBoxItem Content="TAMC — 30–35 °C / 3–5 days" Tag="5"/>
+                                    <ComboBoxItem Content="TYMC — 20–25 °C / 5–7 days" Tag="7"/>
+                                    <ComboBoxItem Content="Custom SOP — configure duration" Tag="5"/>
+                                </ComboBox>
+
+                                <TextBlock x:Name="lblWaterIncubatorId" Grid.Row="4" Grid.Column="3" Text="Incubator ID" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtWaterIncubatorId" Grid.Row="4" Grid.Column="4" ToolTip="Equipment ID of the incubator used."/>
+
+                                <TextBlock x:Name="lblEarliestReading" Grid.Row="5" Grid.Column="0" Text="Earliest Reading" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtEarliestReading" Grid.Row="5" Grid.Column="1" IsReadOnly="True" Background="#FFF7ED" Foreground="#9A3412" FontWeight="SemiBold"/>
+
+                                <TextBlock x:Name="lblIncubationEnd" Grid.Row="5" Grid.Column="3" Text="Latest Reading / Due" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtIncubationEnd" Grid.Row="5" Grid.Column="4" IsReadOnly="True" Background="#FEF2F2" Foreground="#B91C1C" FontWeight="Bold"/>
+
+                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Collected By" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSampledBy" Grid.Row="6" Grid.Column="1"/>
+
+                                <TextBlock Grid.Row="6" Grid.Column="3" Text="Status" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtStatus" Grid.Row="6" Grid.Column="4" IsReadOnly="True" Background="#DCFCE7" Foreground="#047857" FontWeight="Bold"/>
+
+                                <TextBlock x:Name="lblIncubationRule" Grid.Row="7" Grid.Column="0" Text="Incubation Rule" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock x:Name="txtIncubationRule" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="4" Text="Timing is calculated from the actual incubation start—not from registration or sampling time. Program selection must match the approved laboratory SOP/compendial method." TextWrapping="Wrap" Foreground="#475569" Margin="0,6"/>
+
+                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Remarks" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtRemarks" Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="4"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="grpWaterReceipt"
+                            Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="6. Water Sample Receipt / Chain of Custody" Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Container Count" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtContainerCount" Grid.Row="0" Grid.Column="1" Text="1"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="3" Text="Sample Volume" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtSampleVolume" Grid.Row="0" Grid.Column="4" ToolTip="Example: 500 mL"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Container Condition" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboContainerCondition" Grid.Row="1" Grid.Column="1">
+                                    <ComboBoxItem Content="Intact" IsSelected="True"/>
+                                    <ComboBoxItem Content="Damaged"/>
+                                    <ComboBoxItem Content="Leaking"/>
+                                    <ComboBoxItem Content="Incorrect Container"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="1" Grid.Column="3" Text="Receipt Temperature" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtReceiptTemperature" Grid.Row="1" Grid.Column="4" ToolTip="Record the actual value and unit, for example 22.4 °C"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Received By" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtReceivedBy" Grid.Row="2" Grid.Column="1"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="3" Text="Receipt Decision" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="cboReceiptDecision" Grid.Row="2" Grid.Column="4">
+                                    <ComboBoxItem Content="Accepted" IsSelected="True"/>
+                                    <ComboBoxItem Content="Rejected"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Deviation / Rejection Reason" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="txtReceiptDeviationReason" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="4"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="grpWaterTests"
+                            Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="7. Water Tests Selection" Style="{StaticResource SectionTitleStyle}"/>
+
+                            <DockPanel Grid.Row="1" LastChildFill="False" Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                    <Button x:Name="btnPhysical" Content="Physical Tests" Width="145" Background="#3498DB" Style="{StaticResource ActionButtonStyle}" Click="FilterTests_Click"/>
+                                    <Button x:Name="btnChemical" Content="Chemical Tests" Width="145" Background="#27AE60" Style="{StaticResource ActionButtonStyle}" Click="FilterTests_Click"/>
+                                    <Button x:Name="btnMicro" Content="Microbiological Tests" Width="190" Background="#E67E22" Style="{StaticResource ActionButtonStyle}" Click="FilterTests_Click"/>
+                                    <Button x:Name="btnSelectAll" Content="Select All" Width="115" Background="#334155" Style="{StaticResource ActionButtonStyle}" Click="BtnSelectAll_Click"/>
+                                    <Button x:Name="btnClearAll" Content="Clear All" Width="115" Background="#64748B" Style="{StaticResource ActionButtonStyle}" Click="BtnClearAll_Click"/>
+                                    <Button x:Name="btnManageWaterProfiles" Content="Manage Controlled Profiles" Width="210" Background="#7C3AED" Style="{StaticResource ActionButtonStyle}" Click="BtnManageWaterProfiles_Click" ToolTip="Settings permission required. Configure versioned PW/PTW test assignments and approved specifications."/>
+                                </StackPanel>
+
+                                <TextBlock x:Name="txtSelectedCount"
+                                           DockPanel.Dock="Right"
+                                           Text="Selected: 0 tests"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="18,0,0,0"/>
+                            </DockPanel>
+
+                            <Border Grid.Row="2"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Background="White"
+                                    Padding="10">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="220">
+                                    <StackPanel x:Name="spTests"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1">
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Registration Preview" Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Border Style="{StaticResource MiniCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="NUMBER" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold"/>
+                                    <TextBlock x:Name="lblPreviewNumber" Text="-" FontFamily="Consolas" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextBrush}" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource MiniCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="TYPE" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold"/>
+                                    <TextBlock x:Name="lblPreviewType" Text="-" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource MiniCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="LOCATION / AREA" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold"/>
+                                    <TextBlock x:Name="lblPreviewLocation" Text="-" FontSize="13" Foreground="{StaticResource TextBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource MiniCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="METHOD / TESTS" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold"/>
+                                    <TextBlock x:Name="lblPreviewMethod" Text="-" FontSize="13" Foreground="{StaticResource TextBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource MiniCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="STATUS" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold"/>
+                                    <TextBlock x:Name="lblPreviewStatus" Text="-" FontSize="13" FontWeight="Bold" Foreground="#047857" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="grpEmGuidance" Style="{StaticResource CardStyle}" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="EM Registration Notes" Style="{StaticResource SectionTitleStyle}"/>
+
+                            <TextBlock Text="• EM Event No. is generated automatically."
+                                       Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,8"/>
+
+                            <TextBlock Text="• Plate codes are created from EM_AreaTemplates according to selected Area and Method."
+                                       Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,8"/>
+
+                            <TextBlock Text="• Results are entered later in Environmental Monitoring Results Entry."
+                                       Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,8"/>
+
+                            <TextBlock Text="• Review, approval, audit trail, and e-signature remain unchanged."
+                                       Foreground="{StaticResource MutedBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <Border Grid.Row="2"
+                Background="White"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="18,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Register only after verifying the area/point, method, media lot, and sampling date."
+                               Foreground="{StaticResource MutedBrush}"
+                               FontSize="12"/>
+                    <TextBlock x:Name="lblFormMessage"
+                               Foreground="{StaticResource DangerBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Margin="0,4,12,0"
+                               Visibility="Collapsed"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button x:Name="btnSave"
+                            Content="Save Registration"
+                            Width="170"
+                            Background="{StaticResource SuccessBrush}"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Click="BtnSave_Click"/>
+
+                    <Button x:Name="btnCancel"
+                            Content="Cancel"
+                            Width="120"
+                            Background="{StaticResource DangerBrush}"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Click="BtnCancel_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

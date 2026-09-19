@@ -1,0 +1,110 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows7.0</TargetFramework>
+		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+		<UseWPF>true</UseWPF>
+		<!-- Keep WPF markup classification explicit so clean/source-only replacements
+		     always regenerate App.g.cs and every Window *.g.cs file. -->
+		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+		<EnableDefaultPageItems>false</EnableDefaultPageItems>
+
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+
+		<AssemblyName>PharmaLIMS</AssemblyName>
+		<RootNamespace>PharmaLIMS</RootNamespace>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<Version>2026.9.18.294</Version>
+		<FileVersion>2026.9.18.294</FileVersion>
+		<!-- Do not pin RuntimeFrameworkVersion: F5/debug should use any installed compatible .NET 8 Windows Desktop patch.
+		     Production CI publishes self-contained win-x64, so deployment does not depend on a machine runtime patch. -->
+		<DeploymentEnvironment Condition="'$(DeploymentEnvironment)' == ''">Production</DeploymentEnvironment>
+
+		<NoWarn>$(NoWarn);CA1416;CS8632</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="**\*.xaml" />
+		<ApplicationDefinition Include="App.xaml">
+			<Generator>MSBuild:Compile</Generator>
+			<SubType>Designer</SubType>
+		</ApplicationDefinition>
+		<Page Include="**\*.xaml" Exclude="App.xaml;bin\**;obj\**;tools\**;tests\**">
+			<Generator>MSBuild:Compile</Generator>
+			<SubType>Designer</SubType>
+		</Page>
+	</ItemGroup>
+
+	<!-- Auxiliary executables/tests live under the repository root but are separate projects.
+	     Exclude their C# sources from the WPF application's SDK default Compile glob. -->
+	<ItemGroup>
+		<Compile Remove="tools\**\*.cs" />
+		<Compile Remove="tests\**\*.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Remove="medica-logo.png" />
+		<None Remove="Database\MigrationManifest.json" />
+		<None Remove="Database\Baseline\*.sql" />
+		<None Remove="Database\Migrations\*.sql" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="Database\MigrationManifest.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Database\Baseline\*.sql">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Database\Migrations\*.sql">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="medica-logo.png">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="appsettings.Production.json"
+			  Condition="'$(Configuration)' != 'Debug' and Exists('$(MSBuildProjectDirectory)\appsettings.Production.json')">
+			<TargetPath>appsettings.json</TargetPath>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</None>
+		<None Update="appsettings.Development.example.json"
+			  Condition="'$(Configuration)' == 'Debug'">
+			<TargetPath>appsettings.json</TargetPath>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+		<PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+		<PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
+		<PackageReference Include="PdfSharp" Version="6.2.4" />
+	</ItemGroup>
+
+	<Target Name="ValidateProductionPublishConfiguration"
+			BeforeTargets="Publish"
+			Condition="'$(DeploymentEnvironment)' == 'Production'">
+		<Error Condition="'$(Configuration)' == 'Debug'"
+			   Text="Production publish blocked: a Debug binary is compiled for Development and cannot be deployed as Production." />
+		<Error Condition="!Exists('$(MSBuildProjectDirectory)\appsettings.Production.json')"
+			   Text="Production publish blocked: create a site-specific appsettings.Production.json from the example and validate it before publishing. Placeholder/example configuration is never deployed automatically." />
+		<Exec Command="python &quot;$(MSBuildProjectDirectory)\scripts\validate_project.py&quot; --production-publish" />
+	</Target>
+
+</Project>

@@ -1,0 +1,268 @@
+﻿<Window x:Class="PharmaLIMS.EMPlanning"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="Environmental Monitoring Planning" WindowState="Maximized"
+        MinWidth="1180" MinHeight="720" Background="#EEF3F7" FontFamily="Segoe UI"
+        ResizeMode="CanResizeWithGrip" infra:WindowUsability.EnableResponsiveEntry="True"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="White"/><Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="#D8E2EA"/><Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="18"/><Setter Property="Margin" Value="0,0,14,14"/>
+        </Style>
+        <Style x:Key="Field" TargetType="Control">
+            <Setter Property="Height" Value="38"/><Setter Property="Margin" Value="0,5,12,10"/>
+            <Setter Property="Padding" Value="9,5"/><Setter Property="BorderBrush" Value="#C7D4DE"/>
+        </Style>
+        <Style x:Key="Primary" TargetType="Button">
+            <Setter Property="Height" Value="40"/><Setter Property="MinWidth" Value="130"/>
+            <Setter Property="Margin" Value="6"/><Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="#176B87"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/><Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="Secondary" TargetType="Button" BasedOn="{StaticResource Primary}">
+            <Setter Property="Background" Value="#E4EEF3"/><Setter Property="Foreground" Value="#153148"/>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/><Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HeadersVisibility" Value="Column"/><Setter Property="RowHeight" Value="36"/>
+            <Setter Property="ColumnHeaderHeight" Value="38"/><Setter Property="BorderBrush" Value="#D7E1E9"/>
+            <Setter Property="CanUserAddRows" Value="False"/><Setter Property="SelectionMode" Value="Single"/>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="92"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="#103B5B" Padding="26,14">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Sampling Planning Control Center" Foreground="White" FontSize="27" FontWeight="Bold"/>
+                    <TextBlock Text="Water and EM: Plan → Distribute → Collect / Register → Analysis" Foreground="#BBD5E4" FontSize="13" Margin="0,5,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#1B5275" CornerRadius="18" Padding="16,8">
+                        <TextBlock x:Name="lblUser" Foreground="White" FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <TabControl Grid.Row="1" Margin="18" Background="Transparent">
+            <TabItem Header="  Create Plan  ">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*"/>
+                            <ColumnDefinition Width="2*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="1. Plan identity and required dates" FontSize="18" FontWeight="Bold" Foreground="#142F49"/>
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <StackPanel><TextBlock Text="Plan Type *"/><ComboBox x:Name="cboPlanType" Style="{StaticResource Field}"><ComboBoxItem Content="EM-S"/><ComboBoxItem Content="EM-NS"/><ComboBoxItem Content="PERSONNEL"/></ComboBox></StackPanel>
+                                    <StackPanel Grid.Column="1"><TextBlock Text="Source"/><ComboBox x:Name="cboSource" Style="{StaticResource Field}" IsEnabled="False"><ComboBoxItem Content="Ad-hoc"/></ComboBox></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Sampling Due Date *"/><DatePicker x:Name="dpDue" Style="{StaticResource Field}"/></StackPanel>
+                                    <StackPanel Grid.Row="1"><TextBlock Text="Login Date *"/><DatePicker x:Name="dpLogin" Style="{StaticResource Field}"/></StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="Required Date *"/><DatePicker x:Name="dpRequired" Style="{StaticResource Field}"/></StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Set / Inspection Lot"/><TextBox x:Name="txtSetNo" Style="{StaticResource Field}"/></StackPanel>
+                                </Grid>
+                                <TextBlock Text="Manual plans are controlled Ad-hoc plans. Scheduled plans are generated only from an approved EM schedule."
+                                           Foreground="#61778A" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Procedure rules" FontSize="18" FontWeight="Bold"/>
+                                <TextBlock Text="• Three controlled dates: login, sample due, required.&#10;• Manual creation is Ad-hoc; scheduled plans come only from an approved schedule.&#10;• Negative control is mandatory for every monitoring run.&#10;• Distribution, collection, incubation and cancellation require e-signature.&#10;• Contact plate, swab and personnel methods work for every selected area.&#10;• Results are handed off only after collection and incubation."
+                                           TextWrapping="Wrap" Foreground="#526C80" LineHeight="23" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="310"/></Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="2. Select all applicable areas" FontSize="18" FontWeight="Bold" Foreground="#142F49"/>
+                                        <TextBlock Text="Area code, full area name, group and classification remain visible while selecting the monitoring scope." Foreground="#61778A" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="Select All Areas" Style="{StaticResource Secondary}" MinWidth="120" Click="SelectAllAreas_Click"/>
+                                        <Button Content="Clear Selection" Style="{StaticResource Secondary}" MinWidth="120" Click="ClearAreas_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                                <DataGrid x:Name="gridAreas" Grid.Row="1" SelectionMode="Extended" MinColumnWidth="70"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <DataGrid.Columns>
+                                        <DataGridCheckBoxColumn Header="Use" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="65"/>
+                                        <DataGridTextColumn Header="Area Code" Binding="{Binding AreaCode}" Width="120" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Area Name" Binding="{Binding AreaName}" Width="3*" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Area Group" Binding="{Binding AreaGroup}" Width="2*" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Grade / Classification" Binding="{Binding Grade}" Width="170" IsReadOnly="True"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="3. Method, media and sampling context" FontSize="18" FontWeight="Bold" Foreground="#142F49"/>
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <StackPanel><TextBlock Text="Method *"/><ComboBox x:Name="cboMethod" Style="{StaticResource Field}" SelectionChanged="cboMethod_SelectionChanged"/></StackPanel>
+                                    <StackPanel Grid.Column="1"><TextBlock Text="Sampling Context / Surface (optional)"/><TextBox x:Name="txtLocation" Style="{StaticResource Field}" ToolTip="Appended to each approved template sampling point; it does not replace the controlled point identity."/></StackPanel>
+                                    <StackPanel Grid.Row="1"><TextBlock Text="Media Used *"/><TextBox x:Name="txtMedia" Style="{StaticResource Field}"/></StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="Released Media Preparation No. *"/><TextBox x:Name="txtMediaLot" Style="{StaticResource Field}"/></StackPanel>
+                                    <StackPanel Grid.Row="2"><TextBlock Text="Employee ID (Personnel)"/><TextBox x:Name="txtEmployeeId" Style="{StaticResource Field}"/></StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="1"><TextBlock Text="Employee Name (Personnel)"/><TextBox x:Name="txtEmployeeName" Style="{StaticResource Field}"/></StackPanel>
+                                    <CheckBox x:Name="chkNegativeControl" Grid.Row="3" Grid.ColumnSpan="2"
+                                              Content="Mandatory negative control is generated with every EM plan" IsChecked="True" IsEnabled="False" Margin="0,10" FontWeight="SemiBold"/>
+                                </Grid>
+                                <TextBlock Text="Plan Notes"/><TextBox x:Name="txtNotes" Height="70" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,5,12,8" Padding="8"/>
+                                <Button Content="Create Controlled Ad-hoc Plan" Style="{StaticResource Primary}" HorizontalAlignment="Right" Click="CreatePlan_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Approved schedule control" FontSize="18" FontWeight="Bold"/>
+                                <TextBlock Text="Schedule name" Margin="0,10,0,0"/><TextBox x:Name="txtScheduleName" Style="{StaticResource Field}"/>
+                                <TextBlock Text="Frequency"/><ComboBox x:Name="cboFrequency" Style="{StaticResource Field}"><ComboBoxItem Content="Daily"/><ComboBoxItem Content="Weekly"/><ComboBoxItem Content="Fortnightly"/><ComboBoxItem Content="Monthly"/><ComboBoxItem Content="Quarterly"/></ComboBox>
+                                <TextBlock Text="Next due date"/><DatePicker x:Name="dpScheduleNext" Style="{StaticResource Field}"/>
+                                <TextBlock Text="The schedule uses the checked areas and the current method/media settings above. Only an approved schedule may generate Scheduled plans." TextWrapping="Wrap" Foreground="#61778A" FontSize="11" Margin="0,0,0,6"/>
+                                <WrapPanel>
+                                    <Button Content="Save Draft" Style="{StaticResource Secondary}" Click="SaveSchedule_Click"/>
+                                    <Button Content="Review" Style="{StaticResource Secondary}" Click="ReviewSchedule_Click"/>
+                                    <Button Content="Approve / Make Effective" Style="{StaticResource Primary}" Click="ApproveSchedule_Click"/>
+                                    <Button Content="Deactivate" Style="{StaticResource Secondary}" Foreground="#A51D2D" Click="DeactivateSchedule_Click"/>
+                                    <Button Content="Generate Due Plans" Style="{StaticResource Primary}" Click="GenerateDuePlans_Click"/>
+                                </WrapPanel>
+                                <DataGrid x:Name="gridSchedules" Height="245" Margin="0,10,0,0" IsReadOnly="True" MinColumnWidth="65"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Schedule" Binding="{Binding ScheduleName}" Width="180"/>
+                                        <DataGridTextColumn Header="Frequency" Binding="{Binding Frequency}" Width="90"/>
+                                        <DataGridTextColumn Header="Next Due" Binding="{Binding NextDueDate, StringFormat=yyyy-MM-dd}" Width="105"/>
+                                        <DataGridTextColumn Header="Method" Binding="{Binding Method}" Width="150"/>
+                                        <DataGridTextColumn Header="Approval" Binding="{Binding ApprovalStatus}" Width="105"/>
+                                        <DataGridTextColumn Header="Version" Binding="{Binding VersionNo}" Width="70"/>
+                                        <DataGridTextColumn Header="Reviewed By" Binding="{Binding ReviewedBy}" Width="125"/>
+                                        <DataGridTextColumn Header="Approved By" Binding="{Binding ApprovedBy}" Width="125"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="  Active Plans  ">
+                <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Border Style="{StaticResource Card}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="175"/><ColumnDefinition Width="175"/><ColumnDefinition Width="125"/><ColumnDefinition Width="125"/><ColumnDefinition Width="190"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="Operational queue" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1"><TextBlock Text="Bacteria Incubator ID" FontSize="11"/><TextBox x:Name="txtBacteriaIncubator" Style="{StaticResource Field}"/></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Text="Fungi Incubator ID" FontSize="11"/><TextBox x:Name="txtFungiIncubator" Style="{StaticResource Field}"/></StackPanel>
+                        <StackPanel Grid.Column="3"><TextBlock Text="Phase 1 Actual °C" FontSize="11"/><TextBox x:Name="txtPhase1ActualTemp" Style="{StaticResource Field}"/></StackPanel>
+                        <StackPanel Grid.Column="4"><TextBlock Text="Phase 2 Actual °C" FontSize="11"/><TextBox x:Name="txtPhase2ActualTemp" Style="{StaticResource Field}"/></StackPanel>
+                        <StackPanel Grid.Column="5"><TextBlock Text="Planned Incubation End" FontSize="11"/><TextBox x:Name="txtIncubationEnd" IsReadOnly="True" Style="{StaticResource Field}"/></StackPanel>
+                        <Button Grid.Column="6" Content="Refresh" Style="{StaticResource Secondary}" Click="Refresh_Click"/>
+                    </Grid></Border>
+                    <DataGrid x:Name="gridPlans" Grid.Row="1" Margin="0,0,14,14" IsReadOnly="True" SelectionChanged="gridPlans_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Plan No." Binding="{Binding PlanNo}" Width="155"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding PlanType}" Width="90"/>
+                            <DataGridTextColumn Header="Source" Binding="{Binding SourceType}" Width="90"/>
+                            <DataGridTextColumn Header="Due" Binding="{Binding SampleDueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                            <DataGridTextColumn Header="Required" Binding="{Binding RequiredDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                            <DataGridTextColumn Header="Samples" Binding="{Binding SampleCount}" Width="75"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="150"/>
+                            <DataGridTextColumn Header="Created By" Binding="{Binding CreatedBy}" Width="130"/>
+                            <DataGridTextColumn Header="Notes" Binding="{Binding PlanNotes}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <DataGrid x:Name="gridSamples" Grid.Row="2" Margin="0,0,14,12" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Sample Code" Binding="{Binding SampleCode}" Width="155" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Area" Binding="{Binding AreaName}" Width="150" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Method" Binding="{Binding Method}" Width="150" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Location" Binding="{Binding SamplingLocation}" Width="150" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Plate / Kit" Binding="{Binding PlateCondition}" Width="100"/>
+                            <DataGridTextColumn Header="Start yyyy-MM-dd HH:mm" Binding="{Binding SamplingStartText}" Width="170"/>
+                            <DataGridTextColumn Header="End yyyy-MM-dd HH:mm" Binding="{Binding SamplingEndText}" Width="170"/>
+                            <DataGridTextColumn Header="Min °C" Binding="{Binding TransportMinText}" Width="80"/>
+                            <DataGridTextColumn Header="Max °C" Binding="{Binding TransportMaxText}" Width="80"/>
+                            <DataGridTextColumn Header="Control Result" Binding="{Binding NegativeControlResult}" Width="120"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Border Grid.Row="3" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" Padding="8"><WrapPanel HorizontalAlignment="Right">
+                        <Button Content="Print Data Sheet" Style="{StaticResource Secondary}" Click="PrintSheet_Click"/>
+                        <Button Content="Print Sample Labels" Style="{StaticResource Secondary}" Click="PrintLabels_Click"/>
+                        <Button Content="Distribute" Style="{StaticResource Primary}" Click="Distribute_Click"/>
+                        <Button Content="Collect / Save Checks" Style="{StaticResource Primary}" Click="Collect_Click"/>
+                        <Button Content="Start Phase 1" Style="{StaticResource Primary}" Click="Incubate_Click"/>
+                        <Button Content="Complete Phase 1 / Start Phase 2" Style="{StaticResource Primary}" Click="CompletePhase1_Click"/>
+                        <Button Content="Complete Phase 2" Style="{StaticResource Primary}" Click="CompletePhase2_Click"/>
+                        <Button Content="Read Negative Control" Style="{StaticResource Secondary}" Click="ReadNegativeControl_Click"/>
+                        <Button Content="Send to EM Results" Style="{StaticResource Primary}" Click="SendResults_Click"/>
+                        <Button Content="Cancel Plan" Style="{StaticResource Secondary}" Foreground="#A51D2D" Click="CancelPlan_Click"/>
+                    </WrapPanel></Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="  Water Plan  ">
+                <Grid Margin="0,14,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <Border Style="{StaticResource Card}"><StackPanel>
+                            <TextBlock Text="1. Water collection and analysis plan" FontSize="20" FontWeight="Bold" Foreground="#142F49"/>
+                            <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                <StackPanel><TextBlock Text="Water Type *"/><ComboBox x:Name="cboWaterType" Style="{StaticResource Field}" SelectionChanged="WaterType_SelectionChanged"><ComboBoxItem Content="Purified"/><ComboBoxItem Content="Potable"/></ComboBox></StackPanel>
+                                <StackPanel Grid.Column="1"><TextBlock Text="Source *"/><ComboBox x:Name="cboWaterSource" Style="{StaticResource Field}"><ComboBoxItem Content="Routine"/><ComboBoxItem Content="Ad-hoc"/></ComboBox></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Frequency"/><ComboBox x:Name="cboWaterFrequency" Style="{StaticResource Field}" IsEnabled="False" ToolTip="Frequency is controlled by water type: Purified = Fortnightly; Potable = Monthly."><ComboBoxItem Content="Weekly"/><ComboBoxItem Content="Fortnightly"/><ComboBoxItem Content="Monthly"/></ComboBox></StackPanel>
+                                <StackPanel Grid.Row="1"><TextBlock Text="Collection Due Date *"/><DatePicker x:Name="dpWaterDue" Style="{StaticResource Field}"/></StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="Analysis Required Date *"/><DatePicker x:Name="dpWaterRequired" Style="{StaticResource Field}"/></StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Analysis Profile"/><TextBox Text="Approved tests for selected water type" IsReadOnly="True" Style="{StaticResource Field}"/></StackPanel>
+                            </Grid>
+                        </StackPanel></Border>
+                        <Border Style="{StaticResource Card}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <StackPanel><TextBlock Text="2. Select sampling points" FontSize="18" FontWeight="Bold"/><TextBlock Text="Only active points of the selected water system are displayed." Foreground="#61778A" Margin="0,4,0,6"/><WrapPanel Margin="0,0,0,10"><Button Content="Select All Points" Style="{StaticResource Secondary}" Click="SelectAllWaterPoints_Click"/><Button Content="Clear Selection" Style="{StaticResource Secondary}" Click="ClearWaterPoints_Click"/></WrapPanel></StackPanel>
+                            <DataGrid x:Name="gridWaterPoints" Grid.Row="1" Height="390" SelectionMode="Extended">
+                                <DataGrid.Columns><DataGridCheckBoxColumn Header="Use" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="55"/><DataGridTextColumn Header="Code" Binding="{Binding PointCode}" Width="130" IsReadOnly="True"/><DataGridTextColumn Header="Point" Binding="{Binding PointName}" Width="*" IsReadOnly="True"/><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="*" IsReadOnly="True"/></DataGrid.Columns>
+                            </DataGrid>
+                        </Grid></Border>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Controlled workflow" FontSize="18" FontWeight="Bold"/><TextBlock Text="• Purified-water points are planned fortnightly.&#10;• Potable-water points are planned monthly.&#10;• Tests come from the approved PW/PTW profile.&#10;• Actual collection and receipt times remain in the existing registration form.&#10;• Registered samples go to the existing Water Results screen." TextWrapping="Wrap" Foreground="#526C80" LineHeight="24" Margin="0,10,0,0"/></StackPanel></Border>
+                        <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Plan Notes"/><TextBox x:Name="txtWaterNotes" Height="120" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,6,0,10" Padding="8"/><Button Content="Create Water Plan" Style="{StaticResource Primary}" HorizontalAlignment="Right" Click="CreateWaterPlan_Click"/></StackPanel></Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem Header="  Water Queue  ">
+                <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="210"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <CheckBox x:Name="chkSelectAllWaterSamples" Content="Select all plan samples" VerticalAlignment="Center" Margin="8" FontWeight="SemiBold" Checked="SelectAllWaterSamples_Changed" Unchecked="SelectAllWaterSamples_Changed"/>
+                        <ComboBox x:Name="cboBulkWaterTests" Grid.Column="1" Style="{StaticResource Field}" Margin="12,0,8,0"><ComboBoxItem Content="Full"/><ComboBoxItem Content="Physical / Chemical"/><ComboBoxItem Content="Microbiology"/></ComboBox>
+                        <Button Grid.Column="2" Content="Choose / Apply Tests" Style="{StaticResource Primary}" Click="ApplyWaterTests_Click"/>
+                        <TextBlock Grid.Column="3" Text="Choose tests once, then apply them to every checked sample." Foreground="#61778A" VerticalAlignment="Center" Margin="12,0"/>
+                    </Grid></Border>
+                    <DataGrid x:Name="gridWaterPlans" Grid.Row="1" IsReadOnly="True" SelectionChanged="WaterPlans_SelectionChanged">
+                        <DataGrid.Columns><DataGridTextColumn Header="Plan No." Binding="{Binding PlanNo}" Width="170"/><DataGridTextColumn Header="Water" Binding="{Binding WaterType}" Width="110"/><DataGridTextColumn Header="Source" Binding="{Binding SourceType}" Width="100"/><DataGridTextColumn Header="Frequency" Binding="{Binding Frequency}" Width="105"/><DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/><DataGridTextColumn Header="Required" Binding="{Binding RequiredDate, StringFormat=yyyy-MM-dd}" Width="110"/><DataGridTextColumn Header="Points" Binding="{Binding PointCount}" Width="80"/><DataGridTextColumn Header="Registered" Binding="{Binding RegisteredCount}" Width="90"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/><DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/></DataGrid.Columns>
+                    </DataGrid>
+                    <DataGrid x:Name="gridWaterSamples" Grid.Row="2" Margin="0,12,0,12" IsReadOnly="False" SelectionMode="Extended">
+                        <DataGrid.Columns><DataGridCheckBoxColumn Header="Use" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="55"/><DataGridTextColumn Header="Point Code" Binding="{Binding PointCode}" Width="120" IsReadOnly="True"/><DataGridTextColumn Header="Point" Binding="{Binding PointName}" Width="180" IsReadOnly="True"/><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="180" IsReadOnly="True"/><DataGridTextColumn Header="Profile" Binding="{Binding AnalysisProfile}" Width="130" IsReadOnly="True"/><DataGridTextColumn Header="Assigned Tests" Binding="{Binding TestNames}" Width="300" IsReadOnly="True"/><DataGridTextColumn Header="Sample No." Binding="{Binding SampleNumber}" Width="160" IsReadOnly="True"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="140" IsReadOnly="True"/></DataGrid.Columns>
+                    </DataGrid>
+                    <Border Grid.Row="3" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" Padding="8"><WrapPanel HorizontalAlignment="Right"><Button Content="Refresh" Style="{StaticResource Secondary}" Click="RefreshWater_Click"/><Button Content="Print Collection List" Style="{StaticResource Secondary}" Click="PrintWaterList_Click"/><Button Content="Print Selected Labels" Style="{StaticResource Secondary}" Click="PrintWaterLabels_Click"/><Button Content="Distribute" Style="{StaticResource Primary}" Click="DistributeWater_Click"/><Button Content="Register Selected Sample" Style="{StaticResource Primary}" Click="RegisterWaterSample_Click"/><Button Content="Open Water Results" Style="{StaticResource Primary}" Click="OpenWaterResults_Click"/><Button Content="Cancel Plan" Style="{StaticResource Secondary}" Foreground="#A51D2D" Click="CancelWaterPlan_Click"/></WrapPanel></Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

@@ -1,0 +1,20 @@
+PharmaLIMS 2026.9.14.276 - PRM UAT / Approved Profile Evidence Hardening
+
+Changed:
+- ProductionRawMaterialSamples.xaml.cs
+- Repositories/PrmSpecificationRepository.cs
+- Infrastructure/SystemPreflightService.cs
+- tests/test_release_controls.py
+- tests/test_v273_prm_standard_profile_readiness.py
+- tests/test_v276_prm_profile_signature_evidence.py (new)
+- release/version/SBOM/source-manifest metadata
+
+Behavior:
+- New PRM registrations consume only active/effective Approved profiles with matching Review Specification and Approve Specification electronic-signature evidence for the exact version.
+- Production requires reviewer/approver separation; Development retains its configured admin override.
+- Profile selector ranking prefers the most specific item/stage match.
+- Preflight surfaces unsupported Approved profile versions instead of allowing them to be treated as authoritative master data.
+- Stale prior-release metadata was removed from the delivery root.
+
+Database:
+- No migration added or modified. Existing migration checksums must remain unchanged.

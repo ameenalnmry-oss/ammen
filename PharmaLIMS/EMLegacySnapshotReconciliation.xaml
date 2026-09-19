@@ -1,0 +1,102 @@
+<Window x:Class="PharmaLIMS.EMLegacySnapshotReconciliation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Historical EM Snapshot Reconciliation"
+        Width="1180" Height="760" MinWidth="980" MinHeight="640"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        Background="#F4F7FA">
+    <Window.Resources>
+        <Style x:Key="Field" TargetType="TextBox">
+            <Setter Property="Height" Value="34"/><Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Margin" Value="0,4,10,8"/><Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+        <Style x:Key="Action" TargetType="Button">
+            <Setter Property="Height" Value="38"/><Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Margin" Value="0,0,10,0"/><Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#14233A" CornerRadius="10" Padding="18" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Historical EM Limit Snapshot Reconciliation" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                <TextBlock x:Name="lblEvent" Foreground="#C9D7E5" Margin="0,5,0,0"/>
+                <TextBlock Text="Use only controlled historical evidence. Current master limits are shown as reference and are never copied automatically into historical records. Each reconciliation is electronically signed, append-only and auditable."
+                           Foreground="#FDE68A" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.08*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="0.92*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" CornerRadius="10" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock Text="Event plates requiring review" FontSize="17" FontWeight="Bold" Margin="4,2,0,10"/>
+                    <DataGrid Grid.Row="1" x:Name="gridPlates" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              SelectionMode="Extended" SelectionUnit="FullRow" SelectionChanged="gridPlates_SelectionChanged" HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal" RowHeaderWidth="0" AlternatingRowBackground="#F8FAFC">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Event" Binding="{Binding EventNo}" Width="150"/>
+                            <DataGridTextColumn Header="Plate" Binding="{Binding PlateCode}" Width="110"/>
+                            <DataGridTextColumn Header="Method" Binding="{Binding Method}" Width="170"/>
+                            <DataGridTextColumn Header="Grade" Binding="{Binding Grade}" Width="95"/>
+                            <DataGridTextColumn Header="Snapshot" Binding="{Binding SnapshotStatus}" Width="145"/>
+                            <DataGridTextColumn Header="Latest reconciliation" Binding="{Binding ReconciliationStatus}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Button x:Name="BtnSelectMatching" Content="Select all matching unreconciled"
+                                Click="BtnSelectMatching_Click" Style="{StaticResource Action}"
+                                Background="#E0F2FE" Foreground="#0C4A6E" HorizontalAlignment="Left"/>
+                        <TextBlock x:Name="lblSelectionSummary" Grid.Column="1" VerticalAlignment="Center"
+                                   Foreground="#64748B" TextWrapping="Wrap"
+                                   Text="Select one plate, then use batch selection for the same Grade + Method."/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" CornerRadius="10" Padding="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Controlled reconciliation evidence" FontSize="17" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="lblSelectedPlate" Text="Select a plate." FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                            <TextBlock x:Name="lblCurrentMaster" Text="Current approved master: N/A" Foreground="#1E3A8A" TextWrapping="Wrap"/>
+                        </Border>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0"><TextBlock Text="Historical Alert Limit *"/><TextBox x:Name="txtAlert" Style="{StaticResource Field}"/></StackPanel>
+                            <StackPanel Grid.Column="1"><TextBlock Text="Historical Action Limit *"/><TextBox x:Name="txtAction" Style="{StaticResource Field}"/></StackPanel>
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0"><TextBlock Text="Historical Result Unit *"/><TextBox x:Name="txtUnit" Style="{StaticResource Field}"/></StackPanel>
+                            <StackPanel Grid.Column="1"><TextBlock Text="Historical Air Volume (L)"/><TextBox x:Name="txtAirVolume" Style="{StaticResource Field}"/></StackPanel>
+                        </Grid>
+                        <TextBlock Text="Controlled Evidence Reference *"/>
+                        <TextBox x:Name="txtEvidenceReference" Style="{StaticResource Field}" ToolTip="SOP/specification/approved record/reference that proves the historical limits"/>
+                        <TextBlock Text="Reconciliation Reason *"/>
+                        <TextBox x:Name="txtReason" Height="92" Padding="8" Margin="0,4,10,8" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Text="The original EM_EventPlates snapshot is not edited. A new signed reconciliation record is appended and may explicitly supersede a prior reconciliation." Foreground="#64748B" TextWrapping="Wrap" Margin="0,2,0,12"/>
+                        <Button x:Name="BtnSave" Content="Sign and Save Selected Reconciliation(s)" Click="BtnSave_Click" Style="{StaticResource Action}" Background="#176B87" Foreground="White" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock x:Name="lblStatus" VerticalAlignment="Center" Foreground="#64748B" Text="No reconciliation has been saved in this session."/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Refresh" Click="BtnRefresh_Click" Style="{StaticResource Action}" Background="#E2E8F0" Foreground="#334155"/>
+                <Button Content="Close" Click="BtnClose_Click" Style="{StaticResource Action}" Background="#334155" Foreground="White" Margin="0"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

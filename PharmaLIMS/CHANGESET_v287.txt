@@ -1,0 +1,8 @@
+PharmaLIMS 2026.9.16.287 - Authentication upgrade-path repair
+
+1. Debug/Development startup now automatically applies only the two controlled authentication prerequisite migrations before Login.
+2. Production startup remains read-only/verify-only.
+3. 20260911 compatibility reconciliation now repairs legacy nullable BIT shapes for IsActive and the 11 permission columns by mapping NULL only to 0, preserving all explicit values.
+4. AuthenticationRowVersion incompatible/ambiguous shapes fail closed with explicit errors.
+5. 20260915 compatibility reconciliation safely repairs nullable MustChangePassword; incompatible PasswordChangedAt shapes remain blocked to avoid audit-data loss.
+6. Historical migration SQL bytes are unchanged. Water/EM/PRM domain logic is unchanged.

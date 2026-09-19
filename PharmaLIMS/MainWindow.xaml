@@ -1,0 +1,323 @@
+﻿<Window x:Class="PharmaLIMS.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PharmaLIMS - Integrated Pharmaceutical Laboratory Platform"
+        Height="900" Width="1440" MinHeight="760" MinWidth="1180"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
+        ResizeMode="CanResizeWithGrip"
+        Background="#EEF2F6" FontFamily="Segoe UI" UseLayoutRounding="True"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Navy" Color="#0B1F33"/>
+        <SolidColorBrush x:Key="Navy2" Color="#142F49"/>
+        <SolidColorBrush x:Key="Accent" Color="#17708A"/>
+        <SolidColorBrush x:Key="Surface" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="Border" Color="#D9E2EA"/>
+        <SolidColorBrush x:Key="Text" Color="#13263A"/>
+        <SolidColorBrush x:Key="Muted" Color="#66788A"/>
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="18" ShadowDepth="2" Opacity="0.10" Color="#0B1F33"/>
+
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Margin" Value="10,3"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#D8E6EF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#1D405E"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#24516F"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.35"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="KpiCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="17,15"/>
+            <Setter Property="Margin" Value="0,0,12,12"/>
+            <Setter Property="Effect" Value="{StaticResource CardShadow}"/>
+        </Style>
+
+        <Style x:Key="ActionCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,14,14"/>
+            <Setter Property="Effect" Value="{StaticResource CardShadow}"/>
+        </Style>
+
+        <Style x:Key="RefreshButton" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="#E4F3F7"/>
+            <Setter Property="Foreground" Value="#0F6078"/>
+            <Setter Property="BorderBrush" Value="#B7DDE5"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="245"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="34"/>
+        </Grid.RowDefinitions>
+
+        <!-- Left navigation -->
+        <Border Grid.Column="0" Grid.RowSpan="2" Background="{StaticResource Navy}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="92"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" BorderBrush="#28445D" BorderThickness="0,0,0,1" Padding="18,16">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="50" Height="50" Background="White" CornerRadius="11" Margin="0,0,12,0">
+                            <Image Source="medica-logo.png" Margin="5" Stretch="Uniform"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="PharmaLIMS" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Text="Microbiology Department" Foreground="#9FC0D2" FontSize="11"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Row="1" Margin="0,12,0,8">
+                    <TextBlock Text="WORKSPACE" Foreground="#7797AA" FontWeight="Bold" FontSize="10" Margin="24,6,0,6"/>
+
+                    <Button x:Name="BtnSampleManagement" Style="{StaticResource NavButton}" Click="BtnSampleManagement_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#244D69"><TextBlock Text="SM" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Sample Management" FontWeight="SemiBold"/><TextBlock Text="Track all samples" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnNewSample" Style="{StaticResource NavButton}" Click="BtnNewSample_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#1E5FA8"><TextBlock Text="+" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Register Sample" FontWeight="SemiBold"/><TextBlock Text="Water or EM event" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnResultsEntry" Style="{StaticResource NavButton}" Click="BtnResultsEntry_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#147447"><TextBlock Text="W" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Water Results" FontWeight="SemiBold"/><TextBlock Text="PW and PTW" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnEMResults" Style="{StaticResource NavButton}" Click="BtnEMResults_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#6846B8"><TextBlock Text="EM" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Environmental Monitoring" FontWeight="SemiBold"/><TextBlock Text="Settle and active air" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnEMPlanning" Style="{StaticResource NavButton}" Click="BtnEMPlanning_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#176B87"><TextBlock Text="PL" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="EM Planning" FontWeight="SemiBold"/><TextBlock Text="Plan, collect and incubate" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnCultureMedia" Style="{StaticResource NavButton}" Click="BtnCultureMedia_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#117A71"><TextBlock Text="CM" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Culture Media" FontWeight="SemiBold"/><TextBlock Text="Qualification and release" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnPRMSamples" Style="{StaticResource NavButton}" Click="BtnPRMSamples_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#475569"><TextBlock Text="PS" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Production Samples" FontWeight="SemiBold"/><TextBlock Text="RM, IP, FP, stability" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnPRMResults" Style="{StaticResource NavButton}" Click="BtnPRMResults_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#B85D14"><TextBlock Text="PR" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Production Results" FontWeight="SemiBold"/><TextBlock Text="Review and reports" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnReports" Style="{StaticResource NavButton}" Click="BtnReports_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#AA7A11"><TextBlock Text="RT" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Reports and Trends" FontWeight="SemiBold"/><TextBlock Text="Certificates and analytics" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+
+                <Border Grid.Row="3" Background="#102A42" BorderBrush="#28445D" BorderThickness="0,1,0,0" Padding="16,14">
+                    <StackPanel>
+                        <TextBlock x:Name="lblUser" Foreground="White" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="lblRole" Foreground="#9FC0D2" FontSize="10.5" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Main workspace -->
+        <Grid Grid.Column="1" Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="72"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="White" BorderBrush="#D8E2EA" BorderThickness="0,0,0,1" Padding="24,0">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="lblSiteDepartment" Text="Pharmaceutical Microbiology Laboratory Operations" FontSize="19" FontWeight="Bold" Foreground="{StaticResource Text}"/>
+                        <TextBlock Text="Controlled microbiology laboratory workspace" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnChangePassword" Content="Change Password" Click="BtnChangePassword_Click"
+                                Height="34" Padding="14,0" Margin="0,0,8,0"
+                                Background="#475569" Foreground="White" FontWeight="SemiBold"
+                                BorderThickness="0" Cursor="Hand"/>
+                        <Button x:Name="BtnUserManagement" Content="User Management" Click="BtnUserManagement_Click"
+                                Height="34" Padding="14,0" Margin="0,0,8,0"
+                                Background="#0F766E" Foreground="White" FontWeight="SemiBold"
+                                BorderThickness="0" Cursor="Hand"/>
+                        <Button x:Name="BtnSystemPreflight" Content="System Preflight" Click="BtnSystemPreflight_Click"
+                                Height="34" Padding="14,0" Margin="0,0,8,0"
+                                Background="#334155" Foreground="White" FontWeight="SemiBold"
+                                BorderThickness="0" Cursor="Hand"/>
+                        <Button x:Name="BtnDatabaseMaintenance" Content="Database Maintenance" Click="BtnDatabaseMaintenance_Click"
+                                Height="34" Padding="14,0" Margin="0,0,8,0"
+                                Background="#7C3AED" Foreground="White" FontWeight="SemiBold"
+                                BorderThickness="0" Cursor="Hand"/>
+                        <Button x:Name="BtnAIReview" Content="AI System Review" Click="BtnAIReview_Click"
+                                Height="34" Padding="14,0" Margin="0,0,10,0"
+                                Background="#176B87" Foreground="White" FontWeight="SemiBold"
+                                BorderThickness="0" Cursor="Hand"/>
+                        <Border Background="#E8F2F6" CornerRadius="16" Padding="12,6" Margin="0,0,10,0"><TextBlock x:Name="lblSystemContext" Text="Operational readiness check pending" Foreground="#155E75" FontWeight="SemiBold"/></Border>
+                        <TextBlock x:Name="lblDateTime" Foreground="#40576A" VerticalAlignment="Center" FontWeight="SemiBold" MinWidth="150" TextAlignment="Right"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <Grid Margin="24,20,24,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="White" CornerRadius="14" Padding="22,18" Effect="{StaticResource CardShadow}" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Laboratory Operations Dashboard" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Text}"/>
+                                <TextBlock Text="Current workload, quality gates, release status, and direct access to controlled workflows." FontSize="13" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                <Button x:Name="BtnRefreshDashboard" Content="Refresh Dashboard" Style="{StaticResource RefreshButton}" Click="BtnRefreshDashboard_Click"/>
+                                <TextBlock x:Name="lblDashboardUpdated" Text="Not refreshed" Foreground="{StaticResource Muted}" FontSize="10.5" HorizontalAlignment="Right" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="1" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource KpiCard}" BorderBrush="#BFDBFE"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#2563EB" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="PENDING SAMPLES" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblPendingSamples" Text="0" FontSize="30" FontWeight="Bold" Foreground="#1D4ED8"/><TextBlock Text="Awaiting result completion" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                        <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource KpiCard}" BorderBrush="#DDD6FE"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#7C3AED" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="PENDING REVIEW" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblPendingReview" Text="0" FontSize="30" FontWeight="Bold" Foreground="#6D28D9"/><TextBlock Text="Records awaiting review" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                        <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource KpiCard}" BorderBrush="#FED7AA"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#EA580C" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="PENDING APPROVAL" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblPendingApproval" Text="0" FontSize="30" FontWeight="Bold" Foreground="#C2410C"/><TextBlock Text="Reviewed records awaiting QA" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                        <Border Grid.Row="0" Grid.Column="3" Style="{StaticResource KpiCard}" BorderBrush="#FECACA" Margin="0,0,0,12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#DC2626" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="OPEN QUALITY EVENTS" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblOpenQualityEvents" Text="0" FontSize="30" FontWeight="Bold" Foreground="#B91C1C"/><TextBlock Text="Open investigation records" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+
+                        <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource KpiCard}" BorderBrush="#A7F3D0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#16A34A" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="RELEASED TODAY" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblReleasedToday" Text="0" FontSize="30" FontWeight="Bold" Foreground="#15803D"/><TextBlock Text="Reports and media released" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource KpiCard}" BorderBrush="#BAE6FD"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#0284C7" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="TODAY'S EM" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblTodayEM" Text="0" FontSize="30" FontWeight="Bold" Foreground="#0369A1"/><TextBlock Text="Environmental monitoring events" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                        <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource KpiCard}" BorderBrush="#FDE68A"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#D97706" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="MEDIA NEAR EXPIRY" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblMediaNearExpiry" Text="0" FontSize="30" FontWeight="Bold" Foreground="#B45309"/><TextBlock Text="Released lots nearing expiry" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                        <Border Grid.Row="1" Grid.Column="3" Style="{StaticResource KpiCard}" BorderBrush="#FBCFE8" Margin="0,0,0,12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#DB2777" CornerRadius="3"/><StackPanel Grid.Column="1" Margin="13,0,0,0"><TextBlock Text="OVERDUE SAMPLES" FontSize="10" FontWeight="Bold" Foreground="#64748B"/><TextBlock x:Name="lblOverdueSamples" Text="0" FontSize="30" FontWeight="Bold" Foreground="#BE185D"/><TextBlock Text="Past expected completion" FontSize="10.5" Foreground="#64748B"/></StackPanel></Grid></Border>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1*"/></Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource ActionCard}">
+                            <StackPanel>
+                                <TextBlock Text="Controlled Laboratory Workflow" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text}"/>
+                                <TextBlock Text="The current system workflow remains enforced by role permissions, electronic signatures, and quality gates." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,16"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="26"/><ColumnDefinition Width="*"/><ColumnDefinition Width="26"/><ColumnDefinition Width="*"/><ColumnDefinition Width="26"/><ColumnDefinition Width="*"/><ColumnDefinition Width="26"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="#E0F2FE" CornerRadius="10" Padding="12"><StackPanel><TextBlock Text="1" FontWeight="Bold" Foreground="#0369A1"/><TextBlock Text="Register" FontWeight="Bold" Foreground="#0C4A6E" Margin="0,4,0,0"/></StackPanel></Border>
+                                    <TextBlock Grid.Column="1" Text="→" FontSize="22" Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Background="#ECFDF5" CornerRadius="10" Padding="12"><StackPanel><TextBlock Text="2" FontWeight="Bold" Foreground="#047857"/><TextBlock Text="Results" FontWeight="Bold" Foreground="#065F46" Margin="0,4,0,0"/></StackPanel></Border>
+                                    <TextBlock Grid.Column="3" Text="→" FontSize="22" Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="4" Background="#F5F3FF" CornerRadius="10" Padding="12"><StackPanel><TextBlock Text="3" FontWeight="Bold" Foreground="#6D28D9"/><TextBlock Text="Review" FontWeight="Bold" Foreground="#5B21B6" Margin="0,4,0,0"/></StackPanel></Border>
+                                    <TextBlock Grid.Column="5" Text="→" FontSize="22" Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="6" Background="#FFF7ED" CornerRadius="10" Padding="12"><StackPanel><TextBlock Text="4" FontWeight="Bold" Foreground="#C2410C"/><TextBlock Text="Approval" FontWeight="Bold" Foreground="#9A3412" Margin="0,4,0,0"/></StackPanel></Border>
+                                    <TextBlock Grid.Column="7" Text="→" FontSize="22" Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="8" Background="#F0FDF4" CornerRadius="10" Padding="12"><StackPanel><TextBlock Text="5" FontWeight="Bold" Foreground="#15803D"/><TextBlock Text="Issue / Release" FontWeight="Bold" Foreground="#166534" Margin="0,4,0,0"/></StackPanel></Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource ActionCard}" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="Current System Scope" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text}"/>
+                                <TextBlock Text="Modules currently available in PharmaLIMS" Foreground="{StaticResource Muted}" Margin="0,6,0,14"/>
+                                <UniformGrid Columns="2">
+                                    <Border Background="#EFF6FF" CornerRadius="9" Margin="0,0,8,8" Padding="12"><StackPanel><TextBlock Text="Water" FontWeight="Bold" Foreground="#1D4ED8"/><TextBlock Text="PW / PTW" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
+                                    <Border Background="#F5F3FF" CornerRadius="9" Margin="0,0,0,8" Padding="12"><StackPanel><TextBlock Text="EM" FontWeight="Bold" Foreground="#6D28D9"/><TextBlock Text="Settle / Active Air" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
+                                    <Border Background="#ECFDF5" CornerRadius="9" Margin="0,0,8,0" Padding="12"><StackPanel><TextBlock Text="Culture Media" FontWeight="Bold" Foreground="#047857"/><TextBlock Text="Qualification / Release" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
+                                    <Border Background="#FFF7ED" CornerRadius="9" Padding="12"><StackPanel><TextBlock Text="PRM" FontWeight="Bold" Foreground="#C2410C"/><TextBlock Text="RM / IP / FP / Stability" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Column="1" Grid.Row="1" Background="#E2EAF0" BorderBrush="#CED9E2" BorderThickness="0,1,0,0" Padding="14,0">
+            <Grid><TextBlock Text="PharmaLIMS | GMP-oriented laboratory workflow platform" Foreground="#315067" VerticalAlignment="Center"/><TextBlock Text="Database-connected dashboard" Foreground="#64748B" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
+        </Border>
+    </Grid>
+</Window>

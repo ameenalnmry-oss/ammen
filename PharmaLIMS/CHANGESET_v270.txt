@@ -1,0 +1,17 @@
+PharmaLIMS 2026.9.12.270 - Repair 3 Quality Event Consistency
+
+Scope
+- Integrated the valid Repair2 quality-event corrections on top of the v269 full baseline.
+- Preserved v269 fresh database authorization checks; no regression to cached Login permissions.
+- Unified Quality Event terminal-state handling across dashboards, repositories, PRM, certificates, and investigation windows.
+- Removed Approved and Closed - Accepted from EM positive-closure semantics.
+- Revalidated EM OOS/Quality Event release evidence again at controlled report print time.
+- PRM QA Approval, Certificate Issue, and Reissue now require the controlled Quality Event schema even for Conforms.
+- PRM transaction-level minimal Quality Event probe now fails closed when required schema columns are absent.
+- SampleDetails now reads QualityEvents.CurrentStatus, uses controlled SampleID/water-source linkage, treats unknown states as open, and treats lookup failure as open/unavailable.
+- Packaging integrity corrected: verification evidence is outside the PharmaLIMS project root; source manifest is regenerated after all accepted source changes.
+
+Preserved
+- Water core files are unchanged from v269.
+- All controlled database migration SQL files are unchanged from v269.
+- v268 certificate FOR JSON multi-row concatenation fix is preserved.

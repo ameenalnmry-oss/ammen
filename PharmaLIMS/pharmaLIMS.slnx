@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="PharmaLIMS.csproj" />
+  <Project Path="tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj" />
+  <Project Path="tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj" />
+  <Project Path="tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj" />
+  <Project Path="tests/PharmaLIMS.ProductionArtifactSmoke/PharmaLIMS.ProductionArtifactSmoke.csproj" />
+  <Project Path="tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj" />
+</Solution>

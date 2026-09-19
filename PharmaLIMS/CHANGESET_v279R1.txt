@@ -1,0 +1,5 @@
+PharmaLIMS 2026.9.15.279 R1 - User Management Compile Fix
+- Corrected UserAdministrationService.UserSnapshot constructor arity from 22 supplied values to 21.
+- Corrected reader mapping: MustChangePassword=18, AuthenticationRowVersion=19, IsLockedNow=20.
+- No database migration changes.
+- No Water core changes.

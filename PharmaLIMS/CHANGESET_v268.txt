@@ -1,0 +1,7 @@
+PharmaLIMS 2026.9.11.268 certificate JSON runtime closeout
+Base: 2026.9.11.267 compile-fixed package
+Fixed: large SQL Server FOR JSON output was read with ExecuteScalar during certificate issue, which could retain only the first returned JSON chunk and cause JsonDocument.Parse to reject the generated immutable snapshot.
+Fixed: certificate snapshot generation now concatenates all SqlDataReader rows before JSON validation, SHA-256 hashing and insert.
+Fixed: Quality Event structured-evidence history now concatenates all FOR JSON chunks instead of ExecuteScalar.
+Preserved: existing issued snapshots/hashes, cancellation/reissue, legacy reconciliation, authentication startup repair and Water core workflow.
+Database migrations: unchanged.

@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../Services/PrmNumericSpecificationEvaluator.cs" Link="Shared/PrmNumericSpecificationEvaluator.cs" />
+    <Compile Include="../../Services/PrmResultInterpretationEvaluator.cs" Link="Shared/PrmResultInterpretationEvaluator.cs" />
+    <Compile Include="../../Services/PrmResultPersistenceContract.cs" Link="Shared/PrmResultPersistenceContract.cs" />
+    <Compile Include="../../Services/PrmSampleResultStateService.cs" Link="Shared/PrmSampleResultStateService.cs" />
+    <Compile Include="../../Infrastructure/DatabaseLifecycleCoordinationContract.cs" Link="Shared/DatabaseLifecycleCoordinationContract.cs" />
+    <Compile Include="../../Infrastructure/ComplianceRecordProtectionContract.cs" Link="Shared/ComplianceRecordProtectionContract.cs" />
+    <Compile Include="../../Services/AuthenticationCommitContract.cs" Link="Shared/AuthenticationCommitContract.cs" />
+    <Compile Include="../../Services/EmLimitEvidenceSql.cs" Link="Shared/EmLimitEvidenceSql.cs" />
+    <Compile Include="../../Services/WaterResultValueContract.cs" Link="Shared/WaterResultValueContract.cs" />
+    <Compile Include="../../Services/WaterResultSnapshotSql.cs" Link="Shared/WaterResultSnapshotSql.cs" />
+    <Compile Include="../../Services/ResultSnapshotGuard.cs" Link="Shared/ResultSnapshotGuard.cs" />
+  </ItemGroup>
+</Project>

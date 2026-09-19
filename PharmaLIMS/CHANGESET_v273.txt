@@ -1,0 +1,16 @@
+PharmaLIMS 2026.9.13.273 - PRM Standard Profile Readiness
+
+Changed:
+- Database/Migrations/20260913_000_PRM_Standard_Profile_Readiness.sql
+- Database/MigrationManifest.json
+- ProductionRawMaterialSamples.xaml.cs
+- tests/test_release_controls.py
+- tests/test_v273_prm_standard_profile_readiness.py
+- release/version metadata and controlled source manifest
+
+Behavior:
+- Missing/inactive canonical oral-tablet standard profiles are repaired as a new controlled version through Database Maintenance.
+- Production / In-Process wildcard scope is restored for routine stages such as After Mixing.
+- Historical PRM samples and frozen PRM_SampleTests are not rewritten.
+- Registration remains fail-closed and gives an actionable controlled-maintenance message.
+- No PRM profile repair is auto-applied during normal login startup.

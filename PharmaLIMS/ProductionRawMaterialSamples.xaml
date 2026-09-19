@@ -1,0 +1,691 @@
+﻿<Window x:Class="PharmaLIMS.ProductionRawMaterialSamples"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="Production, Raw Material &amp; Stability Samples"
+        Height="860"
+        Width="1280"
+        MinHeight="700"
+        MinWidth="760"
+        WindowStartupLocation="CenterOwner" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        Background="#F8FAFC">
+
+    <Window.Resources>
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="MinWidth" Value="140"/>
+            <Setter Property="Margin" Value="6"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#172033"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style x:Key="InputStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+
+        <Style x:Key="ComboStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+
+        <Style x:Key="DateStyle" TargetType="DatePicker">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+
+        <Style x:Key="OptionCard" TargetType="Button">
+            <Setter Property="Height" Value="160"/>
+            <Setter Property="MinWidth" Value="300"/>
+            <Setter Property="Margin" Value="14"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="18" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Card" Property="BorderBrush" Value="#2563EB"/>
+                                <Setter TargetName="Card" Property="Background" Value="#EFF6FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#172033" Padding="26">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Production, Raw Material &amp; Stability Samples" FontSize="30" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Laboratory report workflow only - no material or batch release/reject disposition" FontSize="13" Foreground="#CBD5E1" Margin="0,8,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock x:Name="TxtCurrentUser" Text="User:" Foreground="White" FontWeight="SemiBold"/>
+                    <TextBlock Text="Reports: Conforms / Does Not Conform" Foreground="#93C5FD" Margin="0,6,0,0"/>
+                    <Button Content="Specification Master" Margin="0,10,0,0" Padding="14,7" Background="#7C3AED" Foreground="White" BorderThickness="0" Click="BtnOpenSpecificationMaster_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer x:Name="MainContentScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <StackPanel Margin="22">
+
+                <Border x:Name="PnlTypeSelection" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="20" Padding="24" Margin="0,0,0,18">
+                    <StackPanel>
+                        <TextBlock Text="Choose Sample Type" FontSize="26" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Start by selecting one workflow. Details will appear after selection." FontSize="13" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,6,0,24"/>
+
+                        <UniformGrid Columns="3" HorizontalAlignment="Center">
+                            <Button x:Name="BtnChooseProduction" Style="{StaticResource OptionCard}" Click="BtnChooseProduction_Click">
+                                <StackPanel>
+                                    <Border Background="#2563EB" CornerRadius="12" Padding="10" Width="58" Height="58" HorizontalAlignment="Left">
+                                        <TextBlock Text="PR" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Production Samples" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,16,0,4"/>
+                                    <TextBlock Text="After mixing, compression, coating, and finished product after packaging." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnChooseRaw" Style="{StaticResource OptionCard}" Click="BtnChooseRaw_Click">
+                                <StackPanel>
+                                    <Border Background="#0F766E" CornerRadius="12" Padding="10" Width="58" Height="58" HorizontalAlignment="Left">
+                                        <TextBlock Text="RM" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Raw Material Samples" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,16,0,4"/>
+                                    <TextBlock Text="New material, retest, vendor qualification, additional test, or complaint/investigation." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnChooseStability" Style="{StaticResource OptionCard}" Click="BtnChooseStability_Click">
+                                <StackPanel>
+                                    <Border Background="#7C3AED" CornerRadius="12" Padding="10" Width="58" Height="58" HorizontalAlignment="Left">
+                                        <TextBlock Text="ST" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Stability Samples" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,16,0,4"/>
+                                    <TextBlock Text="Long term, accelerated, intermediate pull points and stability reports." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Button>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="PnlRegistration" Visibility="Collapsed" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="18" Padding="22" Margin="0,0,0,18">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="TxtSelectedWorkflowTitle" Text="Sample Registration" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+                                <TextBlock x:Name="TxtSelectedWorkflowNote" Text="" FontSize="12" Foreground="#64748B" Margin="0,5,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Back to Sample Types" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnBackToTypes_Click"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                <TextBlock Text="Sample No." Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtSampleNo" IsReadOnly="True" Background="#F1F5F9" Style="{StaticResource InputStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                <TextBlock Text="Sample Date / Time *" Style="{StaticResource LabelStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="86"/>
+                                    </Grid.ColumnDefinitions>
+                                    <DatePicker x:Name="DpSampleDate"
+                                                Grid.Column="0"
+                                                Margin="0,0,8,0"
+                                                Style="{StaticResource DateStyle}"/>
+                                    <TextBox x:Name="TxtSampleTime"
+                                             Grid.Column="1"
+                                             Style="{StaticResource InputStyle}"
+                                             ToolTip="24-hour sampling time, e.g. 18:30"
+                                             MaxLength="5"
+                                             HorizontalContentAlignment="Center"/>
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                <TextBlock Text="Sampled By *" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtSampledBy" Style="{StaticResource InputStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Text="Department" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtDepartment" Text="Laboratory / QC" IsReadOnly="True" Background="#F1F5F9" Style="{StaticResource InputStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <GroupBox x:Name="GrpProduction" Header="Production / Finished Product Sample" Margin="0,0,0,18">
+                            <StackPanel Margin="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Product Code *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtProductCode" Style="{StaticResource InputStyle}" LostFocus="ProfileScope_LostFocus"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Product Name *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtProductName" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Batch No. *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtBatchNo" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Batch Size" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtBatchSize" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Dosage Form" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbDosageForm" Style="{StaticResource ComboStyle}" IsEditable="True">
+                                            <ComboBoxItem Content="Tablet"/>
+                                            <ComboBoxItem Content="Capsule"/>
+                                            <ComboBoxItem Content="Sachet"/>
+                                            <ComboBoxItem Content="Powder"/>
+                                            <ComboBoxItem Content="Other"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Production Stage / Source *" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbProductionStage" Style="{StaticResource ComboStyle}" IsEditable="False" SelectionChanged="CmbProductionStage_SelectionChanged">
+                                            <ComboBoxItem Content="After Mixing"/>
+                                            <ComboBoxItem Content="After Compression"/>
+                                            <ComboBoxItem Content="After Coating"/>
+                                            <ComboBoxItem Content="Finished Product - After Packaging"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Sampled From" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtSampledFrom" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Machine / Line No." Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtMachineLine" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Manufacturing Date" Style="{StaticResource LabelStyle}"/>
+                                        <DatePicker x:Name="DpManufacturingDate" Style="{StaticResource DateStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Packaging Date" Style="{StaticResource LabelStyle}"/>
+                                        <DatePicker x:Name="DpPackagingDate" Style="{StaticResource DateStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Expiry Date" Style="{StaticResource LabelStyle}"/>
+                                        <DatePicker x:Name="DpExpiryDate" Style="{StaticResource DateStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Pack Size" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtPackSize" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GrpRawMaterial" Header="Raw Material Sample" Margin="0,0,0,18">
+                            <StackPanel Margin="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Sample Purpose *" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbRawPurpose" Style="{StaticResource ComboStyle}" SelectionChanged="CmbRawPurpose_SelectionChanged">
+                                            <ComboBoxItem Content="New Material"/>
+                                            <ComboBoxItem Content="Retest"/>
+                                            <ComboBoxItem Content="Additional Test"/>
+                                            <ComboBoxItem Content="Vendor Qualification"/>
+                                            <ComboBoxItem Content="Complaint / Investigation"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Material Type" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbMaterialType" Style="{StaticResource ComboStyle}" IsEditable="True">
+                                            <ComboBoxItem Content="API"/>
+                                            <ComboBoxItem Content="Excipient"/>
+                                            <ComboBoxItem Content="Packaging Material"/>
+                                            <ComboBoxItem Content="Other"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Material Code *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtMaterialCode" Style="{StaticResource InputStyle}" LostFocus="ProfileScope_LostFocus"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Material Name *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtMaterialName" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Manufacturer" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtManufacturer" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Supplier" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtSupplier" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Manufacturer Lot No. *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtManufacturerLot" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Supplier Lot No." Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtSupplierLot" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="GRN No." Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtGrn" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Received Date" Style="{StaticResource LabelStyle}"/>
+                                        <DatePicker x:Name="DpReceivedDate" Style="{StaticResource DateStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Manufacturer Expiry Date" Style="{StaticResource LabelStyle}"/>
+                                        <DatePicker x:Name="DpManufacturerExpiry" Style="{StaticResource DateStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Retest Date" Style="{StaticResource LabelStyle}"/>
+                                        <DatePicker x:Name="DpRetestDate" Style="{StaticResource DateStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Storage Condition" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtRawStorage" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border x:Name="PnlRetest" Visibility="Collapsed" Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1" CornerRadius="12" Padding="14" Margin="0,16,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Retest Details" FontWeight="Bold" Foreground="#9A3412" FontSize="14" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                                <TextBlock Text="Retest Reason *" Style="{StaticResource LabelStyle}"/>
+                                                <TextBox x:Name="TxtRetestReason" Style="{StaticResource InputStyle}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                                <TextBlock Text="Previous Report No." Style="{StaticResource LabelStyle}"/>
+                                                <TextBox x:Name="TxtPreviousReportNo" Style="{StaticResource InputStyle}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                                <TextBlock Text="Previous Retest Date" Style="{StaticResource LabelStyle}"/>
+                                                <DatePicker x:Name="DpPreviousRetestDate" Style="{StaticResource DateStyle}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="3">
+                                                <TextBlock Text="Proposed Retest Date" Style="{StaticResource LabelStyle}"/>
+                                                <DatePicker x:Name="DpProposedRetestDate" Style="{StaticResource DateStyle}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <StackPanel Margin="0,12,0,0">
+                                            <TextBlock Text="Retest Remarks" Style="{StaticResource LabelStyle}"/>
+                                            <TextBox x:Name="TxtRetestRemarks" Height="70" TextWrapping="Wrap" AcceptsReturn="True" Style="{StaticResource InputStyle}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GrpStability" Header="Stability Sample" Margin="0,0,0,18">
+                            <StackPanel Margin="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Product Code *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtStbProductCode" Style="{StaticResource InputStyle}" LostFocus="ProfileScope_LostFocus"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Product Name *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtStbProductName" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Batch No. *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtStbBatchNo" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Study Type *" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbStabilityStudyType" Style="{StaticResource ComboStyle}">
+                                            <ComboBoxItem Content="Long Term"/>
+                                            <ComboBoxItem Content="Accelerated"/>
+                                            <ComboBoxItem Content="Intermediate"/>
+                                            <ComboBoxItem Content="Ongoing"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Pull Point *" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbPullPoint" Style="{StaticResource ComboStyle}" IsEditable="True">
+                                            <ComboBoxItem Content="0M"/>
+                                            <ComboBoxItem Content="3M"/>
+                                            <ComboBoxItem Content="6M"/>
+                                            <ComboBoxItem Content="9M"/>
+                                            <ComboBoxItem Content="12M"/>
+                                            <ComboBoxItem Content="18M"/>
+                                            <ComboBoxItem Content="24M"/>
+                                            <ComboBoxItem Content="36M"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Storage Condition *" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbStabilityCondition" Style="{StaticResource ComboStyle}" IsEditable="True">
+                                            <ComboBoxItem Content="25°C / 60% RH"/>
+                                            <ComboBoxItem Content="30°C / 65% RH"/>
+                                            <ComboBoxItem Content="30°C / 75% RH"/>
+                                            <ComboBoxItem Content="40°C / 75% RH"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Chamber No. *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtChamberNo" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Protocol No. *" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtProtocolNo" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Analytical Information" Margin="0,0,0,18">
+                            <StackPanel Margin="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <TextBlock Text="Approved Inspection Profile" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="TxtSpecificationNo" Style="{StaticResource ComboStyle}" IsEditable="False" DropDownOpened="TxtSpecificationNo_DropDownOpened"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                                        <TextBlock Text="Sample Quantity" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtSampleQty" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,18,0">
+                                        <TextBlock Text="Unit" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="CmbUnit" Style="{StaticResource ComboStyle}" IsEditable="True">
+                                            <ComboBoxItem Content="g"/>
+                                            <ComboBoxItem Content="kg"/>
+                                            <ComboBoxItem Content="mL"/>
+                                            <ComboBoxItem Content="L"/>
+                                            <ComboBoxItem Content="pcs"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Tests Required" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TxtTestsRequired" Style="{StaticResource InputStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="TxtProfileGuidance"
+                                               Text="Enter the item/product code and stage, then select an approved profile."
+                                               Foreground="#64748B" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="Create Profile for This Scope"
+                                            Background="#7C3AED" Style="{StaticResource PrimaryButton}"
+                                            ToolTip="Open Specification Master with the current category, item code, and production stage."
+                                            Click="BtnCreateProfileForScope_Click"/>
+                                </Grid>
+                                <StackPanel Margin="0,14,0,0">
+                                    <TextBlock Text="Remarks" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="TxtRemarks" Height="80" TextWrapping="Wrap" AcceptsReturn="True" Style="{StaticResource InputStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <StackPanel Margin="0,18,0,0">
+                            <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="14" Padding="12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Workflow" FontSize="14" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,8"/>
+                                    <WrapPanel HorizontalAlignment="Right">
+                                        <Button x:Name="BtnNew" Content="Registration / New" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnNew_Click"/>
+                                        <Button x:Name="BtnSave" Content="Save Registration" Background="#2563EB" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
+                                        <Button x:Name="BtnPreviewReport" Content="Preview Report" Background="#0F766E" Style="{StaticResource PrimaryButton}" Click="BtnPreviewReport_Click"/>
+                                        <Button x:Name="BtnRefresh" Content="Refresh" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnRefresh_Click"/>
+                                    </WrapPanel>
+                                    <TextBlock Text="Registration module only. Enter results from the independent Production / RM / Stability Results module in the main screen." FontSize="12" Foreground="#64748B" Margin="6,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="PnlSpecificationMaster" Visibility="Collapsed" Background="White" BorderBrush="#C4B5FD" BorderThickness="1" CornerRadius="18" Padding="22" Margin="0,0,0,18">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Controlled PRM Inspection Profile Master" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+                                <TextBlock Text="Create reusable versioned profiles, define required tests, review, then approve before selection by samples." Foreground="#64748B" Margin="0,5,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Close Master" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnCloseSpecificationMaster_Click"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="0.7*"/><ColumnDefinition Width="1*"/></Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                <TextBlock Text="Inspection Profile No. *" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtMasterSpecificationNo" Style="{StaticResource InputStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,14,0">
+                                <TextBlock Text="Sample Category *" Style="{StaticResource LabelStyle}"/>
+                                <ComboBox x:Name="CmbMasterCategory" Style="{StaticResource ComboStyle}">
+                                    <ComboBoxItem Content="Raw Material"/><ComboBoxItem Content="Production / In-Process"/><ComboBoxItem Content="Finished Product"/><ComboBoxItem Content="Stability"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="0,0,14,0">
+                                <TextBlock Text="Compendial / Internal Reference *" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtMasterReference" Style="{StaticResource InputStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Margin="0,0,14,0">
+                                <TextBlock Text="Version" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtMasterVersion" Text="1" IsReadOnly="True" Background="#F1F5F9" Style="{StaticResource InputStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Effective Date" Style="{StaticResource LabelStyle}"/>
+                                <DatePicker x:Name="DpMasterEffective" Style="{StaticResource DateStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*"/>
+                                <ColumnDefinition Width="1.2*"/>
+                                <ColumnDefinition Width="2.9*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                <TextBlock Text="Material / Product Code *" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtMasterItemCode" Style="{StaticResource InputStyle}" ToolTip="Exact controlled material or product code for this inspection profile."/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,14,0">
+                                <TextBlock Text="Production Stage (required for In-Process)" Style="{StaticResource LabelStyle}"/>
+                                <ComboBox x:Name="CmbMasterProductionStage" Style="{StaticResource ComboStyle}" IsEditable="False" ToolTip="Use * only for a formally controlled reusable standard profile. Item-specific profiles should use the exact production stage.">
+                                    <ComboBoxItem Content="*" ToolTip="Controlled standard profile covering approved in-process stages."/>
+                                    <ComboBoxItem Content="After Mixing"/>
+                                    <ComboBoxItem Content="After Compression"/>
+                                    <ComboBoxItem Content="After Coating"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="Use exact item/stage scope for item-specific profiles. The wildcard * is reserved for a formally reviewed and approved reusable standard profile; it is never approved automatically by deployment." Foreground="#64748B" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <TextBlock x:Name="TxtMasterState" Text="New Draft" FontWeight="Bold" Foreground="#7C3AED" Margin="0,0,0,10"/>
+                        <DataGrid x:Name="DgSpecificationTests" Height="300" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" SelectionUnit="FullRow">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Code" Binding="{Binding TestCode, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                                <DataGridTextColumn Header="Test Name" Binding="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" Width="180"/>
+                                <DataGridTextColumn Header="Specification / Acceptance Criteria" Binding="{Binding SpecificationText, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                                <DataGridTextColumn Header="Unit" Binding="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                                <DataGridTextColumn Header="Result Type" Binding="{Binding ResultType, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+                                <DataGridCheckBoxColumn Header="Required" Binding="{Binding RequiredTest}" Width="80"/>
+                                <DataGridTextColumn Header="Min Elapsed h" Binding="{Binding MinimumElapsedHours, UpdateSourceTrigger=PropertyChanged}" Width="105"/>
+                                <DataGridTextColumn Header="Order" Binding="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <WrapPanel HorizontalAlignment="Right" Margin="0,12,0,0">
+                            <Button Content="New Draft" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnNewSpecification_Click"/>
+                            <Button Content="Load Pharmacopeial Template" Background="#7C3AED" Style="{StaticResource PrimaryButton}" Click="BtnLoadPharmacopoeialTemplate_Click"
+                                    ToolTip="Loads the harmonized USP/Ph. Eur. microbiology acceptance template for the selected category. QA review and approval are still required."/>
+                            <Button Content="Load" Background="#2563EB" Style="{StaticResource PrimaryButton}" Click="BtnLoadSpecification_Click"/>
+                            <Button Content="Save Draft" Background="#0F766E" Style="{StaticResource PrimaryButton}" Click="BtnSaveSpecification_Click"/>
+                            <Button Content="Review" Background="#D97706" Style="{StaticResource PrimaryButton}" Click="BtnReviewSpecification_Click"/>
+                            <Button Content="Approve / Activate" Background="#16A34A" Style="{StaticResource PrimaryButton}" Click="BtnApproveSpecification_Click"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="18" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Registered Samples" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TxtSearch" Grid.Column="0" Height="38" Style="{StaticResource InputStyle}"/>
+                            <Button Grid.Column="1" Content="Search" Background="#334155" Style="{StaticResource PrimaryButton}" Click="BtnRefresh_Click"/>
+                        </Grid>
+                        <DataGrid x:Name="DgSamples" Height="260" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" SelectionChanged="DgSamples_SelectionChanged"
+                                  MinColumnWidth="90" HorizontalAlignment="Stretch"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Sample No." Binding="{Binding SampleNumber}" Width="1.1*" MinWidth="130"/>
+                                <DataGridTextColumn Header="Category" Binding="{Binding SampleCategory}" Width="1.2*" MinWidth="150"/>
+                                <DataGridTextColumn Header="Purpose / Stage" Binding="{Binding PurposeOrStage}" Width="1.45*" MinWidth="170"/>
+                                <DataGridTextColumn Header="Item" Binding="{Binding ItemName}" Width="1.5*" MinWidth="180"/>
+                                <DataGridTextColumn Header="Lot / Batch" Binding="{Binding LotOrBatch}" Width="1.1*" MinWidth="130"/>
+                                <DataGridTextColumn Header="Sample Date" Binding="{Binding SampleDateTimeText}" Width="1.15*" MinWidth="140"/>
+                                <DataGridTextColumn Header="Sample Status" Binding="{Binding SampleStatus}" Width="1.05*" MinWidth="120"/>
+                                <DataGridTextColumn Header="Report Status" Binding="{Binding ReportStatus}" Width="1.05*" MinWidth="120"/>
+                                <DataGridTextColumn Header="Created By" Binding="{Binding CreatedBy}" Width="1.05*" MinWidth="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Background="#EEF2F7" Padding="10">
+            <TextBlock x:Name="TxtStatus" Text="Ready." FontSize="12" Foreground="#334155"/>
+        </Border>
+    </Grid>
+</Window>

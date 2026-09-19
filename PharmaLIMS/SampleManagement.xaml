@@ -1,0 +1,277 @@
+﻿<Window x:Class="PharmaLIMS.SampleManagement"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="Sample Management"
+        Height="760"
+        Width="1110"
+        MinHeight="650"
+        MinWidth="1100"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        Background="#F4F6F8">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="#263238"
+                CornerRadius="8"
+                Padding="16"
+                Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="SAMPLE MANAGEMENT"
+                               Foreground="White"
+                               FontSize="22"
+                               FontWeight="Bold" />
+                    <TextBlock Text="Search, monitor, print, and open sample workflow actions"
+                               Foreground="#CFD8DC"
+                               FontSize="12"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Status:"
+                               Foreground="#CFD8DC"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <TextBlock x:Name="lblHeaderStatus"
+                               Text="Ready"
+                               Foreground="White"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Filters -->
+        <Border Grid.Row="1"
+                Background="White"
+                CornerRadius="8"
+                BorderBrush="#D9E0E6"
+                BorderThickness="1"
+                Padding="12"
+                Margin="0,0,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sample Number" FontWeight="SemiBold" Margin="0,0,8,4" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="Sample Type" FontWeight="SemiBold" Margin="0,0,8,4" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Sampling Point" FontWeight="SemiBold" Margin="0,0,8,4" />
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="Status" FontWeight="SemiBold" Margin="0,0,8,4" />
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Date From" FontWeight="SemiBold" Margin="0,0,8,4" />
+                <TextBlock Grid.Row="0" Grid.Column="5" Text="Date To" FontWeight="SemiBold" Margin="0,0,8,4" />
+
+                <TextBox x:Name="txtSampleNumber"
+                         Grid.Row="1"
+                         Grid.Column="0"
+                         Height="30"
+                         Margin="0,0,8,0"
+                         VerticalContentAlignment="Center"
+                         KeyDown="TxtSampleNumber_KeyDown"
+                         infra:WindowUsability.KeepEnterBehavior="True" />
+
+                <ComboBox x:Name="cboSampleType"
+                          Grid.Row="1"
+                          Grid.Column="1"
+                          Height="30"
+                          Margin="0,0,8,0" />
+
+                <ComboBox x:Name="cboSamplingPoint"
+                          Grid.Row="1"
+                          Grid.Column="2"
+                          Height="30"
+                          Margin="0,0,8,0" />
+
+                <ComboBox x:Name="cboStatus"
+                          Grid.Row="1"
+                          Grid.Column="3"
+                          Height="30"
+                          Margin="0,0,8,0" />
+
+                <DatePicker x:Name="dpDateFrom"
+                            Grid.Row="1"
+                            Grid.Column="4"
+                            Height="30"
+                            Margin="0,0,8,0" />
+
+                <DatePicker x:Name="dpDateTo"
+                            Grid.Row="1"
+                            Grid.Column="5"
+                            Height="30"
+                            Margin="0,0,8,0" />
+
+                <StackPanel Grid.Row="1" Grid.Column="6" Orientation="Horizontal">
+                    <Button x:Name="btnSearch"
+                            Content="Search"
+                            Width="90"
+                            Height="30"
+                            Margin="0,0,6,0"
+                            Click="BtnSearch_Click" />
+                    <Button x:Name="btnClear"
+                            Content="Clear"
+                            Width="80"
+                            Height="30"
+                            Click="BtnClear_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Grid + Actions -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="170" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="White"
+                    CornerRadius="8"
+                    BorderBrush="#D9E0E6"
+                    BorderThickness="1"
+                    Padding="8"
+                    Margin="0,0,10,0">
+                <DataGrid x:Name="dgSamples"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          SelectionUnit="FullRow"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          RowHeaderWidth="0"
+                          AlternatingRowBackground="#F7F9FB"
+                          MouseDoubleClick="DgSamples_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Sample Number" Binding="{Binding SampleNumber}" Width="120" />
+                        <DataGridTextColumn Header="Type" Binding="{Binding SampleType}" Width="115" />
+                        <DataGridTextColumn Header="Point" Binding="{Binding PointCode}" Width="85" />
+                        <DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="170" />
+                        <DataGridTextColumn Header="Sampling Date/Time" Binding="{Binding SamplingDateTimeText}" Width="135" />
+                        <DataGridTextColumn Header="Sampled By" Binding="{Binding SampledBy}" Width="95" />
+                        <DataGridTextColumn Header="Status" Binding="{Binding CurrentStatus}" Width="145" />
+                        <DataGridTextColumn Header="Tests" Binding="{Binding TestsCount}" Width="55" />
+                        <DataGridTextColumn Header="Done" Binding="{Binding CompletedResults}" Width="55" />
+                        <DataGridTextColumn Header="Pending" Binding="{Binding PendingResults}" Width="70" />
+                        <DataGridTextColumn Header="Alert" Binding="{Binding AlertResults}" Width="55" />
+                        <DataGridTextColumn Header="Fail/OOS" Binding="{Binding FailResults}" Width="70" />
+                        <DataGridTextColumn Header="Investigation" Binding="{Binding InvestigationStatus}" Width="105" />
+                        <DataGridTextColumn Header="COA" Binding="{Binding COAStatus}" Width="90" />
+                        <DataGridTextColumn Header="Created By" Binding="{Binding CreatedBy}" Width="90" />
+                        <DataGridTextColumn Header="Created Date" Binding="{Binding CreatedDateText}" Width="130" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Background="White"
+                    CornerRadius="8"
+                    BorderBrush="#D9E0E6"
+                    BorderThickness="1"
+                    Padding="10">
+                <StackPanel>
+                    <TextBlock Text="Actions"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Margin="0,0,0,10" />
+
+                    <Button Content="New Sample"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnNewSample_Click" />
+                    <Button Content="View Details"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnViewDetails_Click" />
+                    <Button Content="Enter Results"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnEnterResults_Click" />
+                    <Button Content="Open Investigation"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnOpenInvestigation_Click" />
+                    <Button Content="View / Issue COA"
+                            Height="34"
+                            Margin="0,0,0,14"
+                            Click="BtnViewIssueCoa_Click" />
+
+                    <Separator Margin="0,0,0,12" />
+
+                    <Button Content="Print Summary"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnPrintSummary_Click" />
+                    <Button Content="Print Details"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnPrintDetails_Click" />
+                    <Button Content="Export CSV"
+                            Height="34"
+                            Margin="0,0,0,14"
+                            Click="BtnExportCsv_Click" />
+
+                    <Separator Margin="0,0,0,12" />
+
+                    <Button Content="Refresh"
+                            Height="34"
+                            Margin="0,0,0,7"
+                            Click="BtnRefresh_Click" />
+                    <Button Content="Close"
+                            Height="34"
+                            Click="BtnClose_Click" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="3"
+                Background="White"
+                CornerRadius="8"
+                BorderBrush="#D9E0E6"
+                BorderThickness="1"
+                Padding="10"
+                Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="lblStatus"
+                           Grid.Column="0"
+                           Text="Ready"
+                           VerticalAlignment="Center" />
+                <TextBlock x:Name="lblCounts"
+                           Grid.Column="1"
+                           Text="Samples: 0"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

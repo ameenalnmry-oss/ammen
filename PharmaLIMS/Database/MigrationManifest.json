@@ -1,0 +1,519 @@
+﻿{
+  "application": "PharmaLIMS",
+  "applicationVersion": "2026.9.18.294",
+  "generatedAtUtc": "2026-09-17T19:30:00Z",
+  "baselineThrough": "20260722_003",
+  "freshInstallBaseline": {
+    "versionKey": "BASELINE_20260823_001",
+    "description": "Controlled empty PharmaLIMS core schema for fresh installations",
+    "file": "Baseline/20260823_001_PharmaLIMS_Core_Baseline.sql",
+    "sha256": "44fca0a9eb7fd64187d56d3f98486affa89bd404498fa53f53f1516eb5d6ad42"
+  },
+  "migrations": [
+    {
+      "versionKey": "20260712_001",
+      "description": "20260712_001_Create_PRM_ElectronicSignatures",
+      "file": "Migrations/20260712_001_Create_PRM_ElectronicSignatures.sql",
+      "sha256": "b5c51b277e4a1bfe5f8de8ab97eb295ddb29d6871e5c3a7c2035251ce656589a"
+    },
+    {
+      "versionKey": "20260714_001",
+      "description": "20260714_001_Harden_GMP_Workflows",
+      "file": "Migrations/20260714_001_Harden_GMP_Workflows.sql",
+      "sha256": "9dcf22a5ac212f567a7db1ca50904d35d7cf4fe11b90f7edf05e5449051d5e94"
+    },
+    {
+      "versionKey": "20260715_001",
+      "description": "20260715_001_Harden_Culture_Media_Qualification_Report",
+      "file": "Migrations/20260715_001_Harden_Culture_Media_Qualification_Report.sql",
+      "sha256": "97c58509a872bacb91f7c6e7964185e6b846a1df780ef609e0686baeb9b377f9"
+    },
+    {
+      "versionKey": "20260716_002",
+      "description": "20260716_002_Extend_EM_Surface_Personnel",
+      "file": "Migrations/20260716_002_Extend_EM_Surface_Personnel.sql",
+      "sha256": "53b183e0596839d977f847e9db6ca20cdfd0c23856e3f18b79e1a59f07d678ac"
+    },
+    {
+      "versionKey": "20260716_003",
+      "description": "20260716_003_Seed_Dispensing_Surface_Personnel_Templates",
+      "file": "Migrations/20260716_003_Seed_Dispensing_Surface_Personnel_Templates.sql",
+      "sha256": "31255580e6c87f85ad468c2303bab1d8b6157afbc079457ba43bffc9075ff61e"
+    },
+    {
+      "versionKey": "20260717_001",
+      "description": "20260717_001_Ensure_PRM_Workflow_Dependencies",
+      "file": "Migrations/20260717_001_Ensure_PRM_Workflow_Dependencies.sql",
+      "sha256": "2251af5d3682b9831af568630368a22c7d5e0b9888bbc48835dc9eac64b84cba"
+    },
+    {
+      "versionKey": "20260717_002",
+      "description": "20260717_002_Normalize_Global_COA_Sequence",
+      "file": "Migrations/20260717_002_Normalize_Global_COA_Sequence.sql",
+      "sha256": "5595bb418009a66789cdea53dafc777b2ebedd63bffcf4183bd6dbed146312b9"
+    },
+    {
+      "versionKey": "20260717_003",
+      "description": "20260717_003_Add_EM_SurfaceType",
+      "file": "Migrations/20260717_003_Add_EM_SurfaceType.sql",
+      "sha256": "b547257a1106f1afeb8aaf1b99a7261dfb687702bb52dec3bff28756a7ebe8af"
+    },
+    {
+      "versionKey": "20260718_001",
+      "description": "20260718_001_Release_Hardening",
+      "file": "Migrations/20260718_001_Release_Hardening.sql",
+      "sha256": "0a56913e9cd28fa906ce8520a68000cac24fab0a8f33023e3ceab8a1acd2f9a2"
+    },
+    {
+      "versionKey": "20260718_002",
+      "description": "20260718_002_EM_Planning_Workflow",
+      "file": "Migrations/20260718_002_EM_Planning_Workflow.sql",
+      "sha256": "59aba08ab311b0931b019652c163a963d62749f1459d4f54427f65596f3bbe2c"
+    },
+    {
+      "versionKey": "20260721_001",
+      "description": "20260721_001_Global_EM_Compliance",
+      "file": "Migrations/20260721_001_Global_EM_Compliance.sql",
+      "sha256": "0d7fb57c000b8c038e6d5f85bf8ded83d915b288240653b669bf5b57edfeeb10"
+    },
+    {
+      "versionKey": "20260721_002",
+      "description": "20260721_002_Culture_Media_Global_Compliance",
+      "file": "Migrations/20260721_002_Culture_Media_Global_Compliance.sql",
+      "sha256": "2c5c7a7da5c89b2bb7bfd05ed54e969f2c747e9480a7144de1cfb4522f68f85e"
+    },
+    {
+      "versionKey": "20260722_001",
+      "description": "20260722_001_Repair_EM_CultureMedia_Schema",
+      "file": "Migrations/20260722_001_Repair_EM_CultureMedia_Schema.sql",
+      "sha256": "5c82f3db9cf356d64d30e03d8be2f49ca9a002e50a0a93f5f43982dd5bec3f3b"
+    },
+    {
+      "versionKey": "20260722_002",
+      "description": "20260722_002_Full_Compliance_Hardening",
+      "file": "Migrations/20260722_002_Full_Compliance_Hardening.sql",
+      "sha256": "e6985d446a1d7919a6ba3bf1a09a1ab7309fbd5adb24033f5fc5c3596eb635ec"
+    },
+    {
+      "versionKey": "20260722_003",
+      "description": "20260722_003_Resolve_Project_Complexities",
+      "file": "Migrations/20260722_003_Resolve_Project_Complexities.sql",
+      "sha256": "47fb20228e02d4ab57dd0bb30847d2a6466322f1850fb311e64c7739e7bc4f11"
+    },
+    {
+      "versionKey": "20260722_004",
+      "description": "20260722_004_PRM_Specification_Master",
+      "file": "Migrations/20260722_004_PRM_Specification_Master.sql",
+      "sha256": "387e4eb4e726a540153cf3939a3e821a191d8fc29ab5472eb02fee6c8592684c"
+    },
+    {
+      "versionKey": "20260722_005",
+      "description": "20260722_005_Link_PRM_Specifications_To_Items",
+      "file": "Migrations/20260722_005_Link_PRM_Specifications_To_Items.sql",
+      "sha256": "a77c01e996c71b9db880d12a1332bfacb66d9a2b4463705c261657e7a45d0b25"
+    },
+    {
+      "versionKey": "20260723_002R2",
+      "description": "20260723_002R2_Oral_Tablet_Profiles_And_PRM_Analysis_Times",
+      "file": "Migrations/20260723_002_Default_Oral_Tablet_Microbiology_Profiles.sql",
+      "sha256": "80e9654dfa10d79260d3a32a40612c1c107f1a197618ac16edb811c9e0f86ed4"
+    },
+    {
+      "versionKey": "20260809_001",
+      "description": "20260809_001_Protect_Compliance_Records",
+      "file": "Migrations/20260809_001_Protect_Compliance_Records.sql",
+      "sha256": "2ae1f86bf29c8626ce973f57e275147b7a78b1a5911c6b3ae0aa90e42d6d7457"
+    },
+    {
+      "versionKey": "20260810_001",
+      "description": "20260810_001_Controlled_External_Trend_Imports",
+      "file": "Migrations/20260810_001_Controlled_External_Trend_Imports.sql",
+      "sha256": "8fd6af290adf0560d1e496e3a36a00bff98d769bf607a1111e6a11a7d88c4dd0"
+    },
+    {
+      "versionKey": "20260811_001",
+      "description": "20260811_001_External_Trend_Area_Classification",
+      "file": "Migrations/20260811_001_External_Trend_Area_Classification.sql",
+      "sha256": "603f9246a605bf36241dd061aa89b4fd01531732d67020913f59c02d484b10e1"
+    },
+    {
+      "versionKey": "20260811_002",
+      "description": "20260811_002_Three_Cycle_EM_Trend_Governance",
+      "file": "Migrations/20260811_002_Three_Cycle_EM_Trend_Governance.sql",
+      "sha256": "b9b831f1ff5d0aecbce191fe098f518591609dd59baa6c8d41fc508788bd7671"
+    },
+    {
+      "versionKey": "20260813_001",
+      "description": "20260813_001_External_Trend_Query_Performance",
+      "file": "Migrations/20260813_001_External_Trend_Query_Performance.sql",
+      "sha256": "e5ce214b5c6c4f73580bf117375866af8d45f7fdbc27b6cc6331429e48e2124d"
+    },
+    {
+      "versionKey": "20260815_001",
+      "description": "20260815_001_External_Trend_Review_Hardening",
+      "file": "Migrations/20260815_001_External_Trend_Review_Hardening.sql",
+      "sha256": "a995e33f86f84056a18be16ce0dea4e86ea001dea0b7bcd4d4d5c6adccaf3cd1",
+      "supersededBy": "20260826_004"
+    },
+    {
+      "versionKey": "20260816_001",
+      "description": "20260816_001_External_Trend_Query_Performance_V2",
+      "file": "Migrations/20260816_001_External_Trend_Query_Performance_V2.sql",
+      "sha256": "e35d50aba834bf84531c2e16acbd455fb47c579dbe9bf9c588c7a3df37cf8747",
+      "supersededBy": "20260826_004"
+    },
+    {
+      "versionKey": "20260819_001",
+      "description": "20260819_001_EM_Approved_Limits_Snapshot_Control",
+      "file": "Migrations/20260819_001_EM_Approved_Limits_Snapshot_Control.sql",
+      "sha256": "aeccf2a1192233a2fff2034bd600ed1e91521e72ea0bf42fd79d7221fcd04a6b"
+    },
+    {
+      "versionKey": "20260821_001",
+      "description": "20260821_001_Enforce_Unique_User_Identity",
+      "file": "Migrations/20260821_001_Enforce_Unique_User_Identity.sql",
+      "sha256": "aafee83ca62b9085883ae58cf47543f05b35937604f7472f9ad9bc2d0f71d924"
+    },
+    {
+      "versionKey": "20260822_006",
+      "description": "20260822_006_PRM_Legacy_Specification_State_Reconciliation",
+      "file": "Migrations/20260822_006_PRM_Legacy_Specification_State_Reconciliation.sql",
+      "sha256": "97055e65683fa31f65524f64e69ebc1978bdecbc9291748587a71869b3435cb2"
+    },
+    {
+      "versionKey": "20260823_001",
+      "description": "20260823_001_PRM_Specification_Remediation",
+      "file": "Migrations/20260823_001_PRM_Specification_Remediation.sql",
+      "sha256": "35bcb9cacb191695932ccd996fede717e24dd9d93c48dc09b598a5399bc73a12"
+    },
+    {
+      "versionKey": "20260823_002",
+      "description": "20260823_002_Culture_Media_Requirement_Approval_Gate",
+      "file": "Migrations/20260823_002_Culture_Media_Requirement_Approval_Gate.sql",
+      "sha256": "95b3f0702deeebc8ae146e35632968cb82be7fb918c438d4aba992975556f28e"
+    },
+    {
+      "versionKey": "20260823_003",
+      "description": "20260823_003_Quality_Event_Structured_Evidence_Schema",
+      "file": "Migrations/20260823_003_Quality_Event_Structured_Evidence_Schema.sql",
+      "sha256": "6840939e0ee5992ff5bb055724eee5a21f30855a077e93610d17cbec8cd18cab"
+    },
+    {
+      "versionKey": "20260823_004",
+      "description": "20260823_004_Water_Planning_Schema",
+      "file": "Migrations/20260823_004_Water_Planning_Schema.sql",
+      "sha256": "2751dca3cd4f77b087cd4855707fdc951a76f031a7ee99deb8ebc7106a400fa3"
+    },
+    {
+      "versionKey": "20260823_005",
+      "description": "20260823_005_External_Trend_Snapshot_Schema_Reconciliation",
+      "file": "Migrations/20260823_005_External_Trend_Snapshot_Schema_Reconciliation.sql",
+      "sha256": "5fe41794f61e31056a3730fe835877fbab99126356dbf48bfcd7338184524309",
+      "supersededBy": "20260826_004"
+    },
+    {
+      "versionKey": "20260824_001",
+      "description": "20260824_001_PRM_Item_Stage_And_Investigation_Controls",
+      "file": "Migrations/20260824_001_PRM_Item_Stage_And_Investigation_Controls.sql",
+      "sha256": "7de682ff2c88a18acbaa24b4b05951178c5e395c2139941f33a192e56911410d"
+    },
+    {
+      "versionKey": "20260824_002",
+      "description": "20260824_002_PRM_Standard_Microbiology_Profiles",
+      "file": "Migrations/20260824_002_PRM_Standard_Microbiology_Profiles.sql",
+      "sha256": "4f928d03b4ffff8e4dad3228f4cd7985ec95ccc8015ce95e6760d8f4ad2b3187"
+    },
+    {
+      "versionKey": "20260825_005",
+      "description": "20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline",
+      "file": "Migrations/20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline.sql",
+      "sha256": "ffca92962d9f74ad19195b84544b6becb561510151576091f9b8cc39eb009325",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_004",
+      "description": "20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite",
+      "file": "Migrations/20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite.sql",
+      "sha256": "2ff1e6b1ddc91b639d9d5d4e94501242c07661601b4c6116b9230cc70436c14c",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_002",
+      "description": "20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite",
+      "file": "Migrations/20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite.sql",
+      "sha256": "59c2d6ae5110c3ba31c9c368961469c80cbc35b294522b0f767293feeae15fe7",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_006",
+      "description": "20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge",
+      "file": "Migrations/20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge.sql",
+      "sha256": "0069ddea78fd1938299173119cd0affb5116cd892d78530a0b8a56fc8fd4ab52",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_003",
+      "description": "20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite",
+      "file": "Migrations/20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite.sql",
+      "sha256": "361d9354732817b94636883b160e9e3a15abc2b11af0c4fe9ad302e0e997da98",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260824_003",
+      "description": "20260824_003_PRM_Quality_Event_Schema_Reconciliation",
+      "file": "Migrations/20260824_003_PRM_Quality_Event_Schema_Reconciliation.sql",
+      "sha256": "0c003a8a96e4ba0e6f9d36c5e06e5acf02187723faad21c1beebe55321a6cfd0",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_001",
+      "description": "20260825_001_PRM_Analysis_Lifecycle_Reconciliation",
+      "file": "Migrations/20260825_001_PRM_Analysis_Lifecycle_Reconciliation.sql",
+      "sha256": "e6dfdbfbea26550cd1aed84cbf8a14aab4ebcaf2ad412911987c2e3e666f04f0"
+    },
+    {
+      "versionKey": "20260825_007",
+      "description": "20260825_007_PRM_Quality_Event_Legacy_Identity_Reconciliation",
+      "file": "Migrations/20260825_007_PRM_Quality_Event_Legacy_Identity_Reconciliation.sql",
+      "sha256": "04b2d41d8b0be074adb15964ec5bff04ee7e8b37a84209569930e58e79a1ce87"
+    },
+    {
+      "versionKey": "20260826_001",
+      "description": "20260826_001_PRM_Quality_Event_Current_Baseline",
+      "file": "Migrations/20260826_001_PRM_Quality_Event_Current_Baseline.sql",
+      "sha256": "72173e48f410f1948926955eac018c61f138ab5520df73ce1aa5a6f0cf47fe19"
+    },
+    {
+      "versionKey": "20260826_002",
+      "description": "20260826_002_PRM_Quality_Event_Operational_Readiness",
+      "file": "Migrations/20260826_002_PRM_Quality_Event_Operational_Readiness.sql",
+      "sha256": "1d1bbd533554e509a19176e27fe459ae375e56214198e3fe1380c396b49e8c21"
+    },
+    {
+      "versionKey": "20260826_003",
+      "description": "20260826_003_EM_Investigation_Checklist_Master_Data",
+      "file": "Migrations/20260826_003_EM_Investigation_Checklist_Master_Data.sql",
+      "sha256": "c7d03c61134bfabc8278c82173f7d2c443def1cc9d6afc3bfe2e6ba97b7539bd"
+    },
+    {
+      "versionKey": "20260826_004",
+      "description": "20260826_004_External_Trend_Current_State_Reconciliation",
+      "file": "Migrations/20260826_004_External_Trend_Current_State_Reconciliation.sql",
+      "sha256": "bdba0ca117eaa4d3045ec23a4118fb676a90fe26298b5d04692041df77749518",
+      "executionMode": "resumable"
+    },
+    {
+      "versionKey": "20260827_001",
+      "description": "20260827_001_PRM_Investigation_Evidence_Version_Binding",
+      "file": "Migrations/20260827_001_PRM_Investigation_Evidence_Version_Binding.sql",
+      "sha256": "ecca1d42f1f69ab59d876261c634b6a442d041556afdcd17e0d77c43c2442a92"
+    },
+    {
+      "versionKey": "20260827_002",
+      "description": "20260827_002_PRM_Legacy_Evidence_Reconciliation",
+      "file": "Migrations/20260827_002_PRM_Legacy_Evidence_Reconciliation.sql",
+      "sha256": "92c106cefdf8d423b63fa41ee9b1c761c1148ac5eee7e76824bf8d41f49e004f"
+    },
+    {
+      "versionKey": "20260828_001",
+      "description": "20260828_001_Quality_Event_Evidence_History_And_Time_Hardening",
+      "file": "Migrations/20260828_001_Quality_Event_Evidence_History_And_Time_Hardening.sql",
+      "sha256": "8e07fcc09d6dd64a5622a6e48d90ff65a52a3e999d0fff11fc0e9e1fdbe42bab"
+    },
+    {
+      "versionKey": "20260828_002",
+      "description": "20260828_002_EM_Water_Planning_Integrity_Hardening",
+      "file": "Migrations/20260828_002_EM_Water_Planning_Integrity_Hardening.sql",
+      "sha256": "187cf969bcabe12498a5cef73a15c1f31c6918d82c2cfac6a6f2e4ef740a519a"
+    },
+    {
+      "versionKey": "20260828_003",
+      "description": "20260828_003_EM_Limit_Snapshot_Reconciliation_And_Strict_Creation",
+      "file": "Migrations/20260828_003_EM_Limit_Snapshot_Reconciliation_And_Strict_Creation.sql",
+      "sha256": "0be89fa85b7c601bc74fb7bf8020791679f41c8791d1cdced69d28a9c225437c"
+    },
+    {
+      "versionKey": "20260829_001",
+      "description": "20260829_001_External_Trend_Generation_Performance_V3",
+      "file": "Migrations/20260829_001_External_Trend_Generation_Performance_V3.sql",
+      "sha256": "598cb8bf35515c68d8e435bab917315d9004987d57308412d73582d2d1080f0a"
+    },
+    {
+      "versionKey": "20260830_001",
+      "description": "20260830_001_PRM_Oral_Tablet_Compendial_Microbial_Limits",
+      "file": "Migrations/20260830_001_PRM_Oral_Tablet_Compendial_Microbial_Limits.sql",
+      "sha256": "71ac0592e3808d320f9a3f3261f87ae4f8aae656a4e2fe18a03256e9a4a65059"
+    },
+    {
+      "versionKey": "20260830_002",
+      "description": "20260830_002_PRM_Oral_Tablet_Compendial_Reference_Clarification",
+      "file": "Migrations/20260830_002_PRM_Oral_Tablet_Compendial_Reference_Clarification.sql",
+      "sha256": "24dd72b770367f408d785e9258d24642e33d9cac8d69f8c9617425a5319a95af"
+    },
+    {
+      "versionKey": "20260830_003",
+      "description": "20260830_003_EM_Trend_Historical_Context_And_Consistency",
+      "file": "Migrations/20260830_003_EM_Trend_Historical_Context_And_Consistency.sql",
+      "sha256": "7b54c15cf7b40f1029bdcf940b2ae6cd0144be0b4e8df88ac00fc4067349e5b3",
+      "supersededBy": "20260906_004"
+    },
+    {
+      "versionKey": "20260905_000",
+      "description": "20260905_000_GMP_Timing_Schema_Prerequisite_Compile_Safe",
+      "file": "Migrations/20260905_000_GMP_Timing_Schema_Prerequisite_Compile_Safe.sql",
+      "sha256": "4a3695f00343c436b586aace2189eabb4b5a7ebed2a7c0db05f33fd956941bfa"
+    },
+    {
+      "versionKey": "20260905_001",
+      "description": "20260905_001_GMP_Microbiology_Timing_Gates",
+      "file": "Migrations/20260905_001_GMP_Microbiology_Timing_Gates.sql",
+      "sha256": "5602a6dd6bebbff0fa0aa2caec2cf76591ffbee8b195c7b35d12fdad35f9cec1"
+    },
+    {
+      "versionKey": "20260906_000",
+      "description": "20260906_000_GMP_Timing_Governance_Schema_Prerequisite_Compile_Safe",
+      "file": "Migrations/20260906_000_GMP_Timing_Governance_Schema_Prerequisite_Compile_Safe.sql",
+      "sha256": "5cdcb618f1cadc9bbe808d7c064f38a6bf35156d1037edd947e566c27a89dac3"
+    },
+    {
+      "versionKey": "20260906_000A",
+      "description": "20260906_000A_GMP_Timing_Disposition_Width_Prerequisite",
+      "file": "Migrations/20260906_000A_GMP_Timing_Disposition_Width_Prerequisite.sql",
+      "sha256": "f7e09df2a7a25cef46d54f460cc658b7ffd559b146cfc124f921cd7382378b2a"
+    },
+    {
+      "versionKey": "20260906_000B",
+      "description": "20260906_000B_GMP_Timing_Disposition_Width_Contract",
+      "file": "Migrations/20260906_000B_GMP_Timing_Disposition_Width_Contract.sql",
+      "sha256": "83dd9fe8394fbe2aceccf74629a21f0a5a5c52be8f0df04f207222ec859f6f95"
+    },
+    {
+      "versionKey": "20260906_001",
+      "description": "20260906_001_GMP_Timing_Governance_Hardening",
+      "file": "Migrations/20260906_001_GMP_Timing_Governance_Hardening.sql",
+      "sha256": "8794c450468642a32f2c59f46c5a8140549b5165b7acea32a7eaecf1619238ac"
+    },
+    {
+      "versionKey": "20260906_002",
+      "description": "20260906_002_GMP_Final_Release_And_Preflight_Hardening",
+      "file": "Migrations/20260906_002_GMP_Final_Release_And_Preflight_Hardening.sql",
+      "sha256": "77310fa63f120c33a04718e40866d573bb19b905d4de46d8d8c59841e879014e"
+    },
+    {
+      "versionKey": "20260906_002A",
+      "description": "20260906_002A_PRM_Report_Status_Contract_Repair",
+      "file": "Migrations/20260906_002A_PRM_Report_Status_Contract_Repair.sql",
+      "sha256": "5b13e3a00d7bde17539502f04de08a358878884bae5c1a96c4cf136c10df8dfd"
+    },
+    {
+      "versionKey": "20260906_003",
+      "description": "20260906_003_EM_Area_Snapshot_Schema_Repair",
+      "file": "Migrations/20260906_003_EM_Area_Snapshot_Schema_Repair.sql",
+      "sha256": "f84f0f785208ae0c6a447838308fbfb9e4ba6ed88c33d26a732cf78b88d01352",
+      "supersededBy": "20260906_004"
+    },
+    {
+      "versionKey": "20260906_004",
+      "description": "20260906_004_EM_Area_Snapshot_Compile_Safe_Repair",
+      "file": "Migrations/20260906_004_EM_Area_Snapshot_Compile_Safe_Repair.sql",
+      "sha256": "efaa4820ea748e6ff7b2eee8320a0eb39886094f7272fd2e589c9f85955ed62a"
+    },
+    {
+      "versionKey": "20260906_005",
+      "description": "20260906_005_GMP_Timing_Schema_Contract_Hardening",
+      "file": "Migrations/20260906_005_GMP_Timing_Schema_Contract_Hardening.sql",
+      "sha256": "413963812f94f4b6d93a09ffe86d555c2a2308c17929c5d8430406b59e2d3c45"
+    },
+    {
+      "versionKey": "20260906_006",
+      "description": "20260906_006_Water_Controlled_Master_Schema_Backfill",
+      "file": "Migrations/20260906_006_Water_Controlled_Master_Schema_Backfill.sql",
+      "sha256": "dfb19f7cb22d18c821a79a573840da1affd5c2c9d3d079b561e0bfebae9bbe05"
+    },
+    {
+      "versionKey": "20260906_007",
+      "description": "20260906_007_Tests_Active_Contract_Backfill",
+      "file": "Migrations/20260906_007_Tests_Active_Contract_Backfill.sql",
+      "sha256": "cd959979eb195747fece81157b46f50801df366bf922389a08fbcef669d4e04b"
+    },
+    {
+      "versionKey": "20260907_000",
+      "description": "20260907_000_Water_Controlled_Profile_Workflow",
+      "file": "Migrations/20260907_000_Water_Controlled_Profile_Workflow.sql",
+      "sha256": "67ed2fb43e36a82d779f716a653650f6baa73f7f7876c49bf2b77c359832b241"
+    },
+    {
+      "versionKey": "20260908_000",
+      "description": "20260908_000_Water_MQC_G_0018_Test_Catalog",
+      "file": "Migrations/20260908_000_Water_MQC_G_0018_Test_Catalog.sql",
+      "sha256": "3885e0a7eb66b9d1470f30647adcdccd557a96cb284bd57c608cb748ba9d5dd5"
+    },
+    {
+      "versionKey": "20260908_001",
+      "description": "20260908_001_Legacy_Certificate_Evidence_Reconciliation",
+      "file": "Migrations/20260908_001_Legacy_Certificate_Evidence_Reconciliation.sql",
+      "sha256": "0359812d1443b91e6945d11d71fdf1c72d8eaea80f4915da7ef990c523be22a0"
+    },
+    {
+      "versionKey": "20260908_002",
+      "description": "20260908_002_Legacy_Certificate_Evidence_Validation_Normalization",
+      "file": "Migrations/20260908_002_Legacy_Certificate_Evidence_Validation_Normalization.sql",
+      "sha256": "7f1148c563a71663f926c9ae71fa49268cf10e43870d62c6d548d435b36a08f9"
+    },
+    {
+      "versionKey": "20260909_000",
+      "description": "20260909_000_Legacy_Certificate_Evidence_Quality_Gate",
+      "file": "Migrations/20260909_000_Legacy_Certificate_Evidence_Quality_Gate.sql",
+      "sha256": "e84ca46c7f638be52ded364e88b226be44b3cfdcc6b10c84b4240c344ab5fb5e"
+    },
+    {
+      "versionKey": "20260909_001",
+      "description": "20260909_001_Legacy_Certificate_Reissue_Evidence_Quality",
+      "file": "Migrations/20260909_001_Legacy_Certificate_Reissue_Evidence_Quality.sql",
+      "sha256": "c212ab18677455879dcf66bf6c52e801231908de54603cbc0432441c46615ce9"
+    },
+    {
+      "versionKey": "20260910_000",
+      "description": "Review remediation: EM precision, complete-set concurrency and guarded authentication",
+      "file": "Migrations/20260910_000_Review_Result_And_Authentication_Concurrency.sql",
+      "sha256": "2fdbe5a678539957c0f9049b86b1297de674b0d7bb254d4e8904fe49fa73e0db"
+    },
+    {
+      "versionKey": "20260911_000",
+      "description": "Authentication-only compatibility backfill for secure login transition",
+      "file": "Migrations/20260911_000_Authentication_Login_Compatibility_Backfill.sql",
+      "sha256": "832ffb73859f2db064043bfe72e04744242ea5a645eec9c07ead919d558859b8"
+    },
+    {
+      "versionKey": "20260913_000",
+      "description": "20260913_000_PRM_Standard_Profile_Readiness",
+      "file": "Migrations/20260913_000_PRM_Standard_Profile_Readiness.sql",
+      "sha256": "69c57cbb007ce13ff720f49be5f639161991802c19ad99bd738f34d7449c4f04",
+      "supersededBy": "20260913_001"
+    },
+    {
+      "versionKey": "20260913_001",
+      "description": "20260913_001_PRM_Standard_Profile_Governance_Hardening",
+      "file": "Migrations/20260913_001_PRM_Standard_Profile_Governance_Hardening.sql",
+      "sha256": "ca8f01bdb22bb223586f29a17cf092fdcc03625ec29b251f078b85547958f72c"
+    },
+    {
+      "versionKey": "20260915_000",
+      "description": "User administration security hardening: mandatory personal password change and password-change evidence",
+      "file": "Migrations/20260915_000_User_Administration_Security_Hardening.sql",
+      "sha256": "b4e2c69d6846957b72fd6641c37ec7f3adeb3d14b14710f8fb3999a5b3375e26"
+    },
+    {
+      "versionKey": "20260917_000",
+      "description": "User administration write compatibility: legacy Users CreatedAt/UpdatedAt schema backfill without fabricating historical timestamps",
+      "file": "Migrations/20260917_000_User_Administration_Write_Compatibility.sql",
+      "sha256": "32ed032df23d1b14d152a14e720a5efbdf05fc24613c56ef4e94c39409309465"
+    },
+    {
+      "versionKey": "20260917_001",
+      "description": "User administration electronic-signature evidence: transactional persistence, signer binding and append-only protection",
+      "file": "Migrations/20260917_001_User_Administration_Signature_Evidence.sql",
+      "sha256": "a6143e2bdbdb56570a7bf6057249866f2e63a048a033f18b7beb2f220dcc338a"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+PharmaLIMS 2026.9.15.278 - Review Clean Release
+================================================
+
+Purpose
+-------
+- Preserve the reviewed v277 ReportCertificate print authorization correction.
+- Preserve the v277 CultureInfo compile correction.
+- Clean version/package identity and remove stale verification artifacts from the delivery root.
+
+Controlled source changes
+-------------------------
+- Version identity advanced to 2026.9.15.278 in project, assembly and migration manifest metadata.
+- Current release notes and SBOM renamed/reissued under the v278 identity.
+- Regression tests updated for the current release identity.
+- Added test_v278_review_clean_release.py to guard package metadata and ReportCertificate print authorization.
+
+Database / Water
+----------------
+- No Database/Migrations SQL changes.
+- Water core source unchanged.

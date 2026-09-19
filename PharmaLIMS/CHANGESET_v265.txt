@@ -1,0 +1,7 @@
+PharmaLIMS 2026.9.11.265 authentication readiness closeout
+Base: 2026.9.11.264 login-transition candidate
+Scope: pre-login authentication schema compatibility + malformed secure-credential repair + truthful post-authentication error separation + regression tests + version metadata.
+Water workflow source was not modified.
+Database migration 20260911_000 is additive and authentication-only.
+No user, password, role, account activation state, permission grant, sample, result, EM record, certificate, or laboratory data is created/reset/recomputed by this migration.
+Operator-safe authentication diagnostics were added; no password or credential hash values are logged.

@@ -1,0 +1,19 @@
+PharmaLIMS 2026.9.18.291 - System Preflight DATETIME2(0) Metadata Correction
+
+Base: 2026.9.17.290
+
+Changed:
+- Infrastructure/StartupDatabaseMigrator.Verification.cs
+- Infrastructure/SystemPreflightService.cs
+- tests/PharmaLIMS.DatabaseIntegration/Program.cs
+- tests/test_v290_deep_review_closure.py
+- tests/test_v291_preflight_datetime2_fix.py (new)
+- current release/version metadata and source manifest
+
+Behavioral correction:
+- dbo.UserAdministrationSignatures.SignedAt DATETIME2(0) is validated against SQL Server metadata max_length=6.
+- The previous v290 max_length=8 predicate could falsely block a correctly migrated database.
+
+Not changed:
+- Historical migration SQL bytes/checksums
+- Water, EM, Culture Media, PRM domain logic

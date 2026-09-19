@@ -1,0 +1,5 @@
+PharmaLIMS v280
+- Explicit six-contract Database Readiness checks in full System Preflight.
+- BLOCKER / Migration Required guidance maps each failed contract to its controlled migration.
+- Manual Release/UAT acceptance checklist available from System Preflight.
+- No migration SQL changes; no Water workflow changes.

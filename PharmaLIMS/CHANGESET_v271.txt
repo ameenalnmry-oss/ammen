@@ -1,0 +1,13 @@
+PharmaLIMS 2026.9.12.271 - Repair 4 Regression Restoration
+
+Scope
+- Closed the two medium Repair1 regressions found by the independent v270 full-file audit.
+- Authentication startup compatibility now widens PasswordHashNew and PasswordSalt without changing their existing nullability contract.
+- External Trend mixed ISO 8 / Unclassified historical areas remain visible but are explicitly non-comparable.
+- Updated the v266 authentication regression test so the prior forced-NULL behavior can no longer pass.
+- Added v271 regression tests for authentication nullability and mixed-classification comparability.
+
+Preserved
+- Repair2/Repair3 Quality Event closures from v270.
+- Water core source files unchanged.
+- All controlled migration SQL files unchanged.

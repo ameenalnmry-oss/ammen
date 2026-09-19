@@ -1,0 +1,14 @@
+PharmaLIMS 2026.9.18.292 - PRM Profile Registration Message Correction
+
+Changed:
+- ProductionRawMaterialSamples.xaml.cs
+  - Uses a concise controlled operator message when registration has no approved profile.
+  - Preserves the existing Approved/Active/signature-evidence registration gate.
+  - Keeps detailed governance guidance and avoids directing operators to Database Maintenance unless System Preflight reports a migration/schema blocker.
+- tests/test_v292_prm_profile_registration_message.py
+  - Regression coverage for the controlled message and fail-closed profile gate.
+- Current release/version metadata, release notes, SBOM, and verification metadata.
+
+Unchanged:
+- All 82 historical Database/Migrations SQL files and their checksums.
+- Water, EM, Culture Media, and PRM result/certificate domain logic.

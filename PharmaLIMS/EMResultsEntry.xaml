@@ -1,0 +1,697 @@
+<Window x:Class="PharmaLIMS.EMResultsEntry"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="EM Results Entry"
+        Height="900"
+        Width="1450"
+        MinWidth="1200"
+        MinHeight="760"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        Background="#EEF2F7"
+        FontFamily="Segoe UI"
+        Loaded="Window_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#12395A"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#16A34A"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#D8E0EA"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="SoftPanelBrush" Color="#F8FAFC"/>
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+
+        <Style x:Key="SmallCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="FieldValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <Style x:Key="BaseButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+        </Style>
+
+        <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        </Style>
+
+        <Style x:Key="OrangeButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#EA580C"/>
+        </Style>
+
+        <Style x:Key="GrayButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#64748B"/>
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#E5EAF0"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#FFFFFF"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowHeight" Value="42"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+            <Setter Property="RowBackground" Value="White"/>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#EAF0F7"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="BorderBrush" Value="#D8E0EA"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+
+
+        <Style x:Key="StatusCellStyle" TargetType="DataGridCell">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="PASS">
+                    <Setter Property="Background" Value="#DCFCE7"/>
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Pass">
+                    <Setter Property="Background" Value="#DCFCE7"/>
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Alert">
+                    <Setter Property="Background" Value="#FEF3C7"/>
+                    <Setter Property="Foreground" Value="#92400E"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="OOS">
+                    <Setter Property="Background" Value="#FEE2E2"/>
+                    <Setter Property="Foreground" Value="#991B1B"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Pending">
+                    <Setter Property="Background" Value="#E2E8F0"/>
+                    <Setter Property="Foreground" Value="#475569"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Not Assessed">
+                    <Setter Property="Background" Value="#FEF3C7"/>
+                    <Setter Property="Foreground" Value="#92400E"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Warning: No Limits">
+                    <Setter Property="Background" Value="#FEF3C7"/>
+                    <Setter Property="Foreground" Value="#92400E"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Warning: Missing Limit Snapshot">
+                    <Setter Property="Background" Value="#FEE2E2"/>
+                    <Setter Property="Foreground" Value="#991B1B"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="WorkflowStepBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="MinWidth" Value="125"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{StaticResource PrimaryBrush}"
+                Padding="26,18"
+                CornerRadius="0,0,22,22">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Width="54"
+                        Height="54"
+                        Background="#FFFFFF"
+                        CornerRadius="14"
+                        VerticalAlignment="Center"
+                        Margin="0,0,16,0">
+                    <TextBlock Text="EM"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               FontSize="18"
+                               FontWeight="Black"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Environmental Monitoring Results Entry"
+                               Foreground="White"
+                               FontSize="28"
+                               FontWeight="Bold"/>
+
+                    <TextBlock Text="Direct-count methods: Settle Plate, Contact Plate, Surface Swab and Personnel Monitoring. Active Air Sampling is calculated as CFU/m3."
+                               Foreground="#BFDBFE"
+                               FontSize="13"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <Border Grid.Column="2"
+                        Background="#DBEAFE"
+                        CornerRadius="18"
+                        Padding="14,8"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="EM RESULTS"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               FontSize="12"
+                               FontWeight="Bold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="22">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="300"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,14,0">
+                            <TextBlock Text="Search Event"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="Enter EM event number"
+                                       FontSize="11"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <TextBox x:Name="txtEventNo"
+                                 Grid.Column="1"
+                                 Width="280"
+                                 KeyDown="txtEventNo_KeyDown"
+                                 infra:WindowUsability.KeepEnterBehavior="True"
+                                 FontFamily="Consolas"
+                                 FontSize="15"/>
+
+                        <Button x:Name="BtnSearch"
+                                Grid.Column="2"
+                                Content="Search"
+                                Click="BtnSearch_Click"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
+                        <Button x:Name="BtnLoadPending"
+                                Grid.Column="3"
+                                Content="Load Open EM"
+                                Width="160"
+                                Click="BtnLoadPending_Click"
+                                Style="{StaticResource OrangeButtonStyle}"/>
+
+                        <Border Grid.Column="4"
+                                Background="{StaticResource SoftPanelBrush}"
+                                BorderBrush="{StaticResource LineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="12"
+                                Margin="18,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Example: EM-20260618-0001"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       FontSize="13"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource SmallCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="EVENT NO" Foreground="{StaticResource MutedTextBrush}" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock x:Name="lblEventNo" Text="" Foreground="{StaticResource TextBrush}" FontSize="18" FontWeight="Bold" FontFamily="Consolas" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource SmallCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="EVENT DATE" Foreground="{StaticResource MutedTextBrush}" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock x:Name="lblEventDate" Text="" Foreground="{StaticResource TextBrush}" FontSize="18" FontWeight="Bold" FontFamily="Consolas" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource SmallCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="PLAN NO" Foreground="{StaticResource MutedTextBrush}" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock x:Name="lblPlanNo" Text="N/A" Foreground="{StaticResource TextBrush}" FontSize="15" FontWeight="Bold" FontFamily="Consolas" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="3" Style="{StaticResource SmallCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="TOTAL PLATES" Foreground="{StaticResource MutedTextBrush}" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock x:Name="lblTotalPlates" Text="0" Foreground="{StaticResource TextBrush}" FontSize="22" FontWeight="Bold" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="4"
+                            Background="White"
+                            BorderBrush="{StaticResource LineBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="14">
+                        <StackPanel>
+                            <TextBlock Text="FINAL RESULT" Foreground="{StaticResource MutedTextBrush}" FontSize="11" FontWeight="Bold"/>
+                            <Border x:Name="finalResultBorder"
+                                    Background="#64748B"
+                                    CornerRadius="16"
+                                    Padding="12,6"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,8,0,0">
+                                <TextBlock x:Name="lblFinalResult" Text="Pending" Foreground="White" FontWeight="Bold" FontSize="13"/>
+                            </Border>
+
+                            <Border x:Name="InvestigationBadge"
+                                    Visibility="Collapsed"
+                                    Background="#FEF2F2"
+                                    BorderBrush="#FCA5A5"
+                                    BorderThickness="1"
+                                    CornerRadius="16"
+                                    Padding="10,5"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,8,0,0">
+                                <TextBlock Text="Quality Event Linked"
+                                           Foreground="#B91C1C"
+                                           FontWeight="Bold"
+                                           FontSize="11"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,24,0" VerticalAlignment="Center">
+                            <TextBlock Text="Workflow Progress" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
+                            <TextBlock x:Name="lblWorkflowHint" Text="Load an EM event to view progress." Foreground="{StaticResource MutedTextBrush}" FontSize="12" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Border x:Name="StepEntry" Style="{StaticResource WorkflowStepBorderStyle}"><TextBlock x:Name="StepEntryText" Text="1  Result Entry" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                            <TextBlock Text="›" FontSize="24" Foreground="#94A3B8" Margin="10,0" VerticalAlignment="Center"/>
+                            <Border x:Name="StepSubmitted" Style="{StaticResource WorkflowStepBorderStyle}"><TextBlock x:Name="StepSubmittedText" Text="2  Submitted" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                            <TextBlock Text="›" FontSize="24" Foreground="#94A3B8" Margin="10,0" VerticalAlignment="Center"/>
+                            <Border x:Name="StepReviewed" Style="{StaticResource WorkflowStepBorderStyle}"><TextBlock x:Name="StepReviewedText" Text="3  Reviewed" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                            <TextBlock Text="›" FontSize="24" Foreground="#94A3B8" Margin="10,0" VerticalAlignment="Center"/>
+                            <Border x:Name="StepApproved" Style="{StaticResource WorkflowStepBorderStyle}"><TextBlock x:Name="StepApprovedText" Text="4  Approved" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                            <TextBlock Text="›" FontSize="24" Foreground="#94A3B8" Margin="10,0" VerticalAlignment="Center"/>
+                            <Border x:Name="StepPrinted" Style="{StaticResource WorkflowStepBorderStyle}"><TextBlock x:Name="StepPrintedText" Text="5  Report" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="3"
+                      Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Style="{StaticResource CardStyle}"
+                            Margin="0,0,14,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="Event Information"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="36"/>
+                                    <RowDefinition Height="36"/>
+                                    <RowDefinition Height="36"/>
+                                    <RowDefinition Height="36"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Area" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" x:Name="lblArea" Style="{StaticResource FieldValueStyle}"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Class / Grade" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" x:Name="lblGrade" Style="{StaticResource FieldValueStyle}"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Media Used" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="lblMediaUsed" Style="{StaticResource FieldValueStyle}"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="Media Lot" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="3" x:Name="lblMediaLotNo" Style="{StaticResource FieldValueStyle}"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Entered Plates" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" x:Name="lblEnteredPlates" Style="{StaticResource FieldValueStyle}"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="2" Text="Record Type" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="3" Text="Result Entry Only" Style="{StaticResource FieldValueStyle}"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="1"
+                            Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Evaluation Logic"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+
+                            <TextBlock Text="Direct-count monitoring: enter Total Count. Status is evaluated against the approved method-specific limits."
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Active Air Sampling: enter Total Count. Air volume defaults to 1000 L and Result CFU/m3 is calculated automatically."
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Save, review, approval, and report print are controlled by electronic signatures and audit trail."
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Margin="0,0,0,12"/>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnManageLimits"
+                                        Content="Manage Approved Limits"
+                                        ToolTip="Record site-approved EM Alert/Action limits (Settings permission required)"
+                                        HorizontalAlignment="Left"
+                                        Width="190"
+                                        Click="BtnManageLimits_Click"
+                                        Style="{StaticResource PrimaryButtonStyle}"/>
+                                <Button x:Name="BtnReconcileLegacySnapshot"
+                                        Content="Reconcile Historical Snapshot"
+                                        ToolTip="Append signed QA reconciliation evidence for a historical plate with an incomplete frozen limit snapshot"
+                                        HorizontalAlignment="Left"
+                                        Width="220"
+                                        Margin="10,0,0,0"
+                                        Click="BtnReconcileLegacySnapshot_Click"
+                                        Style="{StaticResource GrayButtonStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="4"
+                        Style="{StaticResource CardStyle}"
+                        MinHeight="330">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0"
+                              Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="EM Results"
+                                           FontSize="17"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource TextBrush}"/>
+
+                                <TextBlock Text="Dynamic entry: Active Air Sampling is separated from direct-count surface and personnel monitoring methods."
+                                           FontSize="12"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           Margin="0,3,0,0"/>
+                            </StackPanel>
+
+                            <Border Grid.Column="1"
+                                    Background="#ECFDF5"
+                                    BorderBrush="#BBF7D0"
+                                    BorderThickness="1"
+                                    CornerRadius="14"
+                                    Padding="12,6"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="EMRR / Not COA"
+                                           Foreground="#15803D"
+                                           FontSize="12"
+                                           FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Grid.Row="1">
+                                <StackPanel x:Name="pnlActiveAirResults" Visibility="Collapsed">
+                                    <TextBlock Text="Active Air Sampling Results"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource TextBrush}"
+                                               Margin="0,0,0,6"/>
+
+                                    <DataGrid x:Name="dgActiveAirPlates"
+                                              AutoGenerateColumns="False"
+                                              HorizontalAlignment="Stretch"
+                                              MinHeight="110"
+                                              MaxHeight="220"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Auto"
+                                              CellEditEnding="dgPlates_CellEditEnding"
+                                              Margin="0,0,0,14">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Plate Code" Binding="{Binding PlateCode}" Width="145" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Total Count" Binding="{Binding TotalCount, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+                                            <DataGridTextColumn Header="Air Volume L" Binding="{Binding AirVolumeLiters, Mode=OneWay}" Width="120" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Result CFU/m3" Binding="{Binding ResultCFU}" Width="125" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Alert Limit" Binding="{Binding AlertLimit}" Width="115" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Action Limit" Binding="{Binding ActionLimit}" Width="120" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="115" IsReadOnly="True" CellStyle="{StaticResource StatusCellStyle}"/>
+                                            <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="240"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </StackPanel>
+
+                                <TextBlock Text="Direct Count / Surface / Personnel Results"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+
+                                <DataGrid x:Name="dgSettlePlates"
+                                          AutoGenerateColumns="False"
+                                          HorizontalAlignment="Stretch"
+                                          MinHeight="110"
+                                          MaxHeight="220"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Auto"
+                                          CellEditEnding="dgPlates_CellEditEnding">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Plate Code" Binding="{Binding PlateCode}" Width="150" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Total Count" Binding="{Binding TotalCount, UpdateSourceTrigger=PropertyChanged}" Width="125"/>
+                                        <DataGridTextColumn Header="Result" Binding="{Binding ResultCFU}" Width="105" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="100" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Alert Limit" Binding="{Binding AlertLimit}" Width="115" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Action Limit" Binding="{Binding ActionLimit}" Width="125" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="115" IsReadOnly="True" CellStyle="{StaticResource StatusCellStyle}"/>
+                                        <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="280"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <Border Grid.Row="2"
+                Background="White"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="18,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Status:"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"/>
+
+                    <TextBlock x:Name="lblStatus"
+                               Text="Ready"
+                               Foreground="{StaticResource TextBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button x:Name="BtnCalculate"
+                            Content="Calculate"
+                            ToolTip="Calculate CFU results and evaluate alert/action limits"
+                            Width="130"
+                            Click="BtnCalculate_Click"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Button x:Name="BtnSaveResults"
+                            Content="Save Results"
+                            ToolTip="Save entered plate counts"
+                            Width="135"
+                            Click="BtnSaveResults_Click"
+                            Style="{StaticResource SuccessButtonStyle}"/>
+
+                    <Button x:Name="BtnSubmitReview"
+                            Content="Submit Review"
+                            Width="135"
+                            Click="BtnSubmitReview_Click"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Button x:Name="BtnReview"
+                            Content="Review"
+                            Width="105"
+                            Click="BtnReview_Click"
+                            Style="{StaticResource OrangeButtonStyle}"/>
+
+                    <Button x:Name="BtnApprove"
+                            Content="Approve"
+                            Width="110"
+                            Click="BtnApprove_Click"
+                            Style="{StaticResource SuccessButtonStyle}"/>
+
+                    <Button x:Name="BtnOpenDeviation"
+                            Content="Open Quality Event"
+                            Width="165"
+                            Visibility="Collapsed"
+                            Click="BtnOpenDeviation_Click"
+                            Style="{StaticResource OrangeButtonStyle}"/>
+
+                    <Button x:Name="BtnPrintReport"
+                            Content="Print Report"
+                            ToolTip="Preview and print the approved EM Result Report"
+                            Width="130"
+                            Click="BtnPrintReport_Click"
+                            Style="{StaticResource SuccessButtonStyle}"/>
+
+                    <Button x:Name="BtnClose"
+                            Content="Close"
+                            Width="110"
+                            Click="BtnClose_Click"
+                            Style="{StaticResource GrayButtonStyle}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

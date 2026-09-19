@@ -1,0 +1,12 @@
+﻿PharmaLIMS 2026.9.16.286
+Comprehensive-review closure over v284.
+
+F01: protected-table absence is visible through TableExists; Required Objects includes CultureMediaPrintHistory and EM_ScheduleSignatures; SQL integration tests missing-table detection.
+F02: SQL integration includes deceptive same-name trigger regression plus real UPDATE/DELETE behavioral proof after restoration.
+F03: AISystemReview uses ComplianceRecordProtectionContract.QuerySql; duplicate 17-table trigger logic removed.
+F04: Production Artifact Smoke uses deterministic SHA-256 row-multiset fingerprints; CHECKSUM_AGG/BINARY_CHECKSUM removed.
+F05: CI generates resolved CycloneDX SBOM from current dotnet dependency graph and includes it in the publish manifest before attestation/upload.
+F06: official GitHub Actions are pinned to immutable commit SHAs.
+F07: LoadEvent/LoadSample non-event async loaders now return Task.
+
+No historical migration SQL changed. Fresh-install baseline SQL unchanged. No Water limits/specification/domain workflow changes; ResultsEntry changes are limited to async loading contract/call routing.

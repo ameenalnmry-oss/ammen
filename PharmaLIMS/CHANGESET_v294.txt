@@ -1,0 +1,13 @@
+PharmaLIMS 2026.9.18.294 - PRM Pharmacopoeial Microbiology Templates
+
+Changed:
+- ProductionRawMaterialSamples.xaml
+- ProductionRawMaterialSamples.xaml.cs
+- Version/release metadata and regression tests
+
+Behavior:
+- Pharmacopoeial microbiology templates are available for every PRM category.
+- Exact sample-scope profile creation preloads the applicable template.
+- QA must still verify, review and approve every controlled specification version.
+- Raw-material specified organisms are not treated as universal requirements.
+- In-process criteria are labelled as internal controls aligned with final product criteria.

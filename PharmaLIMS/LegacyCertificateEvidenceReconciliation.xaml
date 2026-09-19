@@ -1,0 +1,163 @@
+﻿<Window x:Class="PharmaLIMS.LegacyCertificateEvidenceReconciliation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Legacy Certificate Evidence Reconciliation"
+        Width="1260" Height="790" MinWidth="1040" MinHeight="660"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        Background="#F4F7FA">
+    <Window.Resources>
+        <Style x:Key="Field" TargetType="TextBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Margin" Value="0,4,10,8"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+        <Style x:Key="Action" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#14233A" CornerRadius="10" Padding="18" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Legacy Certificate Evidence Reconciliation" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                <TextBlock Text="QA disposition for pre-snapshot PRM and Water/general certificates. This workflow never creates a retrospective issue snapshot/hash and never edits an issued certificate. Each disposition is electronically signed, append-only and auditable."
+                           Foreground="#FDE68A" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.15*"/>
+                <ColumnDefinition Width="18"/>
+                <ColumnDefinition Width="0.85*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" CornerRadius="10" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Pre-cutover certificates requiring QA disposition / reissue completion" FontSize="17" FontWeight="Bold" Margin="4,2,0,10"/>
+                    <DataGrid Grid.Row="1" x:Name="gridCertificates" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              SelectionMode="Extended" SelectionUnit="FullRow" SelectionChanged="gridCertificates_SelectionChanged"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeaderWidth="0" AlternatingRowBackground="#F8FAFC">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Module" Binding="{Binding Module}" Width="75"/>
+                            <DataGridTextColumn Header="Certificate" Binding="{Binding CertificateNumber}" Width="175"/>
+                            <DataGridTextColumn Header="Issue date" Binding="{Binding IssueDateText}" Width="105"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding CertificateStatus}" Width="90"/>
+                            <DataGridTextColumn Header="Legacy condition" Binding="{Binding LegacyCondition}" Width="*"/>
+                            <DataGridTextColumn Header="Latest disposition" Binding="{Binding ReconciliationStatus}" Width="190"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="BtnSelectModule" Content="Select all unreconciled in module"
+                                Click="BtnSelectModule_Click" Style="{StaticResource Action}"
+                                Background="#E0F2FE" Foreground="#0C4A6E" HorizontalAlignment="Left"/>
+                        <TextBlock x:Name="lblSelectionSummary" Grid.Column="1" VerticalAlignment="Center"
+                                   Foreground="#64748B" TextWrapping="Wrap"
+                                   Text="Select one certificate, or use a controlled batch for one module."/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" CornerRadius="10" Padding="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Controlled QA reconciliation evidence" FontSize="17" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="lblSelectedCertificate" Text="Select a certificate." FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        <Border Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                            <TextBlock x:Name="lblLegacyCondition" Text="Observed legacy condition: N/A" Foreground="#9A3412" TextWrapping="Wrap"/>
+                        </Border>
+
+                        <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="9" Margin="0,0,0,10">
+                            <TextBlock Text="Fail-closed default: Controlled cancellation/reissue required. Every signed reconciliation must use meaningful evidence wording; placeholder text such as NA/not found is rejected for both dispositions. Select Retain only when actual controlled historical evidence has been reviewed and can be cited."
+                                       Foreground="#1E3A8A" TextWrapping="Wrap"/>
+                        </Border>
+
+                        <Border x:Name="SignedRecordBanner" Visibility="Collapsed"
+                                Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1"
+                                CornerRadius="6" Padding="9" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock x:Name="lblSignedRecordMode"
+                                           Text="Signed reconciliation is displayed read-only."
+                                           Foreground="#334155" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <Button x:Name="BtnStartSuperseding"
+                                        Content="Correct Signed QA Evidence"
+                                        Click="BtnStartSuperseding_Click"
+                                        Style="{StaticResource Action}"
+                                        Background="#FEF3C7" Foreground="#92400E"
+                                        HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Controlled Evidence Reference *"/>
+                        <TextBox x:Name="txtEvidenceReference" Style="{StaticResource Field}"
+                                 ToolTip="Approved legacy assessment, archived report, SOP, validation/release record, or other controlled evidence reference."/>
+
+                        <TextBlock Text="Evidence Summary *"/>
+                        <TextBox x:Name="txtEvidenceSummary" Height="86" Padding="8" Margin="0,4,10,8"
+                                 AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                 ToolTip="Describe what was reviewed. Do not claim that a native issue snapshot or hash existed when it did not."/>
+
+                        <TextBlock Text="QA Disposition *"/>
+                        <ComboBox x:Name="cboDisposition" Height="34" Margin="0,4,10,8" Padding="6,2">
+                            <ComboBoxItem Tag="CONTROLLED_REISSUE_REQUIRED" Content="Controlled cancellation/reissue required"/>
+                            <ComboBoxItem Tag="LEGACY_HISTORICAL_RECORD_RETAINED" Content="Retain as documented legacy historical record"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Reconciliation Reason *"/>
+                        <TextBox x:Name="txtReason" Height="92" Padding="8" Margin="0,4,10,8"
+                                 AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+                        <TextBlock Text="The original certificate, report hash and certificate snapshot tables are not changed. A later correction is appended as a signed superseding reconciliation."
+                                   Foreground="#64748B" TextWrapping="Wrap" Margin="0,2,0,12"/>
+                        <WrapPanel>
+                            <Button x:Name="BtnPrepareReissue" Content="Prepare Controlled Reissue Draft"
+                                    Click="BtnPrepareReissue_Click" Style="{StaticResource Action}"
+                                    Background="#E0F2FE" Foreground="#0C4A6E" HorizontalAlignment="Left"/>
+                            <Button x:Name="BtnSave" Content="Sign and Save Reconciliation"
+                                    Click="BtnSave_Click" Style="{StaticResource Action}"
+                                    Background="#176B87" Foreground="White" HorizontalAlignment="Left"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="lblStatus" VerticalAlignment="Center" Foreground="#64748B"
+                       Text="No certificate reconciliation has been saved in this session."/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="BtnOpenSourceWorkflow" Content="Open Controlled Reissue Workflow"
+                        Click="BtnOpenSourceWorkflow_Click" Style="{StaticResource Action}"
+                        Background="#DCFCE7" Foreground="#166534" IsEnabled="False"
+                        ToolTip="Available after a valid signed CONTROLLED_REISSUE_REQUIRED disposition exists for one selected certificate."/>
+                <Button Content="Refresh" Click="BtnRefresh_Click" Style="{StaticResource Action}" Background="#E2E8F0" Foreground="#334155"/>
+                <Button Content="Close" Click="BtnClose_Click" Style="{StaticResource Action}" Background="#334155" Foreground="White" Margin="0"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

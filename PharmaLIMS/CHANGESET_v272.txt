@@ -1,0 +1,12 @@
+﻿PharmaLIMS 2026.9.12.272 - Certificate Completeness Compatibility
+
+Changed:
+- DatabaseHelper.Certificates.cs
+- tests/test_v272_certificate_completeness_compatibility.py
+- release/version metadata and controlled source manifest
+
+Behavior:
+- Blank legacy ResultStatus no longer falsely counts as an incomplete result when ResultValue is complete.
+- Explicit pending states still block.
+- Blank-status completed results are transactionally re-assessed and fail closed if OOS/invalid.
+- No approved SampleTests row is modified by the compatibility path.

@@ -1,0 +1,9 @@
+PharmaLIMS 2026.9.15.279 - User Management Hardened
+
+- Added controlled User Management UI/service.
+- Added mandatory personal password change after account creation/admin reset.
+- Blocked self privilege escalation.
+- Added read/mutation permission revalidation and rowversion concurrency.
+- Added controlled roles and password policy.
+- Added migration 20260915_000 for user credential lifecycle state.
+- Preserved established Water core and prior migrations.

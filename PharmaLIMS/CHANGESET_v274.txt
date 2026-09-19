@@ -1,0 +1,20 @@
+PharmaLIMS 2026.9.13.274 - PRM Governance and Fail-Safe UI Closure
+
+Changed:
+- Database/MigrationManifest.json
+- Database/Migrations/20260913_001_PRM_Standard_Profile_Governance_Hardening.sql (new)
+- DatabaseHelper.QualityEvents.cs
+- ResultsEntry.xaml.cs
+- SampleDetails.xaml.cs
+- ProductionRawMaterialSamples.xaml.cs
+- appsettings.Development.example.json
+- tests/test_v273_prm_standard_profile_readiness.py
+- tests/test_v274_governance_failclosed.py (new)
+- version/release/SBOM/source-manifest metadata
+
+Key controls:
+- 20260913_000 remains checksum-preserved but is superseded for fresh/unrecorded deployment.
+- No PRM master profile is auto-approved by the current migration.
+- Existing approved site profiles are not auto-retired because of template differences.
+- Missing Water QE/certificate verification is fail-closed in UI pre-checks.
+- SampleDetails no longer maps unknown COA state to Not Issued.

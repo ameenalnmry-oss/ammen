@@ -1,0 +1,7 @@
+PharmaLIMS 2026.9.11.267 compile closeout
+Base: 2026.9.11.266 startup 55013 repair
+Fixed: CS1513 at StartupDatabaseMigrator.Part2.cs around the EnsureCultureMediaInventoryAsync method boundary.
+Fixed: CS1022 at end-of-file by removing the extra trailing brace.
+Expected downstream resolution: CS0006 for PharmaLIMS.DatabaseMaintenance once the main PharmaLIMS assembly compiles.
+Authentication schema compatibility logic from v266 is unchanged.
+Water workflow source was not modified.

@@ -1,0 +1,111 @@
+﻿<Window x:Class="PharmaLIMS.Login"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PharmaLIMS - Login"
+        Height="450"
+        Width="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F8FAFC">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="1"
+                Width="380"
+                Height="320"
+                Background="#FFFFFF"
+                CornerRadius="12"
+                BorderBrush="#E2E8F0"
+                BorderThickness="1">
+
+            <Grid Margin="25">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,25">
+                    <TextBlock Text="PharmaLIMS"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="#1E293B"
+                               HorizontalAlignment="Center"/>
+
+                    <TextBlock Text="Laboratory Information Management System"
+                               FontSize="11"
+                               Foreground="#64748B"
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1"
+                           Text="Username"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"
+                           Foreground="#1E293B"/>
+
+                <TextBox x:Name="txtUsername"
+                         Grid.Row="2"
+                         Height="38"
+                         FontSize="14"
+                         Background="#F8FAFC"
+                         BorderBrush="#E2E8F0"
+                         BorderThickness="1"
+                         Padding="10,0"/>
+
+                <TextBlock Grid.Row="3"
+                           Text="Password"
+                           FontWeight="SemiBold"
+                           Margin="0,15,0,5"
+                           Foreground="#1E293B"/>
+
+                <PasswordBox x:Name="txtPassword"
+                             Grid.Row="4"
+                             Height="38"
+                             FontSize="14"
+                             Background="#F8FAFC"
+                             BorderBrush="#E2E8F0"
+                             BorderThickness="1"/>
+
+                <Button x:Name="BtnLogin"
+                        Grid.Row="5"
+                        Content="Sign In"
+                        Height="42"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Background="#3B82F6"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        IsDefault="True"
+                        Click="BtnLogin_Click"/>
+
+                <TextBlock x:Name="lblError"
+                           Grid.Row="6"
+                           Foreground="#EF4444"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           Margin="0,15,0,0"
+                           Visibility="Collapsed"/>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2"
+                   Text="© 2026 PharmaLIMS - Designed for controlled GxP workflows; site validation required"
+                   FontSize="10"
+                   Foreground="#64748B"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,0,15"/>
+    </Grid>
+</Window>

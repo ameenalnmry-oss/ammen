@@ -1,0 +1,7 @@
+PharmaLIMS 2026.9.16.283
+
+Runtime / authentication release-gate closure over v282.
+
+- RuntimeSmoke now waits for an explicit post-SetStartupBusy(false) readiness event as well as the expected Login title.
+- 20260911_000 read-only postcondition now enforces IsActive BIT NOT NULL and all 11 permission columns as BIT NOT NULL.
+- No migration SQL changed. No fresh-install baseline SQL changed. Water core remains unchanged.

@@ -1,0 +1,10 @@
+PharmaLIMS 2026.9.12.269 coordinated review closeout
+Base: 2026.9.11.268 certificate JSON runtime-fixed package
+Fixed: effective account locks now fail closed in corrected runtime role/permission reads in DatabaseHelper.SecurityAudit and UserRepository.
+Fixed: Production electronic-signature Configure cannot disable password validation.
+Fixed: certificate issuer role is captured from the locked transactional authorization read and stored in immutable snapshot/signature evidence.
+Fixed: EM trend print revalidates report permission from current database state.
+Fixed: approved EM limit save revalidates CanManageSettings inside the transaction and persists the authoritative signer role.
+Fixed: corrected development-only PRM/External Trend admin overrides use current database role/permission state.
+Preserved: v268 complete FOR JSON transport, immutable certificate history, cancellation/reissue controls, startup authentication repair, and Water core workflow.
+Database migrations: controlled SQL bytes unchanged; applicationVersion metadata advanced to 2026.9.12.269.

@@ -1,0 +1,58 @@
+import json
+import pathlib
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def source(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8-sig")
+
+
+class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
+    def test_release_version_is_v294(self):
+        manifest = json.loads(source("Database/MigrationManifest.json"))
+        self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.9.18.294</Version>", source("PharmaLIMS.csproj"))
+
+    def test_specification_master_exposes_template_loader(self):
+        xaml = source("ProductionRawMaterialSamples.xaml")
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        self.assertIn("Load Pharmacopeial Template", xaml)
+        self.assertIn("BtnLoadPharmacopoeialTemplate_Click", xaml)
+        self.assertIn("private void ApplyPharmacopoeialMicrobiologyTemplate", code)
+
+    def test_finished_product_and_stability_use_harmonized_oral_nonaqueous_template(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        self.assertIn('SpecificationText = "NMT 2000 CFU/g"', code)
+        self.assertIn('SpecificationText = "NMT 200 CFU/g"', code)
+        self.assertIn('TestCode = "ECOLI"', code)
+        self.assertIn('SpecificationText = "Absent in 1 g"', code)
+        self.assertIn("non-aqueous preparations for oral use", code)
+
+    def test_raw_material_default_does_not_invent_universal_specified_organisms(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        raw_start = code.index('if (normalized.Equals("Raw Material"')
+        raw_end = code.index('bool oralSolidScope', raw_start)
+        raw_block = code[raw_start:raw_end]
+        self.assertIn('SpecificationText = "NMT 2000 CFU/g or mL"', raw_block)
+        self.assertIn('SpecificationText = "NMT 200 CFU/g or mL"', raw_block)
+        self.assertNotIn('TestCode = "ECOLI"', raw_block)
+        self.assertIn("material-monograph/risk-assessment dependent", raw_block)
+
+    def test_in_process_is_not_mislabeled_as_direct_pharmacopoeial_category(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        self.assertIn("in-process acceptance is a site control, not a standalone pharmacopoeial dosage-form category", code)
+
+    def test_create_profile_for_scope_preloads_template_but_does_not_approve(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        handler_start = code.index("private void BtnCreateProfileForScope_Click")
+        handler_end = code.index("private int LoadApprovedSpecificationChoices", handler_start)
+        handler = code[handler_start:handler_end]
+        self.assertIn("ApplyPharmacopoeialMicrobiologyTemplate(category);", handler)
+        self.assertNotIn("ApprovalStatus=N'Approved'", handler)
+        self.assertNotIn("Approve Specification", handler)
+
+
+if __name__ == "__main__":
+    unittest.main()

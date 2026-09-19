@@ -1,0 +1,9 @@
+PharmaLIMS 2026.9.16.282
+
+- Production authentication migration verification now checks package SHA-256, DB ledger checksum, and read-only physical schema postconditions before Login.
+- Added structural contract for 20260915_000 MustChangePassword / PasswordChangedAt.
+- Added Windows WPF RuntimeSmoke using the real controlled migrator and a disposable SQL Server/LocalDB database.
+- Unified source/build/SQL/runtime validation under scripts/Invoke-ReleaseValidation.ps1.
+- Legacy run_release_validation.ps1 is a compatibility delegate only; pytest is not required.
+- CI calls the authoritative runner.
+- No historical migration SQL, fresh-install baseline SQL, or Water core business source changed.

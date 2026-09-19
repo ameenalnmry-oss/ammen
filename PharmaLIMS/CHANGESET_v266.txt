@@ -1,0 +1,8 @@
+PharmaLIMS 2026.9.11.266 authentication schema drift repair
+Base: 2026.9.11.265 auth-ready candidate
+Confirmed field issue: startup migration 20260911_000 failed with SQL Server error 55013 because dbo.Users.PasswordHashNew was narrower than NVARCHAR(512).
+Compatibility repair: widen compatible legacy PasswordHashNew/PasswordSalt columns before the original checksum-controlled migration executes.
+Legacy nullable FailedLoginAttempts/IsLocked are canonicalized only where NULL (NULL -> 0) and then strengthened to NOT NULL; existing non-null counters/locks are preserved.
+Migration 20260911_000 SQL bytes and checksum are unchanged.
+Water workflow source was not modified.
+No password, hash, salt value, role, permission, activation state, sample, result, EM record, certificate, or Water result is reset by this change.

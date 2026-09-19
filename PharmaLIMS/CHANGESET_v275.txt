@@ -1,0 +1,13 @@
+PharmaLIMS 2026.9.14.275 - Development Legacy Review Refinement
+
+Changed:
+- AISystemReview.xaml.cs
+- Infrastructure/SystemPreflightService.cs
+- tests/test_v275_development_legacy_review.py (new)
+- version/release/SBOM/source-manifest metadata
+
+Behavior:
+- Development pre-control legacy certificate/PRM snapshot gaps are informational only in AI System Review and non-blocking in System Preflight.
+- Post-control snapshot gaps remain High in every environment.
+- Production legacy evidence behavior is unchanged.
+- No historical records are modified, reconciled, deleted, or backfilled.

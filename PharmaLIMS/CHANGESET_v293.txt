@@ -1,0 +1,17 @@
+PharmaLIMS 2026.9.18.293 - Deep Review Remediation
+
+Corrected:
+- Entered optional PRM results cannot be excluded from DNC/Check Required, Quality Event coverage, approval, or COA decisions.
+- PRM Refresh and sample selection contain database exceptions and avoid synchronous selection queries on the UI thread.
+- Production/Finished workflow selection and Clear/New operations no longer silently change the selected category.
+- PRM Result Type values are normalized and restricted to the controlled interpretation vocabulary.
+- Active legacy credentials block Production preflight.
+- The complete controlled migration payload is validated before any DDL/DML.
+- CSV working-copy exports require report authorization, carry SHA-256 evidence, create audit evidence, and are labeled UNCONTROLLED COPY.
+- Source-only CI creates the NuGet lock under the pinned SDK before enforcing locked restore.
+- Responsive access to wide PRM content is restored.
+
+Preserved:
+- Existing 82 historical SQL migrations and hashes.
+- Approved/Active PRM profile and Review/Approve signature gates.
+- Water, EM, and Culture Media domain logic.

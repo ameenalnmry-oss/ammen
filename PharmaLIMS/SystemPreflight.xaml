@@ -1,0 +1,138 @@
+﻿<Window x:Class="PharmaLIMS.SystemPreflight"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="PharmaLIMS Runtime System Preflight"
+        Width="1180" Height="760"
+        MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterOwner" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        Background="#F4F7FA">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#14233A" CornerRadius="12" Padding="20,16" Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Runtime System Preflight" Foreground="White" FontSize="23" FontWeight="Bold"/>
+                    <TextBlock Text="Read-only verification of the actual SQL Server database, migration ledger, identities, workflows, certificates, signatures, and protected records."
+                               Foreground="#C9D7E5" FontSize="11.5" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock x:Name="lblEnvironment" Foreground="White" FontWeight="Bold" TextAlignment="Right"/>
+                    <TextBlock x:Name="lblTarget" Foreground="#C9D7E5" FontSize="11" Margin="0,4,0,0" TextAlignment="Right"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" CornerRadius="10" Padding="15" Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Margin="0,0,28,0">
+                    <TextBlock Text="BLOCKERS" Foreground="#7F1D1D" FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="lblBlockers" Text="-" Foreground="#B91C1C" FontSize="28" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,0,28,0">
+                    <TextBlock Text="WARNINGS" Foreground="#92400E" FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="lblWarnings" Text="-" Foreground="#D97706" FontSize="28" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,0,28,0">
+                    <TextBlock Text="PASSED" Foreground="#166534" FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="lblPassed" Text="-" Foreground="#15803D" FontSize="28" FontWeight="Bold"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                    <TextBlock x:Name="lblOverall" Text="Preflight has not been run." FontSize="16" FontWeight="Bold" Foreground="#334155"/>
+                    <TextBlock x:Name="lblExecutedAt" FontSize="10.5" Foreground="#64748B" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <Button Grid.Column="4" x:Name="BtnRun" Content="Run Preflight" Click="BtnRun_Click"
+                        Background="#176B87" Foreground="White" Margin="12,0,0,0"/>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Background="White" BorderBrush="#D8E2EA" BorderThickness="1" CornerRadius="10" Padding="1">
+            <DataGrid x:Name="gridChecks"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      BorderThickness="0"
+                      RowHeaderWidth="0"
+                      SelectionMode="Single"
+                      AlternatingRowBackground="#F8FAFC">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                    <DataGridTextColumn Header="Area" Binding="{Binding Area}" Width="170"/>
+                    <DataGridTextColumn Header="Check" Binding="{Binding Check}" Width="260"/>
+                    <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Preflight checks are read-only. Historical EM and legacy-certificate remediation open separate signed append-only reconciliation workflows; original regulated records are never rewritten."
+                       Foreground="#64748B" FontSize="10.5" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="BtnWaterProfiles"
+                        Content="Manage Water Profiles"
+                        Click="BtnWaterProfiles_Click"
+                        Background="#DBEAFE"
+                        Foreground="#1D4ED8"
+                        Visibility="Collapsed"
+                        ToolTip="Configure versioned PW/PTW controlled test profiles. Settings permission required."/>
+                <Button x:Name="BtnEmReconcile"
+                        Content="Reconcile Historical EM"
+                        Click="BtnEmReconcile_Click"
+                        Background="#FEF3C7"
+                        Foreground="#92400E"
+                        Visibility="Collapsed"
+                        ToolTip="Open the signed append-only historical EM limit-evidence reconciliation workflow."/>
+                <Button x:Name="BtnCertificateReconcile"
+                        Content="Reconcile Legacy Certificates"
+                        Click="BtnCertificateReconcile_Click"
+                        Background="#FFEDD5"
+                        Foreground="#9A3412"
+                        Visibility="Collapsed"
+                        ToolTip="Open signed QA disposition for pre-snapshot PRM and Water/general certificates without creating retrospective issue snapshots or hashes."/>
+                <Button Content="Copy Release Checklist" Click="BtnCopyReleaseChecklist_Click"
+                        Background="#E0F2FE" Foreground="#075985"
+                        ToolTip="Copy the manual Windows/SQL Server release acceptance checklist. This does not mark UAT as passed."/>
+                <Button Content="Copy Report" Click="BtnCopy_Click" Background="#E2E8F0" Foreground="#334155"/>
+                <Button Content="Close" Click="BtnClose_Click" Background="#334155" Foreground="White" Margin="0"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

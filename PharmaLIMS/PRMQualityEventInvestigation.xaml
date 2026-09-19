@@ -1,0 +1,651 @@
+﻿<Window x:Class="PharmaLIMS.PRMQualityEventInvestigation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="PRM Quality Event Investigation"
+        Height="880"
+        Width="1450"
+        MinHeight="780"
+        MinWidth="980"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        Background="#F4F7FB"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#D8E1EC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="LabelTextStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#172033"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+        </Style>
+
+        <Style x:Key="ValueTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,16,8"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#334155"/>
+        </Style>
+
+        <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#047857"/>
+        </Style>
+
+        <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#D97706"/>
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#1F2D40"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="#1F2D40"
+                CornerRadius="10"
+                Padding="18"
+                Margin="0,0,0,10">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="PRM QUALITY EVENT INVESTIGATION"
+                               Foreground="White"
+                               FontSize="24"
+                               FontWeight="Bold"/>
+                    <TextBlock Text="OOS / OOAL / OOAC / OOGL / OOT / INV workflow - Phase I, Phase II, Phase III"
+                               Foreground="#C9D6E6"
+                               FontSize="13"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right"
+                            HorizontalAlignment="Right">
+                    <TextBlock x:Name="lblHeaderStatus"
+                               Text="Status"
+                               Foreground="White"
+                               FontWeight="Bold"
+                               FontSize="15"
+                               HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="lblStatus"
+                               Text="Ready"
+                               Foreground="#C9D6E6"
+                               FontSize="12"
+                               HorizontalAlignment="Right"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Meta / Event identity -->
+        <Border Grid.Row="1"
+                Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="210"/>
+                    <ColumnDefinition Width="125"/>
+                    <ColumnDefinition Width="230"/>
+                    <ColumnDefinition Width="125"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Event No:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="lblEventNumber" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Event Type:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" x:Name="lblEventType" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Detected Date:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="0" Grid.Column="5" x:Name="lblDetectedDate" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Sample No:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="lblSampleNumber" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="PRM Type:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="1" Grid.Column="3" x:Name="lblPRMType" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="4" Text="Detected By:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="1" Grid.Column="5" x:Name="lblDetectedBy" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Source:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="lblDetectionSource" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="Material/Product:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="2" Grid.Column="3" x:Name="lblMaterialProduct" Style="{StaticResource ValueTextStyle}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="4" Text="Batch/Lot:" Style="{StaticResource LabelTextStyle}"/>
+                <TextBlock Grid.Row="2" Grid.Column="5" x:Name="lblBatchLot" Style="{StaticResource ValueTextStyle}"/>
+            </Grid>
+        </Border>
+
+        <!-- Body -->
+        <TabControl Grid.Row="2"
+                    Background="White"
+                    BorderBrush="#D8E1EC"
+                    BorderThickness="1"
+                    Padding="2">
+
+            <!-- 1 Classification -->
+            <TabItem Header="1. Classification">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <Grid Margin="14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Event Classification and Initial Containment"
+                                   Style="{StaticResource SectionTitleStyle}"/>
+
+                        <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="300"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Deviation Type:" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ElementName=lblEventType, Path=Text}" Style="{StaticResource ValueTextStyle}"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Severity:" Style="{StaticResource LabelTextStyle}"/>
+                                <ComboBox Grid.Row="0" Grid.Column="3" x:Name="cboSeverity" Height="30" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="Minor"/>
+                                    <ComboBoxItem Content="Major"/>
+                                    <ComboBoxItem Content="Critical"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Sample Type:" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ElementName=lblPRMType, Path=Text}" Style="{StaticResource ValueTextStyle}"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Workflow Phase:" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="3" Text="Phase I → Phase II → QA Closure" Style="{StaticResource ValueTextStyle}"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Investigation Disposition:" Style="{StaticResource LabelTextStyle}"/>
+                                <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboFinalDisposition" Height="30" Margin="0,0,0,8"
+                                          ToolTip="Investigation outcome only. Final batch/material release or rejection remains outside this screen.">
+                                    <ComboBoxItem Content="Pending"/>
+                                    <ComboBoxItem Content="Confirmed OOS - Original Result Retained"/>
+                                    <ComboBoxItem Content="OOS Invalidated - Assignable Laboratory Cause"/>
+                                    <ComboBoxItem Content="OOS Not Confirmed - Scientifically Justified"/>
+                                    <ComboBoxItem Content="Retest / Resample Required"/>
+                                    <ComboBoxItem Content="Escalated to Batch / Material Disposition"/>
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Initial Description:" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtInitialDescription"
+                                         Height="95"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Margin="0,0,0,10"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Immediate Action:" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtImmediateAction"
+                                         Height="95"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="3"
+                                Background="#EFF6FF"
+                                BorderBrush="#BFDBFE"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12">
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="#1E3A8A"
+                                       Text="System rule: any OOS / action-level / confirmed microbiological deviation must remain blocked from approval and certificate/report issuance until investigation is completed and QA disposition is documented."/>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 2 Phase I -->
+            <TabItem Header="2. Phase I - Laboratory">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0"
+                            Background="#F8FAFC"
+                            BorderBrush="#D8E1EC"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10"
+                            Margin="0,0,0,8">
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="#334155"
+                                   Text="Phase I covers analyst discussion, sampling review, media/reagents/cultures, method execution, area/equipment/incubator records, controls, microbial growth description, raw data, calculation, and audit trail review."/>
+                    </Border>
+
+                    <DataGrid Grid.Row="1"
+                              x:Name="dgChecklist"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              RowHeight="38"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="All"
+                              AlternatingRowBackground="#F8FAFC">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Phase / Section"
+                                                Binding="{Binding SectionName}"
+                                                Width="240"
+                                                IsReadOnly="True"/>
+
+                            <DataGridTextColumn Header="Checklist Question"
+                                                Binding="{Binding QuestionText}"
+                                                Width="*"
+                                                IsReadOnly="True"/>
+
+                            <DataGridTemplateColumn Header="Answer" Width="115">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox SelectedValue="{Binding AnswerValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  Height="28">
+                                            <ComboBoxItem Content=""/>
+                                            <ComboBoxItem Content="Yes"/>
+                                            <ComboBoxItem Content="No"/>
+                                            <ComboBoxItem Content="N/A"/>
+                                        </ComboBox>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="Comments / Evidence / Record Reference"
+                                                Binding="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="360"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 3 Phase II -->
+            <TabItem Header="3. Phase II - Full Scale">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <Grid Margin="14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Phase II - Manufacturing / Vendor / Experimentation Review"
+                                   Style="{StaticResource SectionTitleStyle}"/>
+
+                        <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="190"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Root Cause Type:" Style="{StaticResource LabelTextStyle}"/>
+                                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboRootCauseCategory" Height="30" Margin="0,0,0,10">
+                                    <ComboBoxItem Content="Type-A Personnel Error"/>
+                                    <ComboBoxItem Content="Type-B Instrument Error"/>
+                                    <ComboBoxItem Content="Type-C Procedural Error"/>
+                                    <ComboBoxItem Content="Type-D Other Error"/>
+                                    <ComboBoxItem Content="Type-E Non-Assignable Cause"/>
+                                    <ComboBoxItem Content="Type-F Product Failure"/>
+                                    <ComboBoxItem Content="Type-G Outsourced Material Failure"/>
+                                    <ComboBoxItem Content="Combination of Causes"/>
+                                    <ComboBoxItem Content="Pending Investigation"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Root Cause Details:" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtRootCauseDetails"
+                                         Height="180"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"/>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="360"/>
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0"
+                                    Background="#FFFBEB"
+                                    BorderBrush="#FCD34D"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="Phase II guidance"
+                                               FontWeight="Bold"
+                                               Foreground="#92400E"
+                                               Margin="0,0,0,5"/>
+                                    <TextBlock TextWrapping="Wrap"
+                                               Foreground="#78350F"
+                                               Text="Use this section when Phase I does not identify a clear laboratory assignable cause or when the finding may relate to manufacturing process, warehouse, vendor/supplier, storage, cleaning, equipment, personnel practice, or related batch impact. Experimentation or additional testing must be scientifically justified and approved; it must not be used simply to replace the original failing result."/>
+                                </StackPanel>
+                            </Border>
+
+                            <DataGrid Grid.Row="1"
+                                      x:Name="dgPhaseIIChecklist"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      RowHeight="38"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="All"
+                                      AlternatingRowBackground="#F8FAFC">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Phase / Section"
+                                                        Binding="{Binding SectionName}"
+                                                        Width="240"
+                                                        IsReadOnly="True"/>
+
+                                    <DataGridTextColumn Header="Phase II Checklist Question"
+                                                        Binding="{Binding QuestionText}"
+                                                        Width="*"
+                                                        IsReadOnly="True"/>
+
+                                    <DataGridTemplateColumn Header="Answer" Width="115">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ComboBox SelectedValue="{Binding AnswerValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          Height="28">
+                                                    <ComboBoxItem Content=""/>
+                                                    <ComboBoxItem Content="Yes"/>
+                                                    <ComboBoxItem Content="No"/>
+                                                    <ComboBoxItem Content="N/A"/>
+                                                </ComboBox>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTextColumn Header="Comments / Evidence / Record Reference"
+                                                        Binding="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        Width="360"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 4 Impact Assessment -->
+            <TabItem Header="4. Impact Assessment">
+                <Grid Margin="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="Impact Assessment"
+                               Style="{StaticResource SectionTitleStyle}"/>
+
+                    <TextBox Grid.Row="1"
+                             x:Name="txtImpactAssessment"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,0,10"/>
+
+                    <Border Grid.Row="2"
+                            Background="#F8FAFC"
+                            BorderBrush="#D8E1EC"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10">
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="#334155"
+                                   Text="Impact assessment should address affected batch/material/product, related batches, same product/material history, previous deviations/OOS/OOT, environmental/water/cleaning records where relevant, COA/report impact, release block, customer/regulatory notification where applicable, and risk to product quality."/>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- 5 Affected Results -->
+            <TabItem Header="5. Affected Results">
+                <DataGrid x:Name="dgAffectedResults"
+                          Margin="10"
+                          AutoGenerateColumns="True"
+                          IsReadOnly="True"
+                          AlternatingRowBackground="#F8FAFC"/>
+            </TabItem>
+
+            <!-- 6 CAPA / Actions -->
+            <TabItem Header="6. CAPA / Actions">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <CheckBox Grid.Row="0"
+                              x:Name="chkCAPARequired"
+                              Content="CAPA Required"
+                              FontWeight="Bold"
+                              FontSize="14"
+                              Margin="0,0,0,8"/>
+
+                    <DataGrid Grid.Row="1"
+                              x:Name="dgActions"
+                              AutoGenerateColumns="True"
+                              IsReadOnly="True"
+                              AlternatingRowBackground="#F8FAFC"/>
+
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0"
+                                 x:Name="txtActionNote"
+                                 Height="65"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Margin="0,0,10,0"/>
+
+                        <Button Grid.Column="1"
+                                x:Name="BtnAddAction" Content="Add Action Note"
+                                Width="165"
+                                Style="{StaticResource WarningButtonStyle}"
+                                Click="BtnAddAction_Click"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- 7 QA Closure -->
+            <TabItem Header="7. QA Closure">
+                <Grid Margin="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="QA Final Conclusion and Disposition"
+                               Style="{StaticResource SectionTitleStyle}"/>
+
+                    <TextBox Grid.Row="1"
+                             x:Name="txtQAConclusion"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,0,10"/>
+
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="220"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Background="#ECFDF5"
+                                BorderBrush="#A7F3D0"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10"
+                                Margin="0,0,0,8">
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="#065F46"
+                                       Text="QA closure must state whether the finding is Confirmed / Not Confirmed, whether the original result is retained or invalidated with justification, CAPA requirement, effectiveness check, related batch impact, and final disposition. Use Close Investigation only after all required evidence and checklist items are complete."/>
+                        </Border>
+
+                        <DataGrid Grid.Row="1"
+                                  x:Name="dgClosureChecklist"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  RowHeight="38"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="All"
+                                  AlternatingRowBackground="#F8FAFC">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Closure Section"
+                                                    Binding="{Binding SectionName}"
+                                                    Width="240"
+                                                    IsReadOnly="True"/>
+
+                                <DataGridTextColumn Header="Closure Question"
+                                                    Binding="{Binding QuestionText}"
+                                                    Width="*"
+                                                    IsReadOnly="True"/>
+
+                                <DataGridTemplateColumn Header="Answer" Width="115">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox SelectedValue="{Binding AnswerValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="28">
+                                                <ComboBoxItem Content=""/>
+                                                <ComboBoxItem Content="Yes"/>
+                                                <ComboBoxItem Content="No"/>
+                                                <ComboBoxItem Content="N/A"/>
+                                            </ComboBox>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="Comments / Evidence"
+                                                    Binding="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="360"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Buttons -->
+        <DockPanel Grid.Row="3"
+                   Margin="0,10,0,0"
+                   LastChildFill="False">
+            <Button x:Name="BtnSave"
+                    Content="Save Investigation"
+                    Width="160"
+                    Style="{StaticResource SuccessButtonStyle}"
+                    Click="BtnSave_Click"/>
+
+            <Button x:Name="BtnSubmitQA"
+                    Content="Submit to QA"
+                    Width="140"
+                    Style="{StaticResource WarningButtonStyle}"
+                    Click="BtnSubmitQA_Click"/>
+
+            <Button x:Name="BtnRefresh"
+                    Content="Refresh"
+                    Width="105"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Click="BtnRefresh_Click"/>
+
+            <Button x:Name="BtnPrintReport"
+                    Content="Print Report"
+                    Width="125"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Click="BtnPrintReport_Click"/>
+
+            <Button x:Name="BtnCloseInvestigation"
+                    Content="Close Investigation"
+                    Width="170"
+                    Style="{StaticResource SuccessButtonStyle}"
+                    Click="BtnCloseInvestigation_Click"/>
+
+            <Button Content="Close Window"
+                    Width="130"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Click="BtnCloseWindow_Click"/>
+        </DockPanel>
+    </Grid>
+</Window>

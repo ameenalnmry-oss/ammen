@@ -1,0 +1,720 @@
+﻿<Window x:Class="PharmaLIMS.QualityEventInvestigation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="Quality Event Investigation"
+        Height="920"
+        Width="1550"
+        MinWidth="1250"
+        MinHeight="780"
+        WindowStartupLocation="CenterOwner" WindowState="Maximized" ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style x:Key="WrappedGridText" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+
+        <Style x:Key="GridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="6,0"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#1F2D40" CornerRadius="12" Padding="16" Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock x:Name="txtInvestigationTitle" Text="QUALITY EVENT INVESTIGATION"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="White"/>
+                    <TextBlock x:Name="txtInvestigationSubtitle" Text="Water / Environmental Monitoring - OOS / OOAL / OOAC / OOGL / OOT / INV workflow"
+                               FontSize="12"
+                               Foreground="#C9D6E6"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <Border Grid.Column="1"
+                        Background="#DBEAFE"
+                        CornerRadius="10"
+                        Padding="12,6"
+                        VerticalAlignment="Center">
+                    <TextBlock x:Name="lblHeaderStatus"
+                               Text="Open"
+                               Foreground="#1E3A8A"
+                               FontWeight="Bold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Event Metadata -->
+        <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="32"/>
+                    <RowDefinition Height="32"/>
+                    <RowDefinition Height="32"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Event Number:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <TextBlock x:Name="lblEventNumber" Grid.Row="0" Grid.Column="1" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
+
+                <TextBlock Text="Event Type:" Grid.Row="0" Grid.Column="2" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <TextBlock x:Name="lblEventType" Grid.Row="0" Grid.Column="3" FontWeight="Bold" VerticalAlignment="Center"/>
+
+                <TextBlock Text="Severity:" Grid.Row="0" Grid.Column="4" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <ComboBox x:Name="cboSeverity" Grid.Row="0" Grid.Column="5">
+                    <ComboBoxItem Content="Minor"/>
+                    <ComboBoxItem Content="Major"/>
+                    <ComboBoxItem Content="Critical"/>
+                </ComboBox>
+
+                <TextBlock Text="Sample Number:" Grid.Row="1" Grid.Column="0" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <TextBlock x:Name="lblSampleNumber" Grid.Row="1" Grid.Column="1" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
+
+                <TextBlock Text="Detected By:" Grid.Row="1" Grid.Column="2" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <TextBlock x:Name="lblDetectedBy" Grid.Row="1" Grid.Column="3" VerticalAlignment="Center"/>
+
+                <TextBlock Text="Detected Date:" Grid.Row="1" Grid.Column="4" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <TextBlock x:Name="lblDetectedDate" Grid.Row="1" Grid.Column="5" FontFamily="Consolas" VerticalAlignment="Center"/>
+
+                <TextBlock Text="Source:" Grid.Row="2" Grid.Column="0" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <TextBlock x:Name="lblDetectionSource" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+
+                <TextBlock Text="Final Disposition:" Grid.Row="2" Grid.Column="2" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center"/>
+                <ComboBox x:Name="cboFinalDisposition" Grid.Row="2" Grid.Column="3">
+                    <ComboBoxItem Content=""/>
+                    <ComboBoxItem Content="Accept with Justification"/>
+                    <ComboBoxItem Content="Reject"/>
+                    <ComboBoxItem Content="Retest Approved"/>
+                    <ComboBoxItem Content="Resample Approved"/>
+                    <ComboBoxItem Content="System Corrected / Monitoring Required"/>
+                    <ComboBoxItem Content="Area Released after Corrective Action"/>
+                </ComboBox>
+
+                <CheckBox x:Name="chkCAPARequired"
+                          Grid.Row="2"
+                          Grid.Column="4"
+                          Grid.ColumnSpan="2"
+                          Content="CAPA Required"
+                          VerticalAlignment="Center"
+                          FontWeight="SemiBold"/>
+            </Grid>
+        </Border>
+
+        <!-- Body -->
+        <TabControl Grid.Row="2"
+                    Background="White"
+                    BorderBrush="#E2E8F0"
+                    BorderThickness="1"
+                    Padding="2">
+
+            <!-- 1 Classification -->
+            <TabItem x:Name="tabClassification" Header="1. Classification">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <Grid Margin="14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Deviation Type:" FontWeight="Bold" Foreground="#334155" Margin="0,0,8,8"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ElementName=lblEventType, Path=Text}" TextWrapping="Wrap" Margin="0,0,12,8"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Detection Source:" FontWeight="Bold" Foreground="#334155" Margin="0,0,8,8"/>
+                                <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding ElementName=lblDetectionSource, Path=Text}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Workflow:" FontWeight="Bold" Foreground="#334155" Margin="0,0,8,0"/>
+                                <TextBlock x:Name="txtWorkflowSummary" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                           Text="Phase I Laboratory → Phase II Water/EM System Review → Root Cause → Impact → CAPA → QA Closure"
+                                           TextWrapping="Wrap"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Initial Description:" FontWeight="Bold" Foreground="#334155" Margin="0,0,8,8"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtInitialDescription" Height="105" Margin="0,0,0,10"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Immediate Action:" FontWeight="Bold" Foreground="#334155" Margin="0,0,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtImmediateAction" Height="105"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2"
+                                Background="#EFF6FF"
+                                BorderBrush="#BFDBFE"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12">
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="#1E3A8A"
+                                       Text="System rule: any water or environmental monitoring result above alert/action/specification level remains controlled by Quality Event workflow until QA disposition and closure are completed."/>
+                        </Border>
+
+                        <Border x:Name="pnlEmContext" Grid.Row="3" Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="145"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="145"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4"
+                                           Text="Environmental Monitoring Event Context" FontSize="15" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Area / Grade:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,6"/>
+                                <TextBlock x:Name="lblEmAreaGrade" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" Margin="0,0,12,6"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Plan / Category:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,6"/>
+                                <TextBlock x:Name="lblEmPlanCategory" Grid.Row="1" Grid.Column="3" TextWrapping="Wrap" Margin="0,0,0,6"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Sampling / Activity:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,6"/>
+                                <TextBlock x:Name="lblEmSamplingActivity" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" Margin="0,0,12,6"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="Media / Controls:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,6"/>
+                                <TextBlock x:Name="lblEmMediaControls" Grid.Row="2" Grid.Column="3" TextWrapping="Wrap" Margin="0,0,0,6"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Cleaning / HVAC:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,6"/>
+                                <TextBlock x:Name="lblEmCleaningFacility" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" Margin="0,0,12,6"/>
+                                <TextBlock Grid.Row="3" Grid.Column="2" Text="Incubation:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,6"/>
+                                <TextBlock x:Name="lblEmIncubation" Grid.Row="3" Grid.Column="3" TextWrapping="Wrap" Margin="0,0,0,6"/>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Product / Personnel:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,8,0"/>
+                                <TextBlock x:Name="lblEmProductPersonnel" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" TextWrapping="Wrap"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 2 Phase I -->
+            <TabItem x:Name="tabPhaseI" Header="2. Phase I - Laboratory">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0"
+                            Background="#F8FAFC"
+                            BorderBrush="#D8E1EC"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10"
+                            Margin="0,0,0,8">
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="#334155"
+                                   Text="Phase I covers analyst interview, sampling/testing procedure, sample integrity, media/reagents, equipment/calibration, incubation, controls, raw data, calculations, and audit trail review."/>
+                    </Border>
+
+                    <DataGrid x:Name="dgChecklist"
+                              Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              RowHeight="38"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="All"
+                              BorderBrush="#E2E8F0"
+                              BorderThickness="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              CellStyle="{StaticResource GridCellStyle}"
+                              CellEditEnding="InvestigationGrid_CellEditEnding"
+                              PreparingCellForEdit="InvestigationGrid_PreparingCellForEdit">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Section"
+                                                Binding="{Binding SectionName}"
+                                                IsReadOnly="True"
+                                                Width="220"
+                                                ElementStyle="{StaticResource WrappedGridText}"/>
+
+                            <DataGridTextColumn Header="Checklist Question"
+                                                Binding="{Binding QuestionText}"
+                                                IsReadOnly="True"
+                                                Width="3.2*"
+                                                ElementStyle="{StaticResource WrappedGridText}"/>
+
+                            <DataGridComboBoxColumn Header="Answer"
+                                                    SelectedItemBinding="{Binding AnswerValue, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="100">
+                                <DataGridComboBoxColumn.ItemsSource>
+                                    <x:Array Type="{x:Type sys:String}">
+                                        <sys:String>Yes</sys:String>
+                                        <sys:String>No</sys:String>
+                                        <sys:String>N/A</sys:String>
+                                    </x:Array>
+                                </DataGridComboBoxColumn.ItemsSource>
+                            </DataGridComboBoxColumn>
+
+                            <DataGridTextColumn Header="Comments / Evidence"
+                                                Binding="{Binding Comments, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="1.8*"
+                                                ElementStyle="{StaticResource WrappedGridText}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 3 Phase II -->
+            <TabItem x:Name="tabPhaseII" Header="3. Phase II - Water / EM Review">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.05*"/>
+                        <ColumnDefinition Width="1.2*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,0,10,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Affected Results" FontSize="15" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,8"/>
+                            <DataGrid x:Name="dgAffectedResults"
+                                      Grid.Row="1"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      BorderBrush="#E2E8F0"
+                                      BorderThickness="1"
+                                      Margin="0,0,0,10"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      CellStyle="{StaticResource GridCellStyle}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Test" Binding="{Binding TestName}" Width="*" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="Result" Binding="{Binding ResultValue}" Width="90" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="Limit" Binding="{Binding SpecificationLimit}" Width="150" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="70" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="Type" Binding="{Binding FailureType}" Width="90" ElementStyle="{StaticResource WrappedGridText}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Grid.Row="2" Text="Action History" FontSize="15" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,8"/>
+                            <DataGrid x:Name="dgActions"
+                                      Grid.Row="3"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      BorderBrush="#E2E8F0"
+                                      BorderThickness="1"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      CellStyle="{StaticResource GridCellStyle}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Action" Binding="{Binding ActionType}" Width="130" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="Description" Binding="{Binding ActionDescription}" Width="*" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="By" Binding="{Binding PerformedBy}" Width="100" ElementStyle="{StaticResource WrappedGridText}"/>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding PerformedDate}" Width="145" ElementStyle="{StaticResource WrappedGridText}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock x:Name="txtPhaseIIScopeTitle" Text="Water / EM Technical Review Scope"
+                                           FontSize="15"
+                                           FontWeight="Bold"
+                                           Foreground="#0F172A"
+                                           Margin="0,0,0,8"/>
+                                <TextBlock x:Name="txtPhaseIIScopeText" TextWrapping="Wrap"
+                                           Margin="0,0,0,14"
+                                           Text="Review the applicable system, sampling, method, equipment, controls, trend, and impact evidence for the event."/>
+
+                                <Border x:Name="pnlEmRequiredEvidence" Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,14" Visibility="Collapsed">
+                                    <TextBlock TextWrapping="Wrap" Foreground="#166534"
+                                               Text="EM closure evidence must address: event/area/grade and monitoring method; media/GPT and controls; incubation; cleaning/disinfection; HVAC/facility and activity conditions; personnel where relevant; organism identification; adjacent/historical trend; product/material/batch impact; follow-up monitoring; CAPA/effectiveness plan; and final QA area disposition."/>
+                                </Border>
+
+                                <TextBlock Text="Investigation Update / CAPA Notes"
+                                           FontWeight="SemiBold"
+                                           Foreground="#334155"
+                                           Margin="0,8,0,4"/>
+                                <TextBox x:Name="txtActionNote"
+                                         Height="150"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- 4 Root Cause -->
+            <TabItem x:Name="tabRootCause" Header="4. Root Cause">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="140"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="Root Cause Category"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox x:Name="cboRootCauseCategory" Grid.Column="1">
+                            <ComboBoxItem Content=""/>
+                            <ComboBoxItem Content="Type-A Personnel Error"/>
+                            <ComboBoxItem Content="Type-B Instrument Error"/>
+                            <ComboBoxItem Content="Type-C Procedural Error"/>
+                            <ComboBoxItem Content="Type-D Other Error"/>
+                            <ComboBoxItem Content="Type-E Non-Assignable Cause"/>
+                            <ComboBoxItem Content="Type-F Product/System Failure"/>
+                            <ComboBoxItem Content="Type-G Outsourced Material/Service Failure"/>
+                            <ComboBoxItem Content="Sampling Error"/>
+                            <ComboBoxItem Content="Environment / Utility"/>
+                            <ComboBoxItem Content="No Assignable Cause"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <TextBlock x:Name="txtRootCauseGuidance" Grid.Row="1" Margin="0,0,0,6" TextWrapping="Wrap" Foreground="#475569"
+                               Text="Document the confirmed or most probable cause using evidence. For EM, distinguish laboratory/sampling error from facility, cleaning/disinfection, HVAC, personnel, activity, method, media, and recurring-system contributors."/>
+
+                    <TextBox x:Name="txtRootCauseDetails"
+                             Grid.Row="2"
+                             Margin="0,0,0,10"/>
+
+                    <DataGrid x:Name="dgRootCauseWhys"
+                              Grid.Row="3"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="True"
+                              CanUserDeleteRows="True"
+                              BorderBrush="#E2E8F0"
+                              BorderThickness="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              CellStyle="{StaticResource GridCellStyle}"
+                              CellEditEnding="InvestigationGrid_CellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding WhyLevel}" Width="55"/>
+                            <DataGridTextColumn Header="Why Question" Binding="{Binding Question, UpdateSourceTrigger=PropertyChanged}" Width="2*" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Answer / Evidence" Binding="{Binding Answer, UpdateSourceTrigger=PropertyChanged}" Width="3*" ElementStyle="{StaticResource WrappedGridText}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 5 Impact Assessment -->
+            <TabItem x:Name="tabImpactAssessment" Header="5. Impact Assessment">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="150"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="txtImpactGuidance" Grid.Row="0" Margin="0,0,0,6" TextWrapping="Wrap" Foreground="#475569"
+                               Text="Assess impact on the monitored area/state of control, adjacent locations, product/material/batch exposure, personnel/activity, facility/HVAC, and historical microbiological trend."/>
+
+                    <TextBox x:Name="txtImpactAssessment"
+                             Grid.Row="1"
+                             Margin="0,0,0,10"/>
+
+                    <DataGrid x:Name="dgImpactAssessment"
+                              Grid.Row="2"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="True"
+                              CanUserDeleteRows="True"
+                              BorderBrush="#E2E8F0"
+                              BorderThickness="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              CellStyle="{StaticResource GridCellStyle}"
+                              CellEditEnding="InvestigationGrid_CellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Assessment Area" Binding="{Binding AssessmentArea, UpdateSourceTrigger=PropertyChanged}" Width="220" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Finding" Binding="{Binding Finding, UpdateSourceTrigger=PropertyChanged}" Width="3*" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridComboBoxColumn Header="Impact Status" SelectedItemBinding="{Binding ImpactStatus, UpdateSourceTrigger=PropertyChanged}" Width="190">
+                                <DataGridComboBoxColumn.ItemsSource>
+                                    <x:Array Type="{x:Type sys:String}">
+                                        <sys:String>No Impact</sys:String>
+                                        <sys:String>Potential Impact</sys:String>
+                                        <sys:String>Confirmed Impact</sys:String>
+                                        <sys:String>Controlled / Acceptable</sys:String>
+                                        <sys:String>Not Applicable</sys:String>
+                                    </x:Array>
+                                </DataGridComboBoxColumn.ItemsSource>
+                            </DataGridComboBoxColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 6 Retesting -->
+            <TabItem x:Name="tabRetesting" Header="6. Retesting Strategy">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#F8FAFC" BorderBrush="#D8E1EC" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                        <TextBlock x:Name="txtFollowUpGuidance" TextWrapping="Wrap" Foreground="#334155"
+                                   Text="Document any justified retest/resample or follow-up monitoring. The original excursion is never invalidated merely by a passing repeat result; document the scientific purpose and how follow-up evidence contributes to disposition."/>
+                    </Border>
+                    <DataGrid x:Name="dgRetesting" Grid.Row="1"
+                              AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                              BorderBrush="#E2E8F0" BorderThickness="1" HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto" CellStyle="{StaticResource GridCellStyle}"
+                              CellEditEnding="InvestigationGrid_CellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridComboBoxColumn Header="Follow-up Performed" SelectedItemBinding="{Binding RetestPerformed, UpdateSourceTrigger=PropertyChanged}" Width="165">
+                                <DataGridComboBoxColumn.ItemsSource>
+                                    <x:Array Type="{x:Type sys:String}">
+                                        <sys:String>Yes</sys:String>
+                                        <sys:String>No</sys:String>
+                                    </x:Array>
+                                </DataGridComboBoxColumn.ItemsSource>
+                            </DataGridComboBoxColumn>
+                            <DataGridTextColumn Header="Point / Plate / Sample" Binding="{Binding SampleAliquot, UpdateSourceTrigger=PropertyChanged}" Width="180" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Performed By" Binding="{Binding Analyst, UpdateSourceTrigger=PropertyChanged}" Width="140"/>
+                            <DataGridTextColumn Header="Follow-up Result" Binding="{Binding RetestResult, UpdateSourceTrigger=PropertyChanged}" Width="170" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Rationale / Justification" Binding="{Binding Justification, UpdateSourceTrigger=PropertyChanged}" Width="280" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Scientific Basis / Acceptance Criteria" Binding="{Binding ScientificBasis, UpdateSourceTrigger=PropertyChanged}" Width="300" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Use in QA Disposition (Narrative)" Binding="{Binding DispositionUse, UpdateSourceTrigger=PropertyChanged}" Width="280" ElementStyle="{StaticResource WrappedGridText}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 7 CAPA -->
+            <TabItem x:Name="tabCAPA" Header="7. CAPA Plan">
+                <DataGrid x:Name="dgCAPAItems"
+                          Margin="10"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="True"
+                          CanUserDeleteRows="True"
+                          BorderBrush="#E2E8F0"
+                          BorderThickness="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          CellStyle="{StaticResource GridCellStyle}"
+                              CellEditEnding="InvestigationGrid_CellEditEnding">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Action Description" Binding="{Binding ActionDescription, UpdateSourceTrigger=PropertyChanged}" Width="320" ElementStyle="{StaticResource WrappedGridText}"/>
+                        <DataGridComboBoxColumn Header="Type" SelectedItemBinding="{Binding ActionType, UpdateSourceTrigger=PropertyChanged}" Width="120">
+                            <DataGridComboBoxColumn.ItemsSource>
+                                <x:Array Type="{x:Type sys:String}">
+                                    <sys:String>Corrective</sys:String>
+                                    <sys:String>Preventive</sys:String>
+                                </x:Array>
+                            </DataGridComboBoxColumn.ItemsSource>
+                        </DataGridComboBoxColumn>
+                        <DataGridTextColumn Header="Responsible" Binding="{Binding Responsible, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+                        <DataGridTextColumn Header="Due Date (YYYY-MM-DD)" Binding="{Binding DueDate, UpdateSourceTrigger=PropertyChanged}" Width="165"/>
+                        <DataGridTextColumn Header="Effectiveness Check" Binding="{Binding EffectivenessCheck, UpdateSourceTrigger=PropertyChanged}" Width="260" ElementStyle="{StaticResource WrappedGridText}"/>
+                        <DataGridComboBoxColumn Header="Status" SelectedItemBinding="{Binding CAPAStatus, UpdateSourceTrigger=PropertyChanged}" Width="170">
+                            <DataGridComboBoxColumn.ItemsSource>
+                                <x:Array Type="{x:Type sys:String}">
+                                    <sys:String>Open</sys:String>
+                                    <sys:String>In Progress</sys:String>
+                                    <sys:String>Implemented</sys:String>
+                                    <sys:String>Effectiveness Pending</sys:String>
+                                    <sys:String>Effectiveness Verified</sys:String>
+                                    <sys:String>Closed</sys:String>
+                                </x:Array>
+                            </DataGridComboBoxColumn.ItemsSource>
+                        </DataGridComboBoxColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- 8 QA Closure -->
+            <TabItem x:Name="tabQAClosure" Header="8. QA Closure">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="170"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                        <TextBlock x:Name="txtQAClosureGuidance" TextWrapping="Wrap" Foreground="#9A3412"
+                                   Text="QA conclusion must summarize the excursion, confirmed/most probable root cause, area and product/material impact, follow-up evidence, CAPA status/effectiveness plan, and the scientific basis for final disposition."/>
+                    </Border>
+
+                    <TextBox x:Name="txtQAConclusion"
+                             Grid.Row="1"
+                             Margin="0,0,0,10"/>
+
+                    <DataGrid x:Name="dgDistribution"
+                              Grid.Row="2"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="True"
+                              CanUserDeleteRows="True"
+                              BorderBrush="#E2E8F0"
+                              BorderThickness="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              CellStyle="{StaticResource GridCellStyle}"
+                              CellEditEnding="InvestigationGrid_CellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Department" Binding="{Binding Department, UpdateSourceTrigger=PropertyChanged}" Width="220" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Recipient" Binding="{Binding Recipient, UpdateSourceTrigger=PropertyChanged}" Width="220" ElementStyle="{StaticResource WrappedGridText}"/>
+                            <DataGridTextColumn Header="Date Received (YYYY-MM-DD)" Binding="{Binding DateReceived, UpdateSourceTrigger=PropertyChanged}" Width="185"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Buttons -->
+        <Border Grid.Row="3" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="12">
+            <DockPanel>
+                <TextBlock x:Name="lblStatus"
+                           Text="Ready"
+                           Foreground="#64748B"
+                           VerticalAlignment="Center"
+                           DockPanel.Dock="Left"/>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnSave"
+                            Content="Save Investigation"
+                            Click="BtnSave_Click"
+                            Background="#16A34A"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Button x:Name="BtnSubmitQA"
+                            Content="Submit to QA"
+                            Click="BtnSubmitQA_Click"
+                            Background="#EA580C"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Button x:Name="BtnCloseEvent"
+                            Content="QA Close Event"
+                            Click="BtnCloseEvent_Click"
+                            Background="#7C3AED"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Button x:Name="BtnPrintReport"
+                            Content="Print Report"
+                            Click="BtnPrintReport_Click"
+                            Background="#0284C7"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Button x:Name="BtnCloseWindow"
+                            Content="Close"
+                            Click="BtnCloseWindow_Click"
+                            Background="#64748B"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

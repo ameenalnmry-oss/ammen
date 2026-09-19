@@ -1,0 +1,979 @@
+﻿<Window x:Class="PharmaLIMS.CultureMediaPreparation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PharmaLIMS"
+        xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
+        Title="Culture Media Management" Height="820" Width="1366"
+        MinHeight="680" MinWidth="1024"
+        WindowState="Maximized"
+        ResizeMode="CanResizeWithGrip"
+        infra:WindowUsability.EnableResponsiveEntry="True"
+        WindowStartupLocation="CenterScreen"
+        Background="#F4F7FB">
+    <Window.Resources>
+        <local:StatusToColorConverter x:Key="StatusToColorConverter" />
+        <local:ResultToColorConverter x:Key="ResultToColorConverter" />
+        <local:ExpiryWarningConverter x:Key="ExpiryWarningConverter" />
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="BorderBrush" Value="#E2E8F0" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="MinWidth" Value="105" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="BorderBrush" Value="#2563EB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="Background" Value="#E2E8F0" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#0F172A" />
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Margin" Value="0,4,10,10" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Margin" Value="0,4,10,10" />
+            <Setter Property="Padding" Value="6,0" />
+        </Style>
+
+        <Style TargetType="DatePicker">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Margin" Value="0,4,10,10" />
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False" />
+            <Setter Property="CanUserAddRows" Value="False" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFC" />
+            <Setter Property="RowBackground" Value="White" />
+            <Setter Property="BorderBrush" Value="#E2E8F0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="SelectionMode" Value="Single" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="68" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="28" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#0F172A" Padding="14,8">
+            <DockPanel LastChildFill="True">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <TextBlock Text="Status: " Foreground="#CBD5E1" VerticalAlignment="Center" />
+                    <TextBlock x:Name="TxtHeaderStatus" Text="Ready" Foreground="#86EFAC" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Click="BtnRefresh_Click" />
+                    <Button Content="Close" Style="{StaticResource SecondaryButton}" Click="BtnClose_Click" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Culture Media Management" Foreground="White" FontSize="22" FontWeight="Bold" />
+                    <TextBlock Text="Receipt → Coding &amp; Storage → Growth Promotion / Release → Preparation → Use" Foreground="#CBD5E1" FontSize="13" Margin="0,4,0,0" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Body -->
+        <Grid Grid.Row="1" Margin="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <DockPanel Grid.Column="0" LastChildFill="True">
+                <Border Style="{StaticResource Card}" DockPanel.Dock="Top">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="170" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0" Margin="0,0,10,0">
+                            <TextBox x:Name="txtGlobalSearch" Height="36" TextChanged="txtGlobalSearch_TextChanged" />
+                            <TextBlock x:Name="txtSearchPlaceholder" Text="Search media code, media name, lot number, supplier..." Foreground="#94A3B8" Margin="10,10,0,0" IsHitTestVisible="False" />
+                        </Grid>
+
+                        <ComboBox x:Name="cboFilterStatus" Grid.Column="1" SelectionChanged="CboFilter_SelectionChanged">
+                            <ComboBoxItem Content="All Status" Tag="All" IsSelected="True" />
+                            <ComboBoxItem Content="Quarantine" Tag="Quarantine" />
+                            <ComboBoxItem Content="Released" Tag="Released" />
+                            <ComboBoxItem Content="Rejected" Tag="Rejected" />
+                        </ComboBox>
+
+                        <ComboBox x:Name="cboFilterMedia" Grid.Column="2" SelectionChanged="CboFilter_SelectionChanged" />
+                    </Grid>
+                </Border>
+
+                <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="0,0,0,14">
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Text="Total Lots" Foreground="#64748B" />
+                            <TextBlock x:Name="lblTotalBatches" Text="0" FontSize="26" FontWeight="Bold" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Text="Released" Foreground="#64748B" />
+                            <TextBlock x:Name="lblReleased" Text="0" FontSize="26" FontWeight="Bold" Foreground="#16A34A" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Text="Quarantine" Foreground="#64748B" />
+                            <TextBlock x:Name="lblQuarantine" Text="0" FontSize="26" FontWeight="Bold" Foreground="#F59E0B" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Text="Rejected" Foreground="#64748B" />
+                            <TextBlock x:Name="lblRejected" Text="0" FontSize="26" FontWeight="Bold" Foreground="#DC2626" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0">
+                        <StackPanel>
+                            <TextBlock Text="Expiring Soon" Foreground="#64748B" />
+                            <TextBlock x:Name="lblExpiring" Text="0" FontSize="26" FontWeight="Bold" Foreground="#EA580C" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <TabControl>
+                    <!-- Receipt tab -->
+                    <TabItem Header="Media Receipt &amp; Storage">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0">
+                                        <TextBlock Text="Media Code *" />
+                                        <TextBox x:Name="TxtReceiptMediaCode" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1">
+                                        <TextBlock Text="Media Name *" />
+                                        <TextBox x:Name="TxtReceiptMediaName" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="2">
+                                        <TextBlock Text="Media Type" />
+                                        <TextBox x:Name="TxtReceiptMediaType" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="3">
+                                        <TextBlock Text="Storage Condition" />
+                                        <TextBox x:Name="TxtReceiptStorageCondition" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="0">
+                                        <TextBlock Text="Supplier" />
+                                        <TextBox x:Name="TxtReceiptSupplier" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="1">
+                                        <TextBlock Text="Manufacturer Lot No. *" />
+                                        <TextBox x:Name="TxtReceiptSupplierLot" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="2">
+                                        <TextBlock Text="COA Number" />
+                                        <TextBox x:Name="TxtReceiptCOA" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="3">
+                                        <TextBlock Text="Quantity Received (g) *" />
+                                        <TextBox x:Name="TxtReceiptQuantity" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2" Grid.Column="0">
+                                        <TextBlock Text="Received Date *" />
+                                        <DatePicker x:Name="DpReceiptDate" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="1">
+                                        <TextBlock Text="Expiry Date" />
+                                        <DatePicker x:Name="DpReceiptExpiry" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2">
+                                        <TextBlock Text="Receipt Status (Auto)" />
+                                        <ComboBox x:Name="CmbReceiptStatus" IsEnabled="False" ToolTip="New lots are always saved as Quarantine. Release is controlled only by GPT / lot qualification.">
+                                            <ComboBoxItem Content="Quarantine" />
+                                            <ComboBoxItem Content="Released" />
+                                            <ComboBoxItem Content="Accepted" />
+                                            <ComboBoxItem Content="Rejected" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <WrapPanel Grid.Row="2" Grid.Column="3" VerticalAlignment="Bottom">
+                                        <Button Content="New Receipt" Style="{StaticResource SecondaryButton}" Click="BtnNewReceipt_Click" />
+                                        <Button Content="Save Receipt" Style="{StaticResource PrimaryButton}" Click="BtnSaveReceipt_Click" />
+                                        <Button Content="Edit Selected" Style="{StaticResource SecondaryButton}" Click="BtnEditLot_Click" />
+                                        <Button Content="Reconcile Stock" Style="{StaticResource SecondaryButton}" Click="BtnReconcileStock_Click" ToolTip="Record a controlled physical-count reconciliation with electronic signature." />
+                                        <Button Content="Stock Label" Style="{StaticResource SecondaryButton}" Click="BtnPrintReceipt_Click" />
+                                    </WrapPanel>
+
+                                    <GroupBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Header="SOP A2 / A4 Receipt and Stock Reconciliation" Margin="0,12,0,0">
+                                        <Grid Margin="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <StackPanel Grid.Row="0" Grid.Column="0">
+                                                <TextBlock Text="Serial No. of Medium" />
+                                                <TextBox x:Name="TxtReceiptSerialNo" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="1">
+                                                <TextBlock Text="MPM No." />
+                                                <TextBox x:Name="TxtReceiptMpmNo" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="2">
+                                                <TextBlock Text="Pack No." />
+                                                <TextBox x:Name="TxtReceiptPackNo" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="3">
+                                                <TextBlock Text="Total Packs Received" />
+                                                <TextBox x:Name="TxtReceiptTotalPacks" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="0">
+                                                <TextBlock Text="Date of Opening" />
+                                                <DatePicker x:Name="DpReceiptOpeningDate" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="1">
+                                                <TextBlock Text="Date of Release of Lot" />
+                                                <DatePicker x:Name="DpReceiptLotReleaseDate" IsEnabled="False" ToolTip="System-controlled from Final Release using SQL Server time." />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="2">
+                                                <TextBlock Text="Pack Size" />
+                                                <TextBox x:Name="TxtReceiptPackSize" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="3">
+                                                <TextBlock Text="Current Stock (g) (Auto)" />
+                                                <TextBox x:Name="TxtReceiptInitialBalance" IsReadOnly="True" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </GroupBox>
+                                </Grid>
+                            </Border>
+
+                            <DataGrid x:Name="DgReceipts" Grid.Row="1"
+                                      SelectionChanged="DgReceipts_SelectionChanged"
+                                      MouseDoubleClick="DgReceipts_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Media Code" Binding="{Binding MediaCode}" Width="100" />
+                                    <DataGridTextColumn Header="Media Name" Binding="{Binding MediaName}" Width="220" />
+                                    <DataGridTextColumn Header="Type" Binding="{Binding MediaType}" Width="120" />
+                                    <DataGridTextColumn Header="Manufacturer Lot No." Binding="{Binding LotNumber}" Width="150" />
+                                    <DataGridTextColumn Header="Supplier" Binding="{Binding Supplier}" Width="140" />
+                                    <DataGridTextColumn Header="Received" Binding="{Binding ReceivedDateText}" Width="110" />
+                                    <DataGridTextColumn Header="Expiry" Binding="{Binding ExpiryDateText}" Width="110" />
+                                    <DataGridTextColumn Header="Quantity" Binding="{Binding QuantityReceived}" Width="100" />
+                                    <DataGridTextColumn Header="Current Stock (g)" Binding="{Binding CurrentStockG, StringFormat=0.###}" Width="125" />
+                                    <DataGridTextColumn Header="COA" Binding="{Binding COANumber}" Width="120" />
+                                    <DataGridTemplateColumn Header="Status" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{Binding ReceiptStatus, Converter={StaticResource StatusToColorConverter}}" CornerRadius="8" Padding="8,3">
+                                                    <TextBlock Text="{Binding DisplayReceiptStatus}" Foreground="White" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Release tab -->
+                    <TabItem Header="Growth Promotion / Lot Release">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      CanContentScroll="False">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                                            <TextBlock Text="Media Lot to Release *" FontWeight="SemiBold" Margin="0,0,0,5" />
+                                            <ComboBox x:Name="CmbReleaseMediaLot"
+                                                  Height="36"
+                                                  IsEditable="False"
+                                                  SelectionChanged="CmbReleaseMediaLot_SelectionChanged" />
+                                            <TextBlock x:Name="TxtReleaseNextAction"
+                                                   Text="Select a media lot to start release qualification."
+                                                   Foreground="#475569"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,4,0,0" />
+                                            <TextBox x:Name="TxtReleaseChecklist"
+                                                 IsReadOnly="True"
+                                                 Height="78"
+                                                 Margin="0,8,0,0"
+                                                 Padding="8"
+                                                 TextWrapping="Wrap"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 Background="#F8FAFC"
+                                                 BorderBrush="#CBD5E1"
+                                                 Text="Release Gate Checklist will appear after selecting a media lot." />
+                                        </StackPanel>
+                                        <WrapPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                            <Button Content="Load Selected Lot" MinWidth="130" Style="{StaticResource SecondaryButton}" Click="BtnTestLot_Click" />
+                                            <Button Content="QA Confirm Timing" MinWidth="135" Style="{StaticResource SecondaryButton}" Click="BtnConfirmQualificationTiming_Click" ToolTip="Electronically confirms the current approved Minimum Incubation Hours before Production qualification can use them." />
+                                            <Button Content="Start Qualification" MinWidth="135" Style="{StaticResource PrimaryButton}" Click="BtnStartQualification_Click" />
+                                            <Button Content="Complete Qualification" MinWidth="150" Style="{StaticResource PrimaryButton}" Click="BtnSaveRelease_Click" />
+                                            <Button Content="Independent Review" MinWidth="135" Style="{StaticResource SecondaryButton}" Click="BtnReviewQualification_Click" />
+                                            <Button Content="Final Release" MinWidth="115" Style="{StaticResource PrimaryButton}" Click="BtnFinalizeLotRelease_Click" />
+                                            <Button Content="Reject Lot" MinWidth="100" Style="{StaticResource SecondaryButton}" Click="BtnRejectLot_Click" />
+                                            <Button Content="Released Label" MinWidth="115" Style="{StaticResource SecondaryButton}" Click="BtnPrintReleasedLabel_Click" />
+                                            <Button Content="Qualification Report" MinWidth="135" Style="{StaticResource SecondaryButton}" Click="BtnPrintReleaseReport_Click" />
+                                        </WrapPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Row="2" Style="{StaticResource Card}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="0">
+                                            <TextBlock Text="Report No." />
+                                            <TextBox x:Name="TxtReleaseReportNo" IsReadOnly="True" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1">
+                                            <TextBlock Text="Source / Preparation No." />
+                                            <TextBox x:Name="TxtRelPrepNo" IsReadOnly="True" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="2">
+                                            <TextBlock Text="Media" />
+                                            <TextBox x:Name="TxtRelMediaName" IsReadOnly="True" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="3">
+                                            <TextBlock Text="Lot No." />
+                                            <TextBox x:Name="TxtRelLotNo" IsReadOnly="True" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0">
+                                            <TextBlock Text="COA / pH Reference" />
+                                            <TextBox x:Name="TxtRelPH" IsReadOnly="True" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1">
+                                            <TextBlock Text="Current Status" />
+                                            <TextBox x:Name="TxtRelStatus" IsReadOnly="True" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="2">
+                                            <TextBlock Text="Test Date (DB-controlled)" />
+                                            <DatePicker x:Name="DpReleaseDate" IsEnabled="False" ToolTip="Recorded from SQL Server time by the controlled qualification workflow." />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="3">
+                                            <TextBlock Text="Overall Result" />
+                                            <ComboBox x:Name="CmbOverallResult" IsEnabled="False" ToolTip="Calculated automatically from qualification test results.">
+                                                <ComboBoxItem Content="Pending" />
+                                                <ComboBoxItem Content="Pass" />
+                                                <ComboBoxItem Content="Fail" />
+                                            </ComboBox>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2" Grid.Column="0">
+                                            <TextBlock Text="Performed By *" />
+                                            <TextBox x:Name="TxtReleasePerformedBy" IsReadOnly="True" ToolTip="Populated from the authenticated qualification-performance electronic signature." />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1">
+                                            <TextBlock Text="Reviewed By" />
+                                            <TextBox x:Name="TxtReleaseReviewedBy" IsReadOnly="True" ToolTip="Populated by the authenticated review/release signature." />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2">
+                                            <TextBlock Text="Release Remarks" />
+                                            <TextBox x:Name="TxtReleaseRemarks" />
+                                        </StackPanel>
+
+                                        <GroupBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Header="SOP A5 / A8 pH, GPT, Indicative, Inhibitory and Preincubation" Margin="0,12,0,0">
+                                            <Grid Margin="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <StackPanel Grid.Row="0" Grid.Column="0">
+                                                    <TextBlock Text="AR No." />
+                                                    <TextBox x:Name="TxtReleaseArNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="1">
+                                                    <TextBlock Text="Bottle No. / Pack Identity" />
+                                                    <TextBox x:Name="TxtReleaseBottleNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="2">
+                                                    <TextBlock Text="pH of Media" />
+                                                    <TextBox x:Name="TxtReleaseMediaPh" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="3">
+                                                    <TextBlock Text="pH Adjustment" />
+                                                    <ComboBox x:Name="CmbReleasePhAdjustment">
+                                                        <ComboBoxItem Content="Not Adjusted" IsSelected="True" />
+                                                        <ComboBoxItem Content="Adjusted" />
+                                                        <ComboBoxItem Content="NA" />
+                                                    </ComboBox>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="0">
+                                                    <TextBlock Text="Bacterial Dilution AR No." />
+                                                    <TextBox x:Name="TxtReleaseBacterialDilutionArNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="1">
+                                                    <TextBlock Text="Fungal Dilution AR No." />
+                                                    <TextBox x:Name="TxtReleaseFungalDilutionArNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="2">
+                                                    <TextBlock Text="Anaerobic Jar No." />
+                                                    <TextBox x:Name="TxtReleaseAnaerobicJarNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="3">
+                                                    <TextBlock Text="Conclusion" />
+                                                    <ComboBox x:Name="CmbReleaseConclusion">
+                                                        <ComboBoxItem Content="Satisfactory" IsSelected="True" />
+                                                        <ComboBoxItem Content="Not Satisfactory" />
+                                                        <ComboBoxItem Content="Investigation Required" />
+                                                    </ComboBox>
+                                                </StackPanel>
+                                            </Grid>
+                                        </GroupBox>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Row="1" Style="{StaticResource Card}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4"
+                                               Text="Add Organism / SOP Check"
+                                               FontWeight="SemiBold"
+                                               Foreground="#334155"
+                                               Margin="0,0,0,8" />
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0">
+                                            <TextBlock Text="SOP Test Type" />
+                                            <ComboBox x:Name="CmbReleaseTestType" SelectionChanged="CmbReleaseTestType_SelectionChanged">
+                                                <ComboBoxItem Content="Growth Promotion" IsSelected="True" />
+                                                <ComboBoxItem Content="Indicative Property" />
+                                                <ComboBoxItem Content="Inhibitory Property" />
+                                                <ComboBoxItem Content="pH Check" />
+                                                <ComboBoxItem Content="Preincubation Check" />
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1">
+                                            <TextBlock x:Name="LblReleaseOrganism" Text="Organism / Check" />
+                                            <ComboBox x:Name="CmbOrganism" IsEditable="True" SelectionChanged="CmbOrganism_SelectionChanged">
+                                                <ComboBoxItem Content="Staphylococcus aureus" Tag="ATCC 6538" />
+                                                <ComboBoxItem Content="Pseudomonas aeruginosa" Tag="ATCC 9027" />
+                                                <ComboBoxItem Content="Bacillus subtilis" Tag="ATCC 6633" />
+                                                <ComboBoxItem Content="Candida albicans" Tag="ATCC 10231" />
+                                                <ComboBoxItem Content="Aspergillus brasiliensis" Tag="ATCC 16404" />
+                                                <ComboBoxItem Content="Escherichia coli" Tag="ATCC 8739" />
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="2">
+                                            <TextBlock x:Name="LblReleaseAtcc" Text="ATCC" />
+                                            <TextBox x:Name="TxtATCC" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="3">
+                                            <TextBlock Text="Result" />
+                                            <ComboBox x:Name="CmbTestResult">
+                                                <ComboBoxItem Content="Pass" />
+                                                <ComboBoxItem Content="Fail" />
+                                                <ComboBoxItem Content="Pending" />
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="0">
+                                            <TextBlock x:Name="LblReleaseInoculum" Text="Inoculum" />
+                                            <TextBox x:Name="TxtInoculum" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1">
+                                            <TextBlock x:Name="LblReleaseExpected" Text="Expected Result" />
+                                            <TextBox x:Name="TxtExpected" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2">
+                                            <TextBlock x:Name="LblReleaseActual" Text="Actual Result / Observation" />
+                                            <TextBox x:Name="TxtActual" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="0">
+                                            <TextBlock Text="Control Count (CFU)" />
+                                            <TextBox x:Name="TxtControlCount" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="1">
+                                            <TextBlock Text="Test Count (CFU)" />
+                                            <TextBox x:Name="TxtTestCount" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2">
+                                            <TextBlock Text="Incubation Conditions" />
+                                            <TextBox x:Name="TxtIncubationConditions" ToolTip="Record temperature, duration, and atmosphere where applicable." />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,8,0,0">
+                                            <Button Content="Add" Style="{StaticResource PrimaryButton}" Click="BtnAddOrganism_Click" />
+                                            <Button Content="Remove" Style="{StaticResource SecondaryButton}" Click="BtnRemoveOrganism_Click" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Grid Grid.Row="3" MinHeight="190">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="0.9*" />
+                                    </Grid.ColumnDefinitions>
+                                    <DockPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <DataGrid x:Name="DgCurrentOrganisms" Height="190">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="160" />
+                                                <DataGridTextColumn Header="SOP Test" Binding="{Binding TestName}" Width="130" />
+                                                <DataGridTextColumn Header="ATCC" Binding="{Binding ATCCNumber}" Width="90" />
+                                                <DataGridTextColumn Header="Inoculum" Binding="{Binding InoculumLevel}" Width="100" />
+                                                <DataGridTextColumn Header="Expected" Binding="{Binding ExpectedResult}" Width="160" />
+                                                <DataGridTextColumn Header="Actual" Binding="{Binding ActualResult}" Width="130" />
+                                                <DataGridTextColumn Header="Control CFU" Binding="{Binding ControlCount}" Width="90" />
+                                                <DataGridTextColumn Header="Test CFU" Binding="{Binding TestCount}" Width="85" />
+                                                <DataGridTextColumn Header="Recovery %" Binding="{Binding RecoveryPercent}" Width="90" />
+                                                <DataGridTextColumn Header="Incubation" Binding="{Binding IncubationConditions}" Width="150" />
+                                                <DataGridTextColumn Header="Result" Binding="{Binding TestResult}" Width="90" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </DockPanel>
+                                    <DataGrid x:Name="DgReleaseReports" Grid.Column="1" Height="190" SelectionChanged="DgReleaseReports_SelectionChanged">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Report No." Binding="{Binding QualificationNo}" Width="120" />
+                                            <DataGridTextColumn Header="Media" Binding="{Binding MediaName}" Width="160" />
+                                            <DataGridTextColumn Header="Lot" Binding="{Binding LotNumber}" Width="100" />
+                                            <DataGridTextColumn Header="Date" Binding="{Binding QualificationDateText}" Width="100" />
+                                            <DataGridTextColumn Header="Status" Binding="{Binding QualificationStatus}" Width="110" />
+                                            <DataGridTextColumn Header="Result" Binding="{Binding OverallResult}" Width="90" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Preparation tab -->
+                    <TabItem Header="Media Preparation">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Auto">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Style="{StaticResource Card}" Padding="18" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,0,0,14">
+                                            <TextBlock Text="Stored Media Batch *" FontWeight="SemiBold" Margin="0,0,0,5" />
+                                            <ComboBox x:Name="CmbPreparationMediaLot"
+                                                  Height="36"
+                                                  IsEditable="False"
+                                                  SelectionChanged="CmbPreparationMediaLot_SelectionChanged" />
+                                            <TextBlock x:Name="TxtPreparationNextAction"
+                                                   Text="Select a released media lot to start preparation."
+                                                   Foreground="#475569"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,4,0,0" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,14,12">
+                                            <TextBlock Text="Preparation No." Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtPreparationNo" Height="36" IsReadOnly="True" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,14,12">
+                                            <TextBlock Text="Preparation Date *" Margin="0,0,0,5" />
+                                            <DatePicker x:Name="DpPreparationDate" Height="36" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,14,12">
+                                            <TextBlock Text="Prepared Media Expiry" Margin="0,0,0,5" />
+                                            <DatePicker x:Name="DpPreparationExpiry" Height="36" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="3" Margin="0,0,0,12">
+                                            <TextBlock Text="Quantity Prepared" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtQuantityPrepared" Height="36" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,14,12">
+                                            <TextBlock Text="Prepared By *" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtPreparedBy" Height="36" IsReadOnly="True" ToolTip="Populated only from the authenticated preparation electronic signature." />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,14,12">
+                                            <TextBlock Text="Batch Size" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtBatchSize" Height="36" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,14,12">
+                                            <TextBlock Text="Final pH" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtFinalPH" Height="36" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="3" Margin="0,0,0,12">
+                                            <TextBlock Text="Appearance" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtAppearance" Height="36" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,14,12">
+                                            <TextBlock Text="Autoclave Cycle No." Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtAutoclaveCycleNo" Height="36" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,14,12">
+                                            <TextBlock Text="Autoclave Temperature (°C)" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtAutoclaveTemperature" Height="36" ToolTip="Enter temperature only, for example: 121" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,14,12">
+                                            <TextBlock Text="Autoclave Holding Time (min)" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtAutoclaveHoldingTime" Height="36" ToolTip="Enter holding time only, for example: 20" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="3" Margin="0,0,0,12">
+                                            <TextBlock Text="Release Status" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtPreparationReleaseStatus" Height="36" IsReadOnly="True" Text="Under Release" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,14,12">
+                                            <TextBlock Text="Sterility Review *" Margin="0,0,0,5" />
+                                            <ComboBox x:Name="CmbPreparationSterilityReview" Height="36">
+                                                <ComboBoxItem Content="Pending" IsSelected="True" />
+                                                <ComboBoxItem Content="Passed" />
+                                                <ComboBoxItem Content="Failed" />
+                                            </ComboBox>
+                                            <Button Content="Sign Sterility Review" Margin="0,6,0,0" MinWidth="145" Style="{StaticResource SecondaryButton}" Click="BtnSignPreparationSterilityReview_Click" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,0,14,12">
+                                            <TextBlock Text="Reviewed By" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtPreparationReviewedBy" Height="36" IsReadOnly="True" ToolTip="Populated only from the sterility-review electronic signature." />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                                            <TextBlock Text="Quantity Weighed (g) *" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtQuantityWeighedG" Height="36" ToolTip="Dry culture-medium powder weighed from the selected manufacturer lot. The quantity is deducted from stock when the preparation is saved." />
+                                        </StackPanel>
+
+                                        <GroupBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4" Header="SOP A6 Media Preparation and Sterilization Record" Margin="0,0,0,14">
+                                            <Grid Margin="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <StackPanel Grid.Row="0" Grid.Column="0">
+                                                    <TextBlock Text="Load No." />
+                                                    <TextBox x:Name="TxtPreparationLoadNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="1">
+                                                    <TextBlock Text="MPM No." />
+                                                    <TextBox x:Name="TxtPreparationMpmNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="2">
+                                                    <TextBlock Text="Purified Water (ml)" />
+                                                    <TextBox x:Name="TxtPreparationPurifiedWaterMl" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="3">
+                                                    <TextBlock Text="Quantity Dispensed (N x X ml)" />
+                                                    <TextBox x:Name="TxtPreparationQuantityDispensed" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="0">
+                                                    <TextBlock Text="Balance No." />
+                                                    <TextBox x:Name="TxtPreparationBalanceNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="1">
+                                                    <TextBlock Text="Equipment Code" />
+                                                    <TextBox x:Name="TxtPreparationEquipmentCode" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="2">
+                                                    <TextBlock Text="pH Meter No." />
+                                                    <TextBox x:Name="TxtPreparationPhMeterNo" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="3">
+                                                    <TextBlock Text="Method of Sterilization" />
+                                                    <TextBox x:Name="TxtPreparationSterilizationMethod" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,6,0,0">
+                                                    <TextBlock Text="Additives / Supplements (name, lot, quantity)" />
+                                                    <TextBox x:Name="TxtPreparationAdditives" ToolTip="Record each supplement or additive with its lot number and quantity. Enter None when no additive is used." />
+                                                </StackPanel>
+                                            </Grid>
+                                        </GroupBox>
+
+                                        <GroupBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Header="SOP A7 Visual Check Before Release" Margin="0,0,0,14">
+                                            <Grid Margin="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Equipment Code" />
+                                                    <TextBox x:Name="TxtPreparationVisualEquipmentCode" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Visual Observations" />
+                                                    <TextBox x:Name="TxtPreparationVisualObservations" ToolTip="Record cracks, unequal filling, dehydration, colour change, bubbles, contamination, moisture, clarity, and pack integrity." />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Visual Check Conclusion" />
+                                                    <ComboBox x:Name="CmbPreparationVisualConclusion">
+                                                        <ComboBoxItem Content="Pending" IsSelected="True" />
+                                                        <ComboBoxItem Content="Satisfactory" />
+                                                        <ComboBoxItem Content="Not Satisfactory" />
+                                                    </ComboBox>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3">
+                                                    <TextBlock Text="Checked By" />
+                                                    <TextBox x:Name="TxtPreparationVisualCheckedBy" IsReadOnly="True" ToolTip="Populated only from the visual-check electronic signature." />
+                                                    <Button Content="Sign Visual Check" Margin="0,6,0,0" MinWidth="125" Style="{StaticResource SecondaryButton}" Click="BtnSignPreparationVisualCheck_Click" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </GroupBox>
+
+                                        <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,14,0">
+                                            <TextBlock Text="Remarks" Margin="0,0,0,5" />
+                                            <TextBox x:Name="TxtPreparationRemarks"
+                                                 MinHeight="64"
+                                                 Height="64"
+                                                 TextWrapping="Wrap"
+                                                 AcceptsReturn="True"
+                                                 VerticalContentAlignment="Top"
+                                                 Padding="8" />
+                                        </StackPanel>
+
+                                        <Border Grid.Row="7" Grid.Column="2" Grid.ColumnSpan="2" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="Preparation Workflow" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,8" />
+                                                <WrapPanel HorizontalAlignment="Right">
+                                                    <Button Content="New Preparation"
+                                                        MinWidth="130"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Click="BtnNewPreparation_Click" />
+                                                    <Button Content="Save Preparation"
+                                                        MinWidth="140"
+                                                        Style="{StaticResource PrimaryButton}"
+                                                        Click="BtnSavePreparation_Click" />
+                                                    <Button Content="Release Preparation"
+                                                        MinWidth="155"
+                                                        Style="{StaticResource PrimaryButton}"
+                                                        Click="BtnReleasePreparation_Click" />
+                                                    <Button Content="Reject Preparation"
+                                                        MinWidth="145"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Click="BtnRejectPreparation_Click" />
+                                                    <Button Content="Print Preparation Record"
+                                                        MinWidth="165"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Click="BtnPrintPreparation_Click" />
+                                                    <Button Content="Label"
+                                                        MinWidth="80"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Click="BtnPrintLabel_Click" />
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <DataGrid Grid.Row="1"
+                                      x:Name="DgPreparations"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      SelectionChanged="DgPreparations_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Preparation No." Binding="{Binding MediaPreparationNo}" Width="155" />
+                                        <DataGridTextColumn Header="Media" Binding="{Binding MediaName}" Width="220" />
+                                        <DataGridTextColumn Header="Lot" Binding="{Binding LotNumber}" Width="130" />
+                                        <DataGridTextColumn Header="Prepared Date" Binding="{Binding PreparationDateText}" Width="130" />
+                                        <DataGridTextColumn Header="Expiry" Binding="{Binding ExpiryDateText}" Width="120" />
+                                        <DataGridTextColumn Header="Quantity" Binding="{Binding QuantityPrepared}" Width="120" />
+                                        <DataGridTextColumn Header="Weighed (g)" Binding="{Binding PowderQuantityG, StringFormat=0.###}" Width="100" />
+                                        <DataGridTextColumn Header="Prepared By" Binding="{Binding PreparedBy}" Width="130" />
+                                        <DataGridTextColumn Header="pH" Binding="{Binding FinalPH}" Width="70" />
+                                        <DataGridTextColumn Header="Autoclave" Binding="{Binding AutoclaveCycleNo}" Width="120" />
+                                        <DataGridTextColumn Header="Temp °C" Binding="{Binding AutoclaveTemperature}" Width="90" />
+                                        <DataGridTextColumn Header="Hold min" Binding="{Binding AutoclaveHoldingTime}" Width="90" />
+                                        <DataGridTemplateColumn Header="Release Status" Width="145">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{Binding ReleaseStatus, Converter={StaticResource StatusToColorConverter}}" CornerRadius="8" Padding="8,3">
+                                                        <TextBlock Text="{Binding ReleaseStatus}" Foreground="White" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Sterility Review" Binding="{Binding SterilityReview}" Width="130" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
+
+            <!-- Side panel -->
+            <Border x:Name="pnlSidePanel" Grid.Column="1" Width="360" Style="{StaticResource Card}" Margin="14,0,0,0">
+                <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Top">
+                        <DockPanel>
+                            <Button Content="×" Width="30" Height="30" DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Click="BtnClosePanel_Click" />
+                            <TextBlock x:Name="lblDetailTitle" Text="Lot Details" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <Border x:Name="pnlStatusBadge" Background="#94A3B8" CornerRadius="10" Padding="10,6" Margin="0,12,0,12">
+                            <TextBlock x:Name="txtDetailStatus" Text="-" Foreground="White" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        </Border>
+                    </StackPanel>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="Media" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailMedia" Text="-" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,10" />
+                            <TextBlock Text="Lot No." Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailLotNo" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="Supplier" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailSupplier" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="Received" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailReceived" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="Expiry" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailExpiry" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="Quantity" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailQuantity" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="COA" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailCOA" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="Storage" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailStorage" Text="-" Margin="0,2,0,10" />
+                            <TextBlock Text="Remarks" Foreground="#64748B" />
+                            <TextBlock x:Name="txtDetailRemarks" Text="-" TextWrapping="Wrap" Margin="0,2,0,14" />
+
+                            <TextBlock Text="Recent GPT History" FontWeight="Bold" Margin="0,10,0,6" />
+                            <TextBlock x:Name="txtNoGPT" Text="No GPT history found." Foreground="#64748B" />
+                            <DataGrid x:Name="dgDetailGPT" Height="160" Visibility="Collapsed">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" />
+                                    <DataGridTextColumn Header="Result" Binding="{Binding TestResult}" Width="80" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="#E2E8F0" Padding="14,0">
+            <DockPanel>
+                <TextBlock x:Name="lblRecordCount" DockPanel.Dock="Right" Text="0 records" VerticalAlignment="Center" Foreground="#475569" />
+                <TextBlock x:Name="lblStatus" Text="Ready" VerticalAlignment="Center" Foreground="#475569" />
+            </DockPanel>
+        </Border>
+
+        <!-- Toast -->
+        <Border x:Name="pnlToast" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,24,24,0"
+                Background="#0F172A" CornerRadius="12" Padding="14,10" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="txtToastIcon" Text="✅" Foreground="White" Margin="0,0,8,0" />
+                <TextBlock x:Name="txtToastMessage" Text="Message" Foreground="White" FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

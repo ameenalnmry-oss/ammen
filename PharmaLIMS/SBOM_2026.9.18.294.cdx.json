@@ -1,0 +1,561 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:fd354be3-4f9a-4076-ab79-51185bc1b2e7",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-17T21:30:00Z",
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:generic/PharmaLIMS@2026.9.18.294",
+      "name": "PharmaLIMS",
+      "version": "2026.9.18.294",
+      "properties": []
+    },
+    "properties": [
+      {
+        "name": "pharmalims:resolvedNuGetComponentCount",
+        "value": "35"
+      },
+      {
+        "name": "pharmalims:dependencySource",
+        "value": "Source-bundle dependency declaration only. Production CI MUST generate artifacts/publish/SBOM.cdx.json from the current dotnet resolved dependency graph using scripts/New-ResolvedSbom.ps1."
+      },
+      {
+        "name": "pharmalims:runtimeFramework",
+        "value": "Microsoft.WindowsDesktop.App 8.0 (compatible installed patch for source/F5)"
+      },
+      {
+        "name": "pharmalims:productionPublish",
+        "value": "self-contained win-x64 via controlled CI"
+      },
+      {
+        "name": "pharmalims:databaseMaintenance",
+        "value": "explicit signed Development Database Maintenance; PRM stale-schema UI may route an authorized user to the centralized maintenance action; Production controlled deployment only"
+      },
+      {
+        "name": "pharmalims:prmWorkflowGate",
+        "value": "immutable PRM investigation evidence binding: result value, specification text/numeric limit, unit and interpretation must match the investigated snapshot; changed evidence fails closed"
+      },
+      {
+        "name": "pharmalims:prmInvestigationDisposition",
+        "value": "investigation outcome separated from final batch/material disposition"
+      },
+      {
+        "name": "pharmalims:loginAvailability",
+        "value": "authentication SQL is cancellation-bound to 20 seconds; login warm-up is cancellation-bound to 5 seconds; database contention cannot leave the UI indefinitely in Signing in state"
+      },
+      {
+        "name": "pharmalims:compiledEnvironmentAuthority",
+        "value": "Debug binaries are Development; non-Debug Release binaries are Production. Runtime JSON cannot switch compliance mode."
+      },
+      {
+        "name": "pharmalims:historicalWaterEvidence",
+        "value": "SampleTests snapshot fields are authoritative for historical reports, trends, investigations and certificate-source data; current Tests master is legacy fallback only."
+      },
+      {
+        "name": "pharmalims:qualityEventStructuredEvidenceHistory",
+        "value": "5-Why, Impact, CAPA, Retesting and Distribution logical old/new snapshots are recorded in append-only QualityEventInvestigationEvidenceHistory."
+      },
+      {
+        "name": "pharmalims:authoritativeTime",
+        "value": "security and quality gates use SQL Server time or a monotonic process timer rather than workstation wall-clock time."
+      },
+      {
+        "name": "pharmalims:emPlanningUi",
+        "value": "EM Create Plan uses finite-width responsive layout; area scope is full-width with readable Area Code/Name/Group/Classification columns; manual plans are explicitly Ad-hoc while Scheduled plans come only from approved schedules."
+      },
+      {
+        "name": "pharmalims:prmTemplatePreview",
+        "value": "Current PRM template may be previewed with a permanent NOT CONTROLLED watermark without modifying the immutable issued certificate/report snapshot."
+      },
+      {
+        "name": "pharmalims:prmConclusionVisualState",
+        "value": "PRM final-conclusion styling is status-specific: conforming green, does-not-conform red, review-required amber; printed result rows avoid page splitting."
+      },
+      {
+        "name": "pharmalims:waterPlanIntegrity",
+        "value": "Distributed Water Plan test assignments and controlled point identity are database-protected from later mutation; plan registration rechecks exact frozen test IDs under row locks and commits sample, tests and plan linkage atomically."
+      },
+      {
+        "name": "pharmalims:emScheduleSnapshot",
+        "value": "Approved EM schedule point identity is stored in database-protected immutable EM_SchedulePointSnapshots and automated generation uses that frozen snapshot."
+      },
+      {
+        "name": "pharmalims:emLimitFreezeAtCreation",
+        "value": "EM plate Alert/Action limits, result unit and Active Air volume are frozen at plate creation and protected from later UPDATE; historical result entry does not substitute live master limits."
+      },
+      {
+        "name": "pharmalims:emExcursionControl",
+        "value": "Observed incubation/collection/control failures are recorded, linked to Quality Events and held from Results release pending QA disposition."
+      },
+      {
+        "name": "pharmalims:externalTrendResponsiveReview",
+        "value": "External EM trend review uses a responsive tabbed workspace with persistent actions, explicit period columns, row-selectable area charts, synchronized calculated cycle dates and QA interpretation visibility."
+      },
+      {
+        "name": "pharmalims:externalTrendLimitIntegrity",
+        "value": "External EM trend excursions use each observation's approved source limits; missing units/limits fail to NOT ASSESSED, historical limit changes are explicit, and a single chart limit line is shown only when limits are complete and consistent."
+      },
+      {
+        "name": "pharmalims:prmOralTabletCompendialLimits",
+        "value": "USP <1111> non-aqueous oral preparations: TAMC NMT 1000 CFU/g; TYMC NMT 100 CFU/g; E. coli absent in 1 g; additional specified-organism tests are site-defined controls using USP <62> methods; historical sample snapshots remain immutable"
+      },
+      {
+        "name": "pharmalims:trendModuleV208",
+        "value": "External import qualifiers/method identity; latest approved-vs-pending source selection; draft fail-closed QA approval; method/unit-safe EM statistics with real chart and previous-period/year comparison; row-specific historical limits; Pending/Not Assessed summary visibility."
+      },
+      {
+        "name": "pharmalims:prmMinimumElapsedGate",
+        "value": "PRM Analysis Start is recorded from authoritative SQL Server time only; per-test MinimumElapsedHours are frozen into PRM_SampleTests; legacy invalid timing evidence is fail-closed and requires controlled result re-entry plus independent QA reconciliation."
+      },
+      {
+        "name": "pharmalims:emControlledPlanningGate",
+        "value": "Production EM registration and result progression require the controlled EM Planning workflow; direct/native EM event registration is disabled in Production."
+      },
+      {
+        "name": "pharmalims:cultureMediaIncubationGate",
+        "value": "Culture Media qualification timing requires explicit QA electronic confirmation; each applicable qualification requirement is frozen into an immutable per-qualification timing snapshot; completion and final release use authoritative SQL Server timing."
+      },
+      {
+        "name": "pharmalims:timingGovernanceV212",
+        "value": "Approved PRM timing masters are reopened for controlled Review/Approve after timing migration; PRM backdating is removed; legacy invalid timing evidence is reconciled fail-closed; Culture Media timing confirmation and per-requirement snapshots are mandatory."
+      },
+      {
+        "name": "pharmalims:cultureMediaFinalReleaseExpiryV213",
+        "value": "Culture Media final release re-locks the lot and requires a non-null within-expiry manufacturer date using SQL Server time; a database trigger independently blocks an expired transition into Released."
+      },
+      {
+        "name": "pharmalims:productionStartupPreflightV213",
+        "value": "The bounded operational readiness probe can authorize workflows only in Development; Production requires the full GMP preflight including trusted constraints, append-only triggers and migration controls."
+      },
+      {
+        "name": "pharmalims:prmLegacyQELinkCorrectionV213",
+        "value": "v212 timing evidence remains immutable; v213 appends source-scoped correction evidence for legacy non-PRM SampleTestID collisions and returns only proven false positives to controlled timing reconciliation."
+      },
+      {
+        "name": "pharmalims:timingSchemaContractV221",
+        "value": "20260906_005 preserves v220 migration bytes, validates timing column type/nullability contracts, repairs a missing PRM TimingReconciliationStatus default, and blocks conflicting defaults."
+      },
+      {
+        "name": "pharmalims:productionRuntimeConfigurationV221",
+        "value": "Production binaries fail closed when appsettings.json is absent; controlled publish maps the approved site-specific production configuration to that runtime file."
+      },
+      {
+        "name": "pharmalims:cultureMediaAuthoritativeEvidenceTimeV221",
+        "value": "Prepared-media visual check, sterility review and final release persist the same SQL Server UTC timestamp into governed columns and SOP evidence fields."
+      },
+      {
+        "name": "pharmalims:timingDispositionWidthRepairV222",
+        "value": "20260906_000A runs before historical 20260906_001 and guarantees PRM_TimingMigrationHistory.ReconciliationDisposition can hold at least 60 Unicode characters; historical 001 bytes remain unchanged."
+      },
+      {
+        "name": "pharmalims:v223TimingDispositionContract",
+        "value": "20260906_000B runs before historical 20260906_001 and enforces PRM_TimingMigrationHistory.ReconciliationDisposition >= NVARCHAR(80); v222 000A and historical 001 remain checksum-stable."
+      },
+      {
+        "name": "pharmalims:v223PrmReportStatusRepair",
+        "value": "20260906_002A corrects only the unprogressed historical 20260906_002 In Progress / Results Entered mismatch to ReportStatus=Not Issued while preserving historical 002 bytes."
+      },
+      {
+        "name": "pharmalims:v223MigrationDiagnostics",
+        "value": "SQL Server errors 2628 and 8152 are operator-visible during controlled migration failure; 2628 structural table/column detail is preserved while the truncated business value is redacted."
+      },
+      {
+        "name": "pharmalims:waterLegacySchemaBackfill",
+        "value": "20260906_006 additively creates baseline-only Water controlled-master tables for legacy upgrades; workflow authorization always uses full System Preflight; direct Water profile lookup fails closed"
+      },
+      {
+        "name": "pharmalims:waterLegacyTestsContractV225",
+        "value": "Legacy dbo.Tests without IsActive is repaired additively by 20260906_007; Water preflight/runtime active-test filtering is aligned; undeclared Tests.IsWaterTest dependency removed."
+      },
+      {
+        "name": "pharmalims:historicalEmBatchReconciliation",
+        "value": "QA-authorized same-Grade+Method batch reconciliation uses one electronic signature for the displayed scope while appending one independent immutable reconciliation and audit record per plate; batch corrections are fail-closed and traceable by batch ID."
+      },
+      {
+        "name": "pharmalims:typedSqlParameters",
+        "value": "NewSampleDialog and EMPlanning no longer use AddWithValue; explicit SqlDbType, size, precision and scale contracts are applied through a centralized parameter helper."
+      },
+      {
+        "name": "pharmalims:waterControlledProfileWorkflowV232",
+        "value": "PW/PTW master data is versioned and fail-closed; no compendial values are auto-seeded; Draft creator edits, independent reviewer signs Review, a user other than the reviewer signs Approval/Activation; direct registration snapshots the approved profile-linked specification."
+      },
+      {
+        "name": "pharmalims:waterControlledProfileWorkflow",
+        "value": "PW/PTW master data remains versioned and fail-closed; authoring uses the existing CanManageSettings permission, Review uses CanReviewResults, Approval uses CanApproveResults; author/reviewer/approver separation is enforced except for the configured Development Admin override, which remains signed and audited."
+      },
+      {
+        "name": "pharmalims:waterMqcG0018ProfilesV236",
+        "value": "Development Admin source-backed PW/PTW authoring helper maps explicit MQC-G-0018 v2.0 criteria in memory only; Review/Approval remain signed and fail-closed; microbial Alert/Action trending levels remain governed by MQC-G-0011."
+      },
+      {
+        "name": "pharmalims:waterCtg1102OptionalV236",
+        "value": "Optional PTW-only helper maps CTG-11-02 v02 Annexure CTG 11/A3 contaminant limits only when the site confirms that older source remains adopted; never auto-saves or activates a profile."
+      },
+      {
+        "name": "pharmalims:waterTestCatalogMigrationV236",
+        "value": "20260908_000 additively ensures dbo.Tests can represent MQC-G-0018 and optional CTG-11-02 Water tests; no profile/specification is created or approved by migration."
+      },
+      {
+        "name": "pharmalims:dashboardPendingSamplesV238",
+        "value": "Pending Samples is read as isolated core/PRM components with labeled diagnostics, a 10-second bounded read timeout, and one retry only for recognized transient SQL errors; persistent failures remain N/A rather than false zero."
+      },
+      {
+        "name": "pharmalims:legacyCertificateEvidence",
+        "value": "pre-cutover PRM and Water/general certificate evidence may receive signed append-only QA disposition without creating retrospective issue snapshots/hashes or rewriting issued certificates"
+      },
+      {
+        "name": "pharmalims:historicalEmReconciliation",
+        "value": "System Preflight exposes signed reconciliation for unresolved historical EM evidence including Approved/Completed/Closed events; original EM records remain immutable"
+      },
+      {
+        "name": "pharmalims:legacyCertificateReconciliationV241",
+        "value": "Water/general legacy-certificate reconciliation validation normalizes issue-date precision and status fallback consistently with the UI/preflight; trigger failures identify the affected certificate and reason; no certificate, report hash or native snapshot is mutated."
+      },
+      {
+        "name": "pharmalims:legacyCertificateEvidenceQualityV242",
+        "value": "Retain disposition rejects placeholder/non-evidence text at UI and database levels; System Preflight suppresses a legacy warning only when the latest signed Retain reconciliation has meaningful Evidence Reference, Evidence Summary and Reason. Existing weak historical reconciliation rows remain immutable and must be superseded rather than edited."
+      },
+      {
+        "name": "pharmalims:legacyCertificateReconciliationV243",
+        "value": "Fail-closed QA reconciliation defaults to CONTROLLED_REISSUE_REQUIRED; placeholder/non-evidence text is rejected for both Retain and Reissue at UI and database levels; weak signed legacy rows remain immutable and are superseded; the UI can prepare factual system-derived reissue wording without creating a retrospective snapshot/hash."
+      },
+      {
+        "name": "pharmalims:legacyCertificateReissueRouting",
+        "value": "Valid signed CONTROLLED_REISSUE_REQUIRED dispositions can route directly from Legacy Certificate Evidence Reconciliation to the original Water or PRM certificate workflow; preflight detects cancelled legacy certificates stranded without a compliant linked replacement."
+      },
+      {
+        "name": "pharmalims:waterLegacyReissueRoutingV247",
+        "value": "Signed Water legacy reissue context is carried into Results Entry; cancellation is locked to the exact legacy CertificateID, the signed QA reason is prefilled, and replacement issuance is locked to the same expected ReissuedFromCertificateID while preserving native snapshot/hash, signature and audit controls."
+      },
+      {
+        "name": "pharmalims:sourceMaintainability",
+        "value": "Seven previously oversized operational C# files were split into controlled partial-class source files below the AI-review 150 KB threshold without changing runtime workflow behavior."
+      },
+      {
+        "name": "pharmalims:waterWorkflowTransactionalControls",
+        "value": "Water registration, analysis start, result save, submit, review and approval reauthorize the signer inside the committing SQL transaction; review/approval separation-of-duties and approval Quality Event/OOS gates are rechecked under database locks."
+      },
+      {
+        "name": "pharmalims:prmNumericInterpretation",
+        "value": "shared controlled C# evaluator; complete AND compound constraints; contextual incubation/temperature ranges excluded; strict/full numeric-token consumption; unsupported ambiguity fails closed"
+      },
+      {
+        "name": "pharmalims:prmResultConcurrency",
+        "value": "complete loaded PRM result snapshot is compared under UPDLOCK/HOLDLOCK; sample-wide completeness and overall interpretation are re-derived from authoritative database rows inside save/review/approval transactions"
+      },
+      {
+        "name": "pharmalims:databaseIntegration",
+        "value": "disposable SQL integration harness links the production PRM evaluator, sample-state concurrency service and Full-Preflight lifecycle coordination contract for Windows CI/runtime verification"
+      },
+      {
+        "name": "pharmalims:fullPreflightMaintenanceCoordination",
+        "value": "Full System Preflight holds a transaction-owned Shared application lock for the complete verification run; Database Maintenance retains the existing Exclusive session lock; rollback/disposal releases preflight ownership."
+      },
+      {
+        "name": "pharmalims:reviewRemediationValidation",
+        "value": "Candidate source remediation. Dependency inventory inherited from v259; no new restore, runtime build or online vulnerability scan performed."
+      },
+      {
+        "name": "pharmalims:mergeSource",
+        "value": "Candidate 2026.9.10.260 plus restored v261 security/precision controls. Not runtime-validated."
+      },
+      {
+        "name": "pharmalims:v266AuthenticationSchemaDriftRepair",
+        "value": "At startup, checksum-controlled migration 20260911_000 remains byte-identical. A bounded pre-execution compatibility step may widen legacy NVARCHAR PasswordHashNew/PasswordSalt columns and canonicalize only NULL FailedLoginAttempts/IsLocked values to their historical zero semantics before the original migration runs. It never resets passwords, non-null lock state, activation, roles, permissions, or laboratory data."
+      },
+      {
+        "name": "pharmalims:certificateJsonSnapshotTransport",
+        "value": "Long SQL Server FOR JSON output is consumed through SqlDataReader and all returned chunks are concatenated before JSON validation, SHA-256 hashing and immutable certificate snapshot insertion; Quality Event structured-evidence JSON uses the same complete-chunk rule."
+      },
+      {
+        "name": "pharmalims:v269RuntimeAuthorization",
+        "value": "Role and permission revalidation fails closed for effectively locked users; runtime database reads do not rely on cached login permission flags for corrected paths."
+      },
+      {
+        "name": "pharmalims:v269CertificateRoleSnapshot",
+        "value": "Certificate issuer role is captured from the same locked transactional authorization read used to permit issuance and is stored in the immutable snapshot/signature evidence."
+      },
+      {
+        "name": "pharmalims:v269EmLimitAuthorization",
+        "value": "Approved EM limit changes revalidate CanManageSettings inside the save transaction and persist the authoritative transaction role in the electronic-signature record."
+      },
+      {
+        "name": "pharmalims:v280ReleaseReadiness",
+        "value": "Full System Preflight exposes six release-critical database contracts individually with explicit PASS or BLOCKER / Migration Required guidance; no schema is changed by preflight."
+      },
+      {
+        "name": "pharmalims:v280ReleaseAcceptanceChecklist",
+        "value": "System Preflight can copy a manual Windows/SQL Server release acceptance checklist; checklist generation never marks runtime UAT, build, SQL integration, printing, concurrency, or QA approval as passed."
+      },
+      {
+        "name": "pharmalims:v282ReleaseValidation",
+        "value": "production startup schema postconditions; unified release runner; Windows WPF RuntimeSmoke over disposable migrated SQL Server database"
+      },
+      {
+        "name": "pharmalims:v283RuntimeSchemaGateClosure",
+        "value": "RuntimeSmoke requires explicit post-busy Login readiness event plus expected window title; 20260911 authentication postcondition enforces IsActive and all 11 permission columns as BIT NOT NULL."
+      },
+      {
+        "name": "pharmalims:v285DeepReviewClosure",
+        "value": "Exact append-only trigger contract shared by Preflight/SQL integration; production session timeout 5..60; Culture Media repository uses named operations instead of public arbitrary SQL; exact signed published Production artifact smoke; Authenticode, SHA-256 publish manifest and provenance attestation gates."
+      },
+      {
+        "name": "pharmalims:userAdministrationDeepReviewClosure",
+        "value": "No-op update suppression plus exact fail-closed UserAdministrationSignatures schema verification in startup, preflight, and integration gates; historical 20260917_001 migration bytes preserved."
+      },
+      {
+        "name": "pharmalims:v294PharmacopoeialProfileTemplates",
+        "value": "Correct SQL Server sys.columns.max_length contract for DATETIME2(0) from 8 to 6 in UserAdministrationSignatures startup verification, System Preflight, and DatabaseIntegration; no historical migration SQL changed."
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Azure.Core@1.50.0",
+      "name": "Azure.Core",
+      "version": "1.50.0",
+      "purl": "pkg:nuget/Azure.Core@1.50.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Azure.Identity@1.17.1",
+      "name": "Azure.Identity",
+      "version": "1.17.1",
+      "purl": "pkg:nuget/Azure.Identity@1.17.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Bcl.AsyncInterfaces@8.0.0",
+      "name": "Microsoft.Bcl.AsyncInterfaces",
+      "version": "8.0.0",
+      "purl": "pkg:nuget/Microsoft.Bcl.AsyncInterfaces@8.0.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Data.SqlClient@6.1.6",
+      "name": "Microsoft.Data.SqlClient",
+      "version": "6.1.6",
+      "purl": "pkg:nuget/Microsoft.Data.SqlClient@6.1.6"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.2",
+      "name": "Microsoft.Data.SqlClient.SNI.runtime",
+      "version": "6.0.2",
+      "purl": "pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.Caching.Abstractions@8.0.0",
+      "name": "Microsoft.Extensions.Caching.Abstractions",
+      "version": "8.0.0",
+      "purl": "pkg:nuget/Microsoft.Extensions.Caching.Abstractions@8.0.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.Caching.Memory@8.0.1",
+      "name": "Microsoft.Extensions.Caching.Memory",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/Microsoft.Extensions.Caching.Memory@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.DependencyInjection@8.0.1",
+      "name": "Microsoft.Extensions.DependencyInjection",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/Microsoft.Extensions.DependencyInjection@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.DependencyInjection.Abstractions@8.0.2",
+      "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "version": "8.0.2",
+      "purl": "pkg:nuget/Microsoft.Extensions.DependencyInjection.Abstractions@8.0.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.Logging.Abstractions@8.0.3",
+      "name": "Microsoft.Extensions.Logging.Abstractions",
+      "version": "8.0.3",
+      "purl": "pkg:nuget/Microsoft.Extensions.Logging.Abstractions@8.0.3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.Options@8.0.2",
+      "name": "Microsoft.Extensions.Options",
+      "version": "8.0.2",
+      "purl": "pkg:nuget/Microsoft.Extensions.Options@8.0.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Extensions.Primitives@8.0.0",
+      "name": "Microsoft.Extensions.Primitives",
+      "version": "8.0.0",
+      "purl": "pkg:nuget/Microsoft.Extensions.Primitives@8.0.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Identity.Client@4.84.2",
+      "name": "Microsoft.Identity.Client",
+      "version": "4.84.2",
+      "purl": "pkg:nuget/Microsoft.Identity.Client@4.84.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Identity.Client.Broker@4.84.2",
+      "name": "Microsoft.Identity.Client.Broker",
+      "version": "4.84.2",
+      "purl": "pkg:nuget/Microsoft.Identity.Client.Broker@4.84.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Identity.Client.Extensions.Msal@4.78.0",
+      "name": "Microsoft.Identity.Client.Extensions.Msal",
+      "version": "4.78.0",
+      "purl": "pkg:nuget/Microsoft.Identity.Client.Extensions.Msal@4.78.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6",
+      "name": "Microsoft.Identity.Client.NativeInterop",
+      "version": "0.20.6",
+      "purl": "pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.IdentityModel.Abstractions@8.14.0",
+      "name": "Microsoft.IdentityModel.Abstractions",
+      "version": "8.14.0",
+      "purl": "pkg:nuget/Microsoft.IdentityModel.Abstractions@8.14.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.IdentityModel.JsonWebTokens@7.7.1",
+      "name": "Microsoft.IdentityModel.JsonWebTokens",
+      "version": "7.7.1",
+      "purl": "pkg:nuget/Microsoft.IdentityModel.JsonWebTokens@7.7.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.IdentityModel.Logging@7.7.1",
+      "name": "Microsoft.IdentityModel.Logging",
+      "version": "7.7.1",
+      "purl": "pkg:nuget/Microsoft.IdentityModel.Logging@7.7.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.IdentityModel.Protocols@7.7.1",
+      "name": "Microsoft.IdentityModel.Protocols",
+      "version": "7.7.1",
+      "purl": "pkg:nuget/Microsoft.IdentityModel.Protocols@7.7.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.IdentityModel.Protocols.OpenIdConnect@7.7.1",
+      "name": "Microsoft.IdentityModel.Protocols.OpenIdConnect",
+      "version": "7.7.1",
+      "purl": "pkg:nuget/Microsoft.IdentityModel.Protocols.OpenIdConnect@7.7.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.IdentityModel.Tokens@7.7.1",
+      "name": "Microsoft.IdentityModel.Tokens",
+      "version": "7.7.1",
+      "purl": "pkg:nuget/Microsoft.IdentityModel.Tokens@7.7.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/Microsoft.SqlServer.Server@1.0.0",
+      "name": "Microsoft.SqlServer.Server",
+      "version": "1.0.0",
+      "purl": "pkg:nuget/Microsoft.SqlServer.Server@1.0.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/OxyPlot.Core@2.2.0",
+      "name": "OxyPlot.Core",
+      "version": "2.2.0",
+      "purl": "pkg:nuget/OxyPlot.Core@2.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/OxyPlot.Wpf@2.2.0",
+      "name": "OxyPlot.Wpf",
+      "version": "2.2.0",
+      "purl": "pkg:nuget/OxyPlot.Wpf@2.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/OxyPlot.Wpf.Shared@2.2.0",
+      "name": "OxyPlot.Wpf.Shared",
+      "version": "2.2.0",
+      "purl": "pkg:nuget/OxyPlot.Wpf.Shared@2.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/PDFsharp@6.2.4",
+      "name": "PDFsharp",
+      "version": "6.2.4",
+      "purl": "pkg:nuget/PDFsharp@6.2.4"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.ClientModel@1.8.0",
+      "name": "System.ClientModel",
+      "version": "1.8.0",
+      "purl": "pkg:nuget/System.ClientModel@1.8.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.Configuration.ConfigurationManager@8.0.1",
+      "name": "System.Configuration.ConfigurationManager",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/System.Configuration.ConfigurationManager@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.Diagnostics.DiagnosticSource@8.0.1",
+      "name": "System.Diagnostics.DiagnosticSource",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/System.Diagnostics.DiagnosticSource@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.Diagnostics.EventLog@8.0.1",
+      "name": "System.Diagnostics.EventLog",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/System.Diagnostics.EventLog@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.IdentityModel.Tokens.Jwt@7.7.1",
+      "name": "System.IdentityModel.Tokens.Jwt",
+      "version": "7.7.1",
+      "purl": "pkg:nuget/System.IdentityModel.Tokens.Jwt@7.7.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.Memory.Data@8.0.1",
+      "name": "System.Memory.Data",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/System.Memory.Data@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.Security.Cryptography.Pkcs@8.0.1",
+      "name": "System.Security.Cryptography.Pkcs",
+      "version": "8.0.1",
+      "purl": "pkg:nuget/System.Security.Cryptography.Pkcs@8.0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:nuget/System.Security.Cryptography.ProtectedData@8.0.0",
+      "name": "System.Security.Cryptography.ProtectedData",
+      "version": "8.0.0",
+      "purl": "pkg:nuget/System.Security.Cryptography.ProtectedData@8.0.0"
+    }
+  ]
+}
