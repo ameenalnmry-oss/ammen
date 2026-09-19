@@ -1,16 +1,5 @@
-# PharmaLIMS source-integrity policy
-# Preserve deterministic bytes across Windows and CI checkouts.
+# PharmaLIMS controlled-source integrity policy
+# Preserve source files byte-for-byte; manifests and released migrations
+# are integrity-controlled and must not be line-ending normalized by Git.
 
-* text=auto eol=lf
-
-# Binary assets must never undergo line-ending conversion.
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
-*.pdf binary
-*.zip binary
-*.pfx binary
-*.dll binary
-*.exe binary
+* -text
