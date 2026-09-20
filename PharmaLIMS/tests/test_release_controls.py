@@ -3450,7 +3450,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("does not convert the excursion into a within-limit result", em)
         self.assertIn("Media Lot / Preparation Ref.", em)
         self.assertIn("SignerDisplayName", helper)
-        self.assertIn("LEFT JOIN dbo.Users U ON U.Username=S.SignedBy", helper)
+        self.assertIn("S.SignedBy AS SignerDisplayName", helper)\n        self.assertNotIn("JOIN dbo.Users", helper)
 
     def test_v190_prm_reports_use_unambiguous_dates_and_display_names(self):
         template = (ROOT / "Services/PRMCertificateTemplate.cs").read_text(encoding="utf-8-sig")

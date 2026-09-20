@@ -10,7 +10,7 @@ def source(path: str) -> str:
 
 class V294ReleaseHardeningTests(unittest.TestCase):
     def test_fresh_baseline_ledger_is_verified_by_persisted_checksum(self):
-        code = source("Infrastructure/StartupDatabaseMigrator.cs")
+        code = source("Infrastructure/StartupDatabaseMigrator.cs") + source("Infrastructure/StartupDatabaseMigrator.Part2.cs")
         self.assertIn("using System.Globalization;", code)
         self.assertIn("verifyRecordedBaseline", code)
         self.assertIn("MigrationChecksum=@Checksum", code)
@@ -83,7 +83,7 @@ class V294ReleaseHardeningTests(unittest.TestCase):
     def test_prm_submit_permission_matches_ui_contract(self):
         code = source("ProductionRawMaterialResults.xaml.cs")
         start = code.index("private void BtnSubmitReview_Click")
-        end = code.index("private async void BtnReview_Click", start)
+        end = code.index("private void BtnReview_Click", start)
         submit = code[start:end]
         self.assertIn('"CanSubmitForReview"', submit)
         self.assertNotIn('"CanEnterResults", "submit PRM results for review"', submit)
