@@ -1816,11 +1816,24 @@ IF COL_LENGTH(N'dbo.Users',N'AuthenticationRowVersion') IS NULL
             SqlConnection connection,
             SqlTransaction transaction)
         {
-            // 20260915_000 remains checksum-controlled. This helper repairs only the safe
-            // legacy nullable BIT shape before the historical SQL is replayed.
+            // 20260915_000 remains checksum-controlled. SQL Server can compile references
+            // to newly-added columns before conditional ALTER statements in the historical batch.
+            // Materialize only the additive schema that migration 20260915_000 itself owns, using
+            // dynamic SQL so compile-before-ALTER cannot raise Msg 207. The original migration
+            // remains authoritative for its validation and controlled ledger/checksum.
             const string sql = @"
 IF OBJECT_ID(N'dbo.Users',N'U') IS NULL
     THROW 55110, 'User administration compatibility requires dbo.Users before 20260915_000.', 1;
+
+IF COL_LENGTH(N'dbo.Users',N'MustChangePassword') IS NULL
+BEGIN
+    IF OBJECT_ID(N'dbo.DF_Users_MustChangePassword_20260915',N'D') IS NOT NULL
+        THROW 55113, 'The expected MustChangePassword default constraint name already exists without its column; controlled reconciliation is required.', 1;
+
+    EXEC(N'ALTER TABLE dbo.Users
+        ADD MustChangePassword BIT NOT NULL
+            CONSTRAINT DF_Users_MustChangePassword_20260915 DEFAULT (0) WITH VALUES;');
+END;
 
 IF COL_LENGTH(N'dbo.Users',N'MustChangePassword') IS NOT NULL
    AND EXISTS
@@ -1841,11 +1854,12 @@ IF EXISTS
       AND is_nullable=1
 )
 BEGIN
-    UPDATE dbo.Users
-    SET MustChangePassword=0
-    WHERE MustChangePassword IS NULL;
-    ALTER TABLE dbo.Users ALTER COLUMN MustChangePassword BIT NOT NULL;
+    EXEC(N'UPDATE dbo.Users SET MustChangePassword=0 WHERE MustChangePassword IS NULL;');
+    EXEC(N'ALTER TABLE dbo.Users ALTER COLUMN MustChangePassword BIT NOT NULL;');
 END;
+
+IF COL_LENGTH(N'dbo.Users',N'PasswordChangedAt') IS NULL
+    EXEC(N'ALTER TABLE dbo.Users ADD PasswordChangedAt DATETIME2(0) NULL;');
 
 IF COL_LENGTH(N'dbo.Users',N'PasswordChangedAt') IS NOT NULL
    AND NOT EXISTS

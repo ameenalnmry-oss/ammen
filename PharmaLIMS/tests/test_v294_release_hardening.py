@@ -16,6 +16,18 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("MigrationChecksum=@Checksum", code)
         self.assertIn("baseline ledger record was not created with the expected checksum", code)
 
+    def test_user_admin_compatibility_precreates_20260915_columns_with_dynamic_sql(self):
+        code = source("Infrastructure/StartupDatabaseMigrator.Part2.cs")
+        start = code.index("PrepareUserAdministrationSecurityCompatibilityAsync")
+        compatibility = code[start:]
+        self.assertIn("IF COL_LENGTH(N'dbo.Users',N'MustChangePassword') IS NULL", compatibility)
+        self.assertIn("EXEC(N'ALTER TABLE dbo.Users", compatibility)
+        self.assertIn("DF_Users_MustChangePassword_20260915 DEFAULT (0) WITH VALUES", compatibility)
+        self.assertIn("EXEC(N'UPDATE dbo.Users SET MustChangePassword=0 WHERE MustChangePassword IS NULL;')", compatibility)
+        self.assertIn("IF COL_LENGTH(N'dbo.Users',N'PasswordChangedAt') IS NULL", compatibility)
+        self.assertIn("EXEC(N'ALTER TABLE dbo.Users ADD PasswordChangedAt DATETIME2(0) NULL;')", compatibility)
+        self.assertNotIn("\n    UPDATE dbo.Users\n    SET MustChangePassword=0", compatibility)
+
     def test_quality_event_closure_requires_complete_controlled_evidence(self):
         code = source("DatabaseHelper.QualityEvents.cs")
         for expected in (
