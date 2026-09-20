@@ -14,7 +14,8 @@
       "versionKey": "20260712_001",
       "description": "20260712_001_Create_PRM_ElectronicSignatures",
       "file": "Migrations/20260712_001_Create_PRM_ElectronicSignatures.sql",
-      "sha256": "b5c51b277e4a1bfe5f8de8ab97eb295ddb29d6871e5c3a7c2035251ce656589a"
+      "sha256": "b5c51b277e4a1bfe5f8de8ab97eb295ddb29d6871e5c3a7c2035251ce656589a",
+      "supersededBy": "20260714_001"
     },
     {
       "versionKey": "20260714_001",
