@@ -1033,6 +1033,23 @@ WHERE QualityEventID = @qualityEventId
             string signatureReason,
             string userRole)
         {
+            if (qualityEventId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(qualityEventId));
+            if (string.IsNullOrWhiteSpace(qaConclusion))
+                throw new InvalidOperationException("QA conclusion is required before Quality Event closure.");
+            if (string.IsNullOrWhiteSpace(finalDisposition))
+                throw new InvalidOperationException("Final disposition is required before Quality Event closure.");
+            if (string.IsNullOrWhiteSpace(closedBy))
+                throw new InvalidOperationException("An authenticated QA closer is required.");
+            if (string.IsNullOrWhiteSpace(signatureMeaning))
+                throw new InvalidOperationException("Electronic-signature meaning is required for Quality Event closure.");
+
+            qaConclusion = qaConclusion.Trim();
+            finalDisposition = finalDisposition.Trim();
+            closedBy = closedBy.Trim();
+            signatureMeaning = signatureMeaning.Trim();
+            signatureReason = (signatureReason ?? string.Empty).Trim();
+
             ExecuteInTransaction((conn, tx) =>
             {
                 string authorizedRole = EnsureQaClosureAuthorizationInTransaction(
@@ -1044,6 +1061,15 @@ WHERE QualityEventID = @qualityEventId
                 string sourceRecordNumber = "";
                 string eventNumber = "";
                 string detectionSource = "";
+                string sourceModule = "";
+                string currentStatus = "";
+                string severity = "";
+                string initialDescription = "";
+                string immediateAction = "";
+                string rootCauseCategory = "";
+                string rootCauseDetails = "";
+                string impactAssessment = "";
+                bool capaRequired = false;
 
                 using (SqlCommand contextCommand = new SqlCommand(@"
                     SELECT TOP 1
@@ -1051,7 +1077,16 @@ WHERE QualityEventID = @qualityEventId
                         SampleID,
                         SampleNumber,
                         EventNumber,
-                        DetectionSource
+                        DetectionSource,
+                        SourceModule,
+                        CurrentStatus,
+                        Severity,
+                        InitialDescription,
+                        ImmediateAction,
+                        RootCauseCategory,
+                        RootCauseDetails,
+                        ImpactAssessment,
+                        ISNULL(CAPARequired,0)
                     FROM dbo.QualityEvents WITH (UPDLOCK, HOLDLOCK)
                     WHERE QualityEventID = @qualityEventId;", conn, tx))
                 {
@@ -1075,7 +1110,103 @@ WHERE QualityEventID = @qualityEventId
                         detectionSource = reader["DetectionSource"] == DBNull.Value
                             ? ""
                             : reader["DetectionSource"].ToString()?.Trim() ?? "";
+                        sourceModule = reader["SourceModule"] == DBNull.Value ? "" : reader["SourceModule"].ToString()?.Trim() ?? "";
+                        currentStatus = reader["CurrentStatus"] == DBNull.Value ? "" : reader["CurrentStatus"].ToString()?.Trim() ?? "";
+                        severity = reader["Severity"] == DBNull.Value ? "" : reader["Severity"].ToString()?.Trim() ?? "";
+                        initialDescription = reader["InitialDescription"] == DBNull.Value ? "" : reader["InitialDescription"].ToString()?.Trim() ?? "";
+                        immediateAction = reader["ImmediateAction"] == DBNull.Value ? "" : reader["ImmediateAction"].ToString()?.Trim() ?? "";
+                        rootCauseCategory = reader["RootCauseCategory"] == DBNull.Value ? "" : reader["RootCauseCategory"].ToString()?.Trim() ?? "";
+                        rootCauseDetails = reader["RootCauseDetails"] == DBNull.Value ? "" : reader["RootCauseDetails"].ToString()?.Trim() ?? "";
+                        impactAssessment = reader["ImpactAssessment"] == DBNull.Value ? "" : reader["ImpactAssessment"].ToString()?.Trim() ?? "";
+                        capaRequired = !reader.IsDBNull(13) && reader.GetBoolean(13);
                     }
+                }
+
+                if (!currentStatus.Equals("QA Review", StringComparison.OrdinalIgnoreCase))
+                    throw new DBConcurrencyException("The Quality Event is no longer in QA Review. Reload before closure.");
+                if (string.IsNullOrWhiteSpace(severity))
+                    throw new InvalidOperationException("Severity is required before Quality Event closure.");
+                if (string.IsNullOrWhiteSpace(initialDescription))
+                    throw new InvalidOperationException("Initial description is required before Quality Event closure.");
+                if (string.IsNullOrWhiteSpace(immediateAction))
+                    throw new InvalidOperationException("Immediate action is required before Quality Event closure.");
+                if (string.IsNullOrWhiteSpace(rootCauseCategory) ||
+                    rootCauseCategory.Equals("Pending Investigation", StringComparison.OrdinalIgnoreCase) ||
+                    rootCauseCategory.Equals("Undetermined", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("A finalized root-cause category is required before Quality Event closure.");
+                if (string.IsNullOrWhiteSpace(rootCauseDetails))
+                    throw new InvalidOperationException("Root-cause details are required before Quality Event closure.");
+                if (string.IsNullOrWhiteSpace(impactAssessment))
+                    throw new InvalidOperationException("Impact assessment is required before Quality Event closure.");
+
+                if (finalDisposition.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
+                    finalDisposition.Equals("Retest Required", StringComparison.OrdinalIgnoreCase) ||
+                    finalDisposition.Equals("Retest / Resample Required", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Quality Event closure is blocked because the selected disposition still requires follow-up testing or investigation.");
+
+                bool isEnvironmentalMonitoring =
+                    detectionSource.Equals("Environmental Monitoring", StringComparison.OrdinalIgnoreCase) ||
+                    sourceRecordNumber.StartsWith("EM-", StringComparison.OrdinalIgnoreCase);
+                if (isEnvironmentalMonitoring &&
+                    (finalDisposition.Equals("Retest Approved", StringComparison.OrdinalIgnoreCase) ||
+                     finalDisposition.Equals("Resample Approved", StringComparison.OrdinalIgnoreCase) ||
+                     finalDisposition.Equals("System Corrected / Monitoring Required", StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidOperationException("Environmental Monitoring closure is blocked because the selected disposition still requires follow-up testing or monitoring.");
+
+                if (sourceModule.Equals("PRM", StringComparison.OrdinalIgnoreCase) &&
+                    (finalDisposition.Equals("Accepted with Justification", StringComparison.OrdinalIgnoreCase) ||
+                     finalDisposition.Equals("Released", StringComparison.OrdinalIgnoreCase) ||
+                     finalDisposition.Equals("Rejected", StringComparison.OrdinalIgnoreCase) ||
+                     finalDisposition.Equals("Batch/Material Hold", StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidOperationException("PRM Quality Event closure requires an investigation outcome, not a batch/material release or rejection decision.");
+
+                if (capaRequired)
+                {
+                    int capaEvidenceCount;
+                    if (sourceModule.Equals("PRM", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using SqlCommand prmCapaEvidence = new SqlCommand(@"
+SELECT COUNT(1)
+FROM dbo.QualityEventActions WITH (UPDLOCK,HOLDLOCK)
+WHERE QualityEventID=@qualityEventId
+  AND ActionType=N'PRM CAPA Action'
+  AND NULLIF(LTRIM(RTRIM(ISNULL(ActionDescription,N''))),N'') IS NOT NULL;", conn, tx);
+                        prmCapaEvidence.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                        prmCapaEvidence.Parameters.Add("@qualityEventId", SqlDbType.Int).Value = qualityEventId;
+                        capaEvidenceCount = Convert.ToInt32(prmCapaEvidence.ExecuteScalar(), CultureInfo.InvariantCulture);
+                    }
+                    else
+                    {
+                        using SqlCommand structuredCapaEvidence = new SqlCommand(@"
+IF OBJECT_ID(N'dbo.QualityEventCAPAItems',N'U') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEventCAPAItems',N'QualityEventID') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEventCAPAItems',N'ActionDescription') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEventCAPAItems',N'ActionType') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEventCAPAItems',N'Responsible') IS NULL
+BEGIN
+    SELECT CONVERT(int,-1);
+END
+ELSE
+BEGIN
+    SELECT COUNT(1)
+    FROM dbo.QualityEventCAPAItems WITH (UPDLOCK,HOLDLOCK)
+    WHERE QualityEventID=@qualityEventId
+      AND NULLIF(LTRIM(RTRIM(ISNULL(ActionDescription,N''))),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(ActionType,N''))),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(Responsible,N''))),N'') IS NOT NULL;
+END;", conn, tx);
+                        structuredCapaEvidence.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                        structuredCapaEvidence.Parameters.Add("@qualityEventId", SqlDbType.Int).Value = qualityEventId;
+                        capaEvidenceCount = Convert.ToInt32(structuredCapaEvidence.ExecuteScalar(), CultureInfo.InvariantCulture);
+                        if (capaEvidenceCount < 0)
+                            throw new InvalidOperationException("CAPA is required but the controlled structured CAPA schema is unavailable. Apply the approved database update before closure.");
+                    }
+
+                    if (capaEvidenceCount <= 0)
+                        throw new InvalidOperationException(
+                            sourceModule.Equals("PRM", StringComparison.OrdinalIgnoreCase)
+                                ? "CAPA is required but no explicit PRM CAPA action has been documented."
+                                : "CAPA is required but no complete structured CAPA action has been documented.");
                 }
 
                 if (linkedSampleId.HasValue && linkedSampleId.Value > 0)
@@ -1159,9 +1290,9 @@ WHERE QualityEventID = @qualityEventId
                     new[]
                     {
                         new SqlParameter("@qualityEventId", qualityEventId),
-                        new SqlParameter("@qaConclusion", string.IsNullOrWhiteSpace(qaConclusion) ? (object)DBNull.Value : qaConclusion),
-                        new SqlParameter("@finalDisposition", string.IsNullOrWhiteSpace(finalDisposition) ? (object)DBNull.Value : finalDisposition),
-                        new SqlParameter("@closedBy", string.IsNullOrWhiteSpace(closedBy) ? (object)DBNull.Value : closedBy)
+                        new SqlParameter("@qaConclusion", qaConclusion),
+                        new SqlParameter("@finalDisposition", finalDisposition),
+                        new SqlParameter("@closedBy", closedBy)
                     }, conn, tx);
                 if (affectedQualityEvents != 1)
                     throw new DBConcurrencyException("The Quality Event was already changed or closed. Reload and retry.");
