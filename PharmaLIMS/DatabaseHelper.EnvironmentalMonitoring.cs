@@ -357,12 +357,11 @@ WHERE Id = @eventId;", connection, transaction))
                     S.ActionType,
                     S.ActionReason,
                     S.SignedBy,
-                    COALESCE(NULLIF(LTRIM(RTRIM(U.FullName)),N''),S.SignedBy) AS SignerDisplayName,
+                    S.SignedBy AS SignerDisplayName,
                     S.UserRole,
                     S.MeaningOfSignature,
                     S.SignedAt
                 FROM dbo.EM_EventSignatures S
-                LEFT JOIN dbo.Users U ON U.Username=S.SignedBy
                 WHERE S.EventID = @eventId
                 ORDER BY S.SignatureID";
 

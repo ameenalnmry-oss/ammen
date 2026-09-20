@@ -1688,11 +1688,8 @@ SELECT CASE
             DataRow resultEntry = FindSignature(signatures, "EM Result Entry");
             DataRow review = FindSignature(signatures, "EM Review");
             DataRow approval = FindSignature(signatures, "EM Approval");
-            DataRow print = FindSignature(signatures, "EM Report Print");
 
-            string printedDate = GetSignatureDate(print);
-            if (string.IsNullOrWhiteSpace(printedDate))
-                printedDate = reportGeneratedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+            string printedDate = reportGeneratedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
             TableRow row = new TableRow();
             row.Cells.Add(MakeSignatureBox(
@@ -1715,9 +1712,9 @@ SELECT CASE
 
             row.Cells.Add(MakeSignatureBox(
                 "Printed By", "Report Print",
-                GetSignatureValue(print, "SignerDisplayName", GetSignatureValue(print, "SignedBy", FirstNonEmpty(reportPrintedByDisplay, currentUser))),
+                FirstNonEmpty(currentUser),
                 printedDate,
-                GetSignatureValue(print, "MeaningOfSignature", "Printed from controlled PharmaLIMS records")));
+                "Current controlled report copy prepared for printing"));
 
             group.Rows.Add(row);
             document.Blocks.Add(table);
