@@ -648,36 +648,84 @@ WHERE SampleID = @SampleID;",
                     category,
                     authoritative.OverallInterpretation);
 
+                int latestCertificateId = 0;
+                string latestCertificateStatus = string.Empty;
+                string latestCancellationReason = string.Empty;
+                string latestCancelledBy = string.Empty;
+                DateTime? latestCancelledDate = null;
+                using (SqlCommand latestCertificateCommand = new SqlCommand(@"
+SELECT TOP(1)
+    CertificateID,
+    LTRIM(RTRIM(ISNULL(CertificateStatus,N''))) AS CertificateStatus,
+    LTRIM(RTRIM(ISNULL(CancellationReason,N''))) AS CancellationReason,
+    LTRIM(RTRIM(ISNULL(CancelledBy,N''))) AS CancelledBy,
+    CancelledDate
+FROM dbo.PRM_Certificates WITH (UPDLOCK,HOLDLOCK)
+WHERE SampleID=@SampleID
+ORDER BY ISNULL(RevisionNo,-1) DESC, CertificateID DESC;", conn, tx))
+                {
+                    latestCertificateCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    latestCertificateCommand.Parameters.Add("@SampleID", SqlDbType.Int).Value = _selectedSampleId;
+                    using SqlDataReader reader = latestCertificateCommand.ExecuteReader();
+                    if (reader.Read())
+                    {
+                        latestCertificateId = reader.GetInt32(0);
+                        latestCertificateStatus = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
+                        latestCancellationReason = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
+                        latestCancelledBy = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).Trim();
+                        latestCancelledDate = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4);
+                    }
+                }
+
                 if (isReissue)
                 {
-                    int cancelled = CancelCertificateInTransaction(conn, tx, reissuedFromCertificateId, "Reissued: " + reason, signature.SignedBy);
-                    if (cancelled != 1)
-                        throw new InvalidOperationException("The active certificate changed before reissue. Nothing was changed.");
-                    AddCertificateHistoryInTransaction(conn, tx, reissuedFromCertificateId, "Cancelled for Reissue", reason, signature.SignedBy);
-                    DatabaseHelper.AddAuditTrailAdvanced(
-                        conn,
-                        tx,
-                        "PRM_Certificates",
-                        reissuedFromCertificateId,
-                        "Certificate Cancelled for Reissue",
-                        "Active",
-                        "Cancelled",
-                        signature.Reason,
-                        signature.SignedBy,
-                        "CertificateStatus",
-                        null,
-                        null,
-                        "PRM Certificate");
+                    if (reissuedFromCertificateId <= 0 || latestCertificateId != reissuedFromCertificateId)
+                    {
+                        throw new InvalidOperationException(
+                            "Reissue must reference the latest PRM certificate/report for this sample. The certificate lifecycle changed; reload before continuing.");
+                    }
+
+                    if (latestCertificateStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int cancelled = CancelCertificateInTransaction(conn, tx, reissuedFromCertificateId, "Reissued: " + reason, signature.SignedBy);
+                        if (cancelled != 1)
+                            throw new InvalidOperationException("The active certificate changed before reissue. Nothing was changed.");
+                        AddCertificateHistoryInTransaction(conn, tx, reissuedFromCertificateId, "Cancelled for Reissue", reason, signature.SignedBy);
+                        DatabaseHelper.AddAuditTrailAdvanced(
+                            conn,
+                            tx,
+                            "PRM_Certificates",
+                            reissuedFromCertificateId,
+                            "Certificate Cancelled for Reissue",
+                            "Active",
+                            "Cancelled",
+                            signature.Reason,
+                            signature.SignedBy,
+                            "CertificateStatus",
+                            null,
+                            null,
+                            "PRM Certificate");
+                    }
+                    else if (latestCertificateStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (string.IsNullOrWhiteSpace(latestCancellationReason) ||
+                            string.IsNullOrWhiteSpace(latestCancelledBy) ||
+                            !latestCancelledDate.HasValue)
+                        {
+                            throw new InvalidOperationException(
+                                "The latest cancelled PRM certificate/report lacks complete cancellation evidence. Reissue is blocked until the lifecycle record is reconciled.");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "The latest PRM certificate/report is neither Active nor Cancelled. Reissue is blocked until the certificate lifecycle is reconciled.");
+                    }
                 }
-                else
+                else if (latestCertificateId > 0)
                 {
-                    object active = ExecuteScalarInTransaction(conn, tx, @"
-SELECT COUNT(1)
-FROM dbo.PRM_Certificates WITH (UPDLOCK, HOLDLOCK)
-WHERE SampleID = @SampleID AND CertificateStatus = N'Active';",
-                        new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId });
-                    if (Convert.ToInt32(active, CultureInfo.InvariantCulture) > 0)
-                        throw new InvalidOperationException("An active certificate/report already exists for this sample.");
+                    throw new InvalidOperationException(
+                        "A prior PRM certificate/report already exists for this sample. A replacement must use the controlled Reissue workflow so ReissuedFromCertificateID remains traceable.");
                 }
 
                     issuanceStage = "certificate numbering";
@@ -1287,7 +1335,17 @@ ORDER BY SnapshotID DESC;",
             DataTable table = DatabaseHelper.ExecuteQuery(@"
 SELECT TOP 1 * FROM dbo.PRM_Certificates
 WHERE SampleID = @SampleID AND CertificateStatus = N'Active'
-ORDER BY CertificateID DESC;",
+ORDER BY ISNULL(RevisionNo,-1) DESC, CertificateID DESC;",
+                new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId } });
+            return table.Rows.Count == 0 ? null : table.Rows[0];
+        }
+
+        private DataRow GetLatestCertificateRow()
+        {
+            DataTable table = DatabaseHelper.ExecuteQuery(@"
+SELECT TOP 1 * FROM dbo.PRM_Certificates
+WHERE SampleID = @SampleID
+ORDER BY ISNULL(RevisionNo,-1) DESC, CertificateID DESC;",
                 new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId } });
             return table.Rows.Count == 0 ? null : table.Rows[0];
         }
