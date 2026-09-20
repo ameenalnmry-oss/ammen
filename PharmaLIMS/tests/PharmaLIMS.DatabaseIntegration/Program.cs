@@ -2907,7 +2907,13 @@ SELECT CONVERT(bigint,SCOPE_IDENTITY());", behaviorConnection, tx))
         }
         finally
         {
-            await ExecuteAsync(connectionString, originalTriggerDefinition);
+            await ExecuteAsync(
+                connectionString,
+                "DROP TRIGGER IF EXISTS dbo.TRG_AuditTrail_AppendOnly;");
+
+            await ExecuteAsync(
+                connectionString,
+                originalTriggerDefinition);
         }
 
         bool protectedUpdateBlocked = false;
