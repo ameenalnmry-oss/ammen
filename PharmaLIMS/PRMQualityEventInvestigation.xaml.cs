@@ -640,6 +640,12 @@ WHERE QualityEventID = @QualityEventID
                     if (!lockedStatus.Equals("QA Review", StringComparison.OrdinalIgnoreCase))
                         throw new InvalidOperationException("The PRM Quality Event is no longer in QA Review. Closure was not committed.");
 
+                    EnsurePrmCapaClosureEvidenceInTransaction(
+                        conn,
+                        tx,
+                        qualityEventId,
+                        chkCAPARequired.IsChecked == true);
+
                     EnsureAffectedPrmEvidenceMatchesCurrentResultsInTransaction(conn, tx, qualityEventId);
                     EnsureReplacementEventCoversCurrentAndLegacyEvidenceInTransaction(
                         conn, tx, qualityEventId, loadedSampleId);
@@ -791,6 +797,35 @@ VALUES
         {
             DialogResult = true;
             Close();
+        }
+
+        private static void EnsurePrmCapaClosureEvidenceInTransaction(
+            SqlConnection connection,
+            SqlTransaction transaction,
+            int qualityEventId,
+            bool capaRequired)
+        {
+            if (!capaRequired)
+                return;
+
+            using SqlCommand command = new SqlCommand(@"
+SELECT CASE WHEN EXISTS
+(
+    SELECT 1
+    FROM dbo.QualityEventActions WITH (UPDLOCK, HOLDLOCK)
+    WHERE QualityEventID = @QualityEventID
+      AND UPPER(LTRIM(RTRIM(ISNULL(ActionType,N'')))) = N'PRM CAPA ACTION'
+      AND NULLIF(LTRIM(RTRIM(ISNULL(ActionDescription,N''))),N'') IS NOT NULL
+)
+THEN 1 ELSE 0 END;", connection, transaction);
+            command.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+            command.Parameters.Add("@QualityEventID", SqlDbType.Int).Value = qualityEventId;
+
+            if (Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) != 1)
+            {
+                throw new InvalidOperationException(
+                    "PRM Quality Event closure is blocked because CAPA is required but no explicit PRM CAPA Action with a documented description exists in the locked database evidence.");
+            }
         }
 
         private bool ValidateBeforeCloseInvestigation()

@@ -112,6 +112,9 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn('"PRM CAPA Action"', code)
         self.assertIn("hasExplicitCapaAction", code)
         self.assertIn("ordinary investigation notes do not satisfy CAPA evidence", code)
+        self.assertIn("EnsurePrmCapaClosureEvidenceInTransaction", code)
+        self.assertIn("FROM dbo.QualityEventActions WITH (UPDLOCK, HOLDLOCK)", code)
+        self.assertIn("no explicit PRM CAPA Action with a documented description exists in the locked database evidence", code)
 
     def test_main_navigation_scrolls_without_hiding_user_footer(self):
         xaml = source("MainWindow.xaml")
