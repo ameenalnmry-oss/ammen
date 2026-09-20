@@ -138,6 +138,24 @@ END;";
             await ExecuteAsync(connectionString, areaClassificationCompatibilitySql, timeoutSeconds: 120);
         }
 
+        if (versionKey.StartsWith("20260823_002", StringComparison.Ordinal))
+        {
+            const string cultureMediaApprovalCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.CultureMediaQualificationRequirements', N'U') IS NULL
+    THROW 53100, 'Required table dbo.CultureMediaQualificationRequirements is missing before 20260823_002 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ApprovalStatus') IS NULL
+    ALTER TABLE dbo.CultureMediaQualificationRequirements ADD ApprovalStatus NVARCHAR(30) NOT NULL
+        CONSTRAINT DF_CultureMediaQualificationRequirements_ApprovalStatus DEFAULT (N'Draft');
+IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ReviewedBy') IS NULL
+    ALTER TABLE dbo.CultureMediaQualificationRequirements ADD ReviewedBy NVARCHAR(100) NULL;
+IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ReviewedAt') IS NULL
+    ALTER TABLE dbo.CultureMediaQualificationRequirements ADD ReviewedAt DATETIME2(0) NULL;
+";
+
+            await ExecuteAsync(connectionString, cultureMediaApprovalCompatibilitySql, timeoutSeconds: 120);
+        }
+
         string sql = System.Text.Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
         await ExecuteAsync(connectionString, sql, timeoutSeconds: 300);
     }
