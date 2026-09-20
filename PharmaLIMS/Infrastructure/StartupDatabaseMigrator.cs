@@ -501,8 +501,18 @@ VALUES
                     record.Parameters.Add("@Description", SqlDbType.NVarChar, 500).Value = baselineDescription;
                     record.Parameters.Add("@Checksum", SqlDbType.NVarChar, 128).Value = expectedHash;
                     record.Parameters.Add("@ApplicationVersion", SqlDbType.NVarChar, 50).Value = applicationVersion;
-                    if (await record.ExecuteNonQueryAsync().ConfigureAwait(false) != 1)
-                        throw new InvalidOperationException("The fresh-install baseline ledger record was not created.");
+                    await record.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+                    await using SqlCommand verifyRecordedBaseline = new SqlCommand(@"
+SELECT COUNT(1)
+FROM dbo.LIMS_SchemaVersions WITH (UPDLOCK,HOLDLOCK)
+WHERE VersionKey=@VersionKey
+  AND MigrationChecksum=@Checksum;", connection, transaction);
+                    verifyRecordedBaseline.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    verifyRecordedBaseline.Parameters.Add("@VersionKey", SqlDbType.NVarChar, 100).Value = baselineVersionKey;
+                    verifyRecordedBaseline.Parameters.Add("@Checksum", SqlDbType.NVarChar, 128).Value = expectedHash;
+                    if (Convert.ToInt32(await verifyRecordedBaseline.ExecuteScalarAsync().ConfigureAwait(false), CultureInfo.InvariantCulture) != 1)
+                        throw new InvalidOperationException("The fresh-install baseline ledger record was not created with the expected checksum.");
 
                     controlledFreshBaselinePresent = true;
                     return;
