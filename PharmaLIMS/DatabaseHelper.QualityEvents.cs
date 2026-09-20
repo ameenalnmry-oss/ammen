@@ -1141,17 +1141,14 @@ WHERE QualityEventID = @qualityEventId
 
                 if (finalDisposition.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
                     finalDisposition.Equals("Retest Required", StringComparison.OrdinalIgnoreCase) ||
-                    finalDisposition.Equals("Retest / Resample Required", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("Quality Event closure is blocked because the selected disposition still requires follow-up testing or investigation.");
-
-                bool isEnvironmentalMonitoring =
-                    detectionSource.Equals("Environmental Monitoring", StringComparison.OrdinalIgnoreCase) ||
-                    sourceRecordNumber.StartsWith("EM-", StringComparison.OrdinalIgnoreCase);
-                if (isEnvironmentalMonitoring &&
-                    (finalDisposition.Equals("Retest Approved", StringComparison.OrdinalIgnoreCase) ||
-                     finalDisposition.Equals("Resample Approved", StringComparison.OrdinalIgnoreCase) ||
-                     finalDisposition.Equals("System Corrected / Monitoring Required", StringComparison.OrdinalIgnoreCase)))
-                    throw new InvalidOperationException("Environmental Monitoring closure is blocked because the selected disposition still requires follow-up testing or monitoring.");
+                    finalDisposition.Equals("Retest / Resample Required", StringComparison.OrdinalIgnoreCase) ||
+                    finalDisposition.Equals("Retest Approved", StringComparison.OrdinalIgnoreCase) ||
+                    finalDisposition.Equals("Resample Approved", StringComparison.OrdinalIgnoreCase) ||
+                    finalDisposition.Equals("System Corrected / Monitoring Required", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "Quality Event closure is blocked because the selected disposition still requires follow-up testing, resampling, monitoring, or investigation. Complete the follow-up evidence and select a final disposition.");
+                }
 
                 if (sourceModule.Equals("PRM", StringComparison.OrdinalIgnoreCase) &&
                     (finalDisposition.Equals("Accepted with Justification", StringComparison.OrdinalIgnoreCase) ||

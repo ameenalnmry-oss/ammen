@@ -1178,9 +1178,23 @@ namespace PharmaLIMS
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(GetComboText(cboFinalDisposition)))
+            string finalDisposition = GetComboText(cboFinalDisposition);
+            if (string.IsNullOrWhiteSpace(finalDisposition))
             {
                 MessageBox.Show("Final disposition is required before closure.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                cboFinalDisposition.Focus();
+                return false;
+            }
+
+            if (finalDisposition.Equals("Retest Approved", StringComparison.OrdinalIgnoreCase) ||
+                finalDisposition.Equals("Resample Approved", StringComparison.OrdinalIgnoreCase) ||
+                finalDisposition.Equals("System Corrected / Monitoring Required", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(
+                    "The selected disposition still requires follow-up testing, resampling, or monitoring and is not a final closure decision. Complete the follow-up evidence and select a final disposition before QA closure.",
+                    "QA Closure",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 cboFinalDisposition.Focus();
                 return false;
             }
