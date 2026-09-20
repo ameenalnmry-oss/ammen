@@ -27,18 +27,12 @@ jobs:
         shell: pwsh
 
     steps:
-      # ============================================================
-      # 1. CHECKOUT
-      # ============================================================
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           clean: true
 
-      # ============================================================
-      # 2. CHECK BYTE-INTEGRITY IMMEDIATELY AFTER CHECKOUT
-      # ============================================================
       - name: Diagnose checked-out source hashes
         shell: pwsh
         run: |
@@ -106,21 +100,11 @@ jobs:
 
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
-      # ============================================================
-      # 3. INSTALL .NET
-      # ============================================================
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # ============================================================
-      # 4. VERIFY CONTROLLED SOURCE BEFORE ANY RESTORE / BUILD
-      #
-      # IMPORTANT:
-      # Do not inspect $LASTEXITCODE here.
-      # The PowerShell script itself is authoritative.
-      # ============================================================
       - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS
         shell: pwsh
@@ -137,13 +121,50 @@ jobs:
 
           Write-Host "Controlled source manifest validation passed."
 
-      # ============================================================
-      # 5. AUTHORITATIVE PHARMALIMS RELEASE VALIDATION
-      #
-      # This script owns source/build/SQL/runtime validation.
-      # Do not run a separate restore beforehand because restore can
-      # create obj/ artifacts before delivery-package validation.
-      # ============================================================
+      - name: Verify validator content in runner
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "========================================"
+          Write-Host " Runner HEAD"
+          Write-Host "========================================"
+          git rev-parse HEAD
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " validate_project.py markers"
+          Write-Host "========================================"
+
+          Select-String `
+            -Path "scripts/validate_project.py" `
+            -Pattern "excluded_generated_files|packages.lock.json"
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " validate_project.py SHA-256"
+          Write-Host "========================================"
+
+          $validatorHash = (
+              Get-FileHash `
+                -LiteralPath "scripts/validate_project.py" `
+                -Algorithm SHA256
+          ).Hash
+
+          Write-Host "VALIDATOR_SHA256=$validatorHash"
+
+          if (-not (
+              Select-String `
+                -Path "scripts/validate_project.py" `
+                -Pattern '"packages\.lock\.json"' `
+                -Quiet
+          )) {
+              throw "CI runner is not using the expected validate_project.py packages.lock.json exclusion."
+          }
+
+          Write-Host "Validator content verification passed."
+
       - name: Unified source build SQL WPF runtime validation
         working-directory: PharmaLIMS
         shell: pwsh
@@ -152,9 +173,7 @@ jobs:
 
           Write-Host "Starting PharmaLIMS authoritative release validation..."
 
-          & ./scripts/Invoke-ReleaseValidation.ps1 `
-              -RunDatabaseIntegration `
-              -RunRuntimeSmoke
+          & ./scripts/Invoke-ReleaseValidation.ps1 -RunDatabaseIntegration -RunRuntimeSmoke
 
           if (-not $?) {
               throw "PharmaLIMS release validation did not complete successfully."
@@ -162,9 +181,6 @@ jobs:
 
           Write-Host "PharmaLIMS release validation passed."
 
-      # ============================================================
-      # 6. NUGET VULNERABILITY GATE
-      # ============================================================
       - name: Reject vulnerable NuGet packages
         working-directory: PharmaLIMS
         shell: pwsh
@@ -197,9 +213,6 @@ jobs:
 
           Write-Host "NuGet vulnerability gate passed."
 
-      # ============================================================
-      # 7. REJECT ACCIDENTALLY TRACKED BUILD / LOCAL ARTIFACTS
-      # ============================================================
       - name: Reject tracked build artifacts
         shell: pwsh
         run: |
@@ -224,9 +237,6 @@ jobs:
 
           Write-Host "No prohibited tracked build artifacts detected."
 
-      # ============================================================
-      # 8. VERIFY CONTROLLED MIGRATION MANIFEST STILL EXISTS
-      # ============================================================
       - name: Verify migration manifest presence
         working-directory: PharmaLIMS
         shell: pwsh
@@ -252,9 +262,6 @@ jobs:
               throw "Migration manifest contains no migrations."
           }
 
-      # ============================================================
-      # 9. SHOW BUILD / SOURCE STATE
-      # ============================================================
       - name: Show final repository status
         if: always()
         shell: pwsh
