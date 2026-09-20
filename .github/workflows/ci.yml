@@ -1,141 +1,289 @@
-[CmdletBinding()]
-param(
-    [switch]$SkipBuild,
-    [switch]$RunDatabaseIntegration,
-    [switch]$RunRuntimeSmoke,
-    [switch]$ValidateProductionConfig,
-    [switch]$SourceOnly
-)
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+name: PharmaLIMS CI
 
-function Assert-NativeExit([string]$Step) {
-    if ($LASTEXITCODE -ne 0) {
-        throw "$Step failed with native exit code $LASTEXITCODE."
-    }
-}
+on:
+  push:
+    branches:
+      - main
+      - master
+      - codex-review
 
-function Start-ControlledLocalDbIfNeeded {
-    if ($env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING) {
-        Write-Host 'External PHARMALIMS_TEST_MASTER_CONNECTION_STRING supplied; LocalDB startup skipped.'
-        return
-    }
-    $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
-    if (-not $isWindowsPlatform) {
-        throw 'SQL integration/runtime smoke requires Windows LocalDB or PHARMALIMS_TEST_MASTER_CONNECTION_STRING.'
-    }
-    $localDb = Get-Command sqllocaldb -ErrorAction SilentlyContinue
-    if (-not $localDb) {
-        throw 'sqllocaldb was not found. Install SQL Server LocalDB or provide PHARMALIMS_TEST_MASTER_CONNECTION_STRING.'
-    }
-    $instances = @(sqllocaldb info)
-    if ($instances -notcontains 'MSSQLLocalDB') {
-        sqllocaldb create MSSQLLocalDB | Out-Null
-        Assert-NativeExit 'Create MSSQLLocalDB'
-    }
-    sqllocaldb start MSSQLLocalDB | Out-Null
-    Assert-NativeExit 'Start MSSQLLocalDB'
-}
+  pull_request:
+    branches:
+      - main
+      - master
 
-if ($SourceOnly -and ($RunDatabaseIntegration -or $RunRuntimeSmoke -or $ValidateProductionConfig)) {
-    throw 'SourceOnly cannot be combined with runtime/database/production-configuration gates.'
-}
-if ($SkipBuild -and ($RunDatabaseIntegration -or $RunRuntimeSmoke)) {
-    throw 'SkipBuild cannot be combined with DatabaseIntegration or RuntimeSmoke.'
-}
-if ($RunRuntimeSmoke -and -not $RunDatabaseIntegration) {
-    throw 'RunRuntimeSmoke requires RunDatabaseIntegration; WPF startup smoke is not a substitute for SQL integration.'
-}
+  workflow_dispatch:
 
-Push-Location $root
-try {
-    $env:PYTHONDONTWRITEBYTECODE = '1'
-    python -B scripts/validate_project.py --delivery-package
-    Assert-NativeExit 'Delivery source validation'
-    python -B -m unittest discover -s tests -p "test_*.py" -v
-    Assert-NativeExit 'Python source-control regression suite'
-    ./scripts/Test-SourceManifest.ps1
+permissions:
+  contents: read
 
-    if ($SourceOnly) {
-        Write-Host 'Source-only checks passed. No .NET build, SQL execution, WPF runtime execution or release approval is implied.'
-        return
-    }
+jobs:
+  validate-build-publish:
+    name: validate-build-publish
+    runs-on: windows-latest
 
-    if ($ValidateProductionConfig) {
-        python -B scripts/validate_project.py --production-publish
-        Assert-NativeExit 'Production configuration validation'
-    }
+    defaults:
+      run:
+        shell: pwsh
 
-    if ($SkipBuild) {
-        Write-Warning 'Build skipped. This is not a completed release-validation gate.'
-        return
-    }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
 
-    # Restore the RID-specific release graph first. Do not restore RuntimeSmoke here:
-    # RuntimeSmoke references PharmaLIMS without a RID, and restoring it at this point
-    # would overwrite PharmaLIMS\obj\project.assets.json and remove the
-    # net8.0-windows7.0/win-x64 target needed by the Release build.
-    dotnet restore PharmaLIMS.csproj --runtime win-x64
-    Assert-NativeExit 'WPF win-x64 restore'
-    dotnet restore tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --runtime win-x64
-    Assert-NativeExit 'DatabaseMaintenance restore'
-    dotnet restore tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj
-    Assert-NativeExit 'ReviewRegression restore'
-    if ($RunDatabaseIntegration) {
-        dotnet restore tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj
-        Assert-NativeExit 'DatabaseIntegration restore'
-    }
+      - name: Diagnose checked-out source hashes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
 
-    # Complete every RID-specific build before any non-RID ProjectReference restore.
-    dotnet build PharmaLIMS.csproj --configuration Release --runtime win-x64 --no-restore
-    Assert-NativeExit 'WPF Release build'
-    dotnet build tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --configuration Debug --runtime win-x64 --no-restore
-    Assert-NativeExit 'DatabaseMaintenance build'
-    dotnet build tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-restore
-    Assert-NativeExit 'ReviewRegression build'
-    dotnet run --project tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-build --no-restore
-    Assert-NativeExit 'ReviewRegression execution'
+          Write-Host "========================================"
+          Write-Host " Git environment"
+          Write-Host "========================================"
 
-    if ($RunDatabaseIntegration -or $RunRuntimeSmoke) {
-        Start-ControlledLocalDbIfNeeded
-    }
+          git --version
 
-    if ($RunDatabaseIntegration) {
-        dotnet build tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj --configuration Release --no-restore
-        Assert-NativeExit 'DatabaseIntegration build'
-        dotnet run --project tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj --configuration Release --no-build --no-restore
-        Assert-NativeExit 'Disposable SQL Server integration executable'
-    } else {
-        Write-Warning 'SQL integration not requested. Use -RunDatabaseIntegration before release approval.'
-    }
+          Write-Host ""
+          Write-Host "core.autocrlf:"
+          git config --get core.autocrlf
 
-    if ($RunRuntimeSmoke) {
-        # Restore RuntimeSmoke only after all win-x64 builds are complete. This project
-        # references PharmaLIMS without a RID and therefore intentionally materializes
-        # the non-RID assets used by the Debug/Development WPF startup smoke.
-        dotnet restore tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj
-        Assert-NativeExit 'RuntimeSmoke restore'
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " Root .gitattributes"
+          Write-Host "========================================"
 
-        # Debug/Development smoke is deliberate because LocalDB cannot satisfy the Production
-        # certificate policy without weakening it. This gate verifies the WPF/XAML/DI/startup path
-        # against a disposable migrated database, but it does NOT prove the published Production
-        # artifact. Production release also requires Invoke-ProductionArtifactSmoke.ps1 against the
-        # exact signed artifact and a trusted-TLS pre-migrated SQL Server test database.
-        dotnet build tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj --configuration Debug --no-restore
-        Assert-NativeExit 'RuntimeSmoke Debug build'
-        dotnet run --project tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj --configuration Debug --no-build --no-restore
-        Assert-NativeExit 'WPF RuntimeSmoke execution'
-    } else {
-        Write-Warning 'WPF RuntimeSmoke not requested. Use -RunDatabaseIntegration -RunRuntimeSmoke before release approval.'
-    }
+          if (Test-Path ".gitattributes") {
+              Get-Content ".gitattributes"
+          }
+          else {
+              Write-Host "No root .gitattributes file found."
+          }
 
-    if ($RunDatabaseIntegration -and $RunRuntimeSmoke) {
-        Write-Host 'Automated source, Release build, SQL integration and Development WPF startup smoke gates passed.'
-        Write-Warning 'Production artifact approval still requires signing plus Invoke-ProductionArtifactSmoke.ps1 against the exact published binary.'
-        Write-Host 'Site-specific UAT, actual printing, operational load evidence and QA approval remain required.'
-    }
-}
-finally {
-    Pop-Location
-}
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " .gitignore Git EOL state"
+          Write-Host "========================================"
+
+          git ls-files --eol PharmaLIMS/.gitignore
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " .gitignore source hash"
+          Write-Host "========================================"
+
+          $actual = (
+              Get-FileHash `
+                  -LiteralPath "PharmaLIMS/.gitignore" `
+                  -Algorithm SHA256
+          ).Hash.ToLowerInvariant()
+
+          $manifestLine = Select-String `
+              -Path "PharmaLIMS/SOURCE_MANIFEST_SHA256.txt" `
+              -Pattern "\s\.gitignore$"
+
+          if (-not $manifestLine) {
+              throw ".gitignore is missing from SOURCE_MANIFEST_SHA256.txt."
+          }
+
+          $expected = (
+              ($manifestLine.Line -split '\s+')[0]
+          ).ToLowerInvariant()
+
+          Write-Host "CHECKOUT_HASH=$actual"
+          Write-Host "EXPECTED_HASH=$expected"
+          Write-Host "ACTUAL_HASH=$actual"
+
+          if ($actual -ne $expected) {
+              throw "CHECKOUT BYTE INTEGRITY FAILURE: .gitignore does not match SOURCE_MANIFEST_SHA256.txt immediately after checkout."
+          }
+
+          Write-Host "CHECKOUT BYTE INTEGRITY PASS"
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Validate controlled source manifest before build
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "Running controlled source-manifest verification..."
+
+          & ./scripts/Test-SourceManifest.ps1
+
+          if (-not $?) {
+              throw "Controlled source manifest verification did not complete successfully."
+          }
+
+          Write-Host "Controlled source manifest validation passed."
+
+      - name: Verify validator content in runner
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "========================================"
+          Write-Host " Runner HEAD"
+          Write-Host "========================================"
+          git rev-parse HEAD
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " validate_project.py markers"
+          Write-Host "========================================"
+
+          Select-String `
+            -Path "scripts/validate_project.py" `
+            -Pattern "excluded_generated_files|packages.lock.json"
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " validate_project.py SHA-256"
+          Write-Host "========================================"
+
+          $validatorHash = (
+              Get-FileHash `
+                -LiteralPath "scripts/validate_project.py" `
+                -Algorithm SHA256
+          ).Hash
+
+          Write-Host "VALIDATOR_SHA256=$validatorHash"
+
+          if (-not (
+              Select-String `
+                -Path "scripts/validate_project.py" `
+                -Pattern '"packages\.lock\.json"' `
+                -Quiet
+          )) {
+              throw "CI runner is not using the expected validate_project.py packages.lock.json exclusion."
+          }
+
+          Write-Host "Validator content verification passed."
+
+      - name: Unified source build SQL WPF runtime validation
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "Starting PharmaLIMS authoritative release validation..."
+
+          & ./scripts/Invoke-ReleaseValidation.ps1 -RunDatabaseIntegration -RunRuntimeSmoke
+
+          if (-not $?) {
+              throw "PharmaLIMS release validation did not complete successfully."
+          }
+
+          Write-Host "PharmaLIMS release validation passed."
+
+      - name: Reject vulnerable NuGet packages
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "Checking NuGet dependency vulnerabilities..."
+
+          $output = & dotnet list package `
+              --vulnerable `
+              --include-transitive 2>&1
+
+          $output | ForEach-Object {
+              Write-Host $_
+          }
+
+          if (-not $?) {
+              throw "NuGet vulnerability inspection failed."
+          }
+
+          $joined = $output -join "`n"
+
+          if (
+              $joined -match "has the following vulnerable packages" -or
+              $joined -match "Critical" -or
+              $joined -match "High"
+          ) {
+              throw "Vulnerable NuGet package(s) detected."
+          }
+
+          Write-Host "NuGet vulnerability gate passed."
+
+      - name: Reject tracked build artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $tracked = git ls-files
+
+          $prohibited = $tracked | Where-Object {
+              $_ -match '(^|/)(bin|obj|\.vs|__pycache__)(/|$)' -or
+              $_ -match '\.pyc$'
+          }
+
+          if ($prohibited) {
+              Write-Host "Tracked prohibited artifacts were detected:"
+
+              $prohibited | ForEach-Object {
+                  Write-Host " - $_"
+              }
+
+              throw "Repository contains prohibited tracked local/build artifacts."
+          }
+
+          Write-Host "No prohibited tracked build artifacts detected."
+
+      - name: Verify migration manifest presence
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $manifest = "Database/MigrationManifest.json"
+
+          if (-not (Test-Path $manifest)) {
+              throw "Database/MigrationManifest.json is missing."
+          }
+
+          Write-Host "Migration manifest present."
+
+          $migrationCount = (
+              Get-Content $manifest -Raw |
+              ConvertFrom-Json
+          ).migrations.Count
+
+          Write-Host "Controlled migration entries: $migrationCount"
+
+          if ($migrationCount -lt 1) {
+              throw "Migration manifest contains no migrations."
+          }
+
+      - name: Show final repository status
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "========================================"
+          Write-Host " HEAD"
+          Write-Host "========================================"
+
+          git log -1 --oneline --decorate
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " Git status"
+          Write-Host "========================================"
+
+          git status --short
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host " Branch / ref"
+          Write-Host "========================================"
+
+          Write-Host "GITHUB_REF=$env:GITHUB_REF"
+          Write-Host "GITHUB_SHA=$env:GITHUB_SHA"
+          Write-Host "GITHUB_EVENT_NAME=$env:GITHUB_EVENT_NAME"
