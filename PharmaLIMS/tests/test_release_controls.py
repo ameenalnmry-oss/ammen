@@ -3450,7 +3450,12 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("does not convert the excursion into a within-limit result", em)
         self.assertIn("Media Lot / Preparation Ref.", em)
         self.assertIn("SignerDisplayName", helper)
-        self.assertIn("S.SignedBy AS SignerDisplayName", helper)\n        self.assertNotIn("JOIN dbo.Users", helper)
+        signature_start = helper.index("public static DataTable GetEMEventSignatures")
+        signature_end = helper.index("public static int AddEMEventSignature", signature_start)
+        signatures = helper[signature_start:signature_end]
+        self.assertIn("S.SignedBy AS SignerDisplayName", signatures)
+        self.assertNotIn("JOIN dbo.Users", signatures)
+        self.assertNotIn("U.FullName", signatures)
 
     def test_v190_prm_reports_use_unambiguous_dates_and_display_names(self):
         template = (ROOT / "Services/PRMCertificateTemplate.cs").read_text(encoding="utf-8-sig")
