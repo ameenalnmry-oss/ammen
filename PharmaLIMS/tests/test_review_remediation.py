@@ -230,7 +230,7 @@ class ReviewRemediationContracts(unittest.TestCase):
 
     def test_migration_additive_number_hash_and_types(self):
         manifest=json.loads(source("Database/MigrationManifest.json"))
-        self.assertEqual(82,len(manifest["migrations"]))
+        self.assertEqual(83,len(manifest["migrations"]))
         remediation=next(item for item in manifest["migrations"] if item["versionKey"]=="20260910_000")
         sql=(ROOT/"Database"/remediation["file"]).read_bytes()
         self.assertEqual(hashlib.sha256(sql).hexdigest(),remediation["sha256"])

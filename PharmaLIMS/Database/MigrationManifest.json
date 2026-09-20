@@ -1,7 +1,7 @@
 ﻿{
   "application": "PharmaLIMS",
   "applicationVersion": "2026.9.18.294",
-  "generatedAtUtc": "2026-09-17T19:30:00Z",
+  "generatedAtUtc": "2026-09-20T21:31:44Z",
   "baselineThrough": "20260722_003",
   "freshInstallBaseline": {
     "versionKey": "BASELINE_20260823_001",
@@ -515,6 +515,12 @@
       "description": "User administration electronic-signature evidence: transactional persistence, signer binding and append-only protection",
       "file": "Migrations/20260917_001_User_Administration_Signature_Evidence.sql",
       "sha256": "a6143e2bdbdb56570a7bf6057249866f2e63a048a033f18b7beb2f220dcc338a"
+    },
+    {
+      "versionKey": "20260921_001",
+      "description": "Harden append-only evidence triggers to reject zero-row UPDATE/DELETE while preserving INSERT validation",
+      "file": "Migrations/20260921_001_Harden_AppendOnly_Protection_Triggers.sql",
+      "sha256": "6574df0533af5d398ef1aaa6ad93d818f08e6d9d23ca417f033a26c5692e9d56"
     }
   ]
 }

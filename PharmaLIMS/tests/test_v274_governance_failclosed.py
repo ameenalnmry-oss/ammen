@@ -104,7 +104,7 @@ class V274GovernanceFailClosedTests(unittest.TestCase):
     def test_current_version_and_migration_count(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
 if __name__ == "__main__":
