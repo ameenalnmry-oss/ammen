@@ -33,8 +33,15 @@ internal static class Program
             using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath));
             JsonElement root = document.RootElement;
             JsonElement baseline = root.GetProperty("freshInstallBaseline");
+            string applicationVersion = root.GetProperty("applicationVersion").GetString() ?? string.Empty;
 
             await ApplyControlledFileAsync(projectRoot, databaseConnectionString, baseline.GetProperty("file").GetString()!, baseline.GetProperty("sha256").GetString()!, baseline.GetProperty("versionKey").GetString()!);
+            await RecordMigrationLedgerAsync(
+                databaseConnectionString,
+                baseline.GetProperty("versionKey").GetString()!,
+                baseline.GetProperty("description").GetString() ?? baseline.GetProperty("versionKey").GetString()!,
+                baseline.GetProperty("sha256").GetString()!,
+                applicationVersion);
 
             foreach (JsonElement migration in root.GetProperty("migrations").EnumerateArray())
             {
@@ -52,6 +59,13 @@ internal static class Program
                     migration.GetProperty("file").GetString()!,
                     migration.GetProperty("sha256").GetString()!,
                     versionKey);
+
+                await RecordMigrationLedgerAsync(
+                    databaseConnectionString,
+                    versionKey,
+                    migration.GetProperty("description").GetString() ?? versionKey,
+                    migration.GetProperty("sha256").GetString()!,
+                    applicationVersion);
             }
 
             await VerifySchemaAsync(databaseConnectionString);
@@ -100,6 +114,35 @@ END;");
                 Console.Error.WriteLine("Temporary database cleanup warning: " + cleanupEx.Message);
             }
         }
+    }
+
+    private static async Task RecordMigrationLedgerAsync(
+        string connectionString,
+        string versionKey,
+        string description,
+        string checksum,
+        string applicationVersion)
+    {
+        const string sql = @"
+MERGE dbo.LIMS_SchemaVersions WITH (HOLDLOCK) AS target
+USING (SELECT @VersionKey AS VersionKey) AS source
+ON target.VersionKey=source.VersionKey
+WHEN MATCHED THEN UPDATE SET
+    Description=@Description,
+    MigrationChecksum=@Checksum,
+    ApplicationVersion=@ApplicationVersion
+WHEN NOT MATCHED THEN INSERT
+    (VersionKey,Description,MigrationChecksum,ApplicationVersion)
+    VALUES(@VersionKey,@Description,@Checksum,@ApplicationVersion);";
+
+        await using SqlConnection connection = new(connectionString);
+        await connection.OpenAsync();
+        await using SqlCommand command = new(sql, connection) { CommandTimeout = 60 };
+        command.Parameters.Add("@VersionKey", SqlDbType.NVarChar, 100).Value = versionKey;
+        command.Parameters.Add("@Description", SqlDbType.NVarChar, 500).Value = description;
+        command.Parameters.Add("@Checksum", SqlDbType.NVarChar, 128).Value = checksum;
+        command.Parameters.Add("@ApplicationVersion", SqlDbType.NVarChar, 50).Value = applicationVersion;
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task ApplyControlledFileAsync(
