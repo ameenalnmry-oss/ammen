@@ -480,10 +480,10 @@ END;";
 
             if (BtnPrintCertificate != null)
                 BtnPrintCertificate.IsEnabled = hasSample && hasCertificate &&
-                    (DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) || CanIssuePrmCertificate());
+                    DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName());
             if (BtnPreviewCurrentLayout != null)
                 BtnPreviewCurrentLayout.IsEnabled = hasSample && hasCertificate &&
-                    (DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) || CanIssuePrmCertificate());
+                    DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName());
             if (BtnCancelCertificate != null)
             {
                 BtnCancelCertificate.IsEnabled = hasSample && CanCancelPrmCertificate() && hasCertificate;
@@ -1874,8 +1874,8 @@ WHERE SampleID = @SampleID
                 if (cert == null)
                     throw new InvalidOperationException("No active certificate / report found for this sample.");
 
-                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) && !CanIssuePrmCertificate())
-                    throw new InvalidOperationException("You do not have permission to view or print PRM certificates/reports.");
+                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()))
+                    throw new UnauthorizedAccessException("Reports access permission is required to view or print PRM certificates/reports.");
 
                 string certificateNumber = S(cert, "CertificateNumber");
                 string html = LoadPrmCertificateSnapshotHtml(ToInt(cert, "CertificateID"), out string integrityMessage);
@@ -1933,8 +1933,8 @@ WHERE SampleID = @SampleID
                 if (cert == null)
                     throw new InvalidOperationException("No active certificate / report found for this sample.");
 
-                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) && !CanIssuePrmCertificate())
-                    throw new InvalidOperationException("You do not have permission to preview PRM certificate/report layouts.");
+                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()))
+                    throw new UnauthorizedAccessException("Reports access permission is required to preview PRM certificate/report layouts.");
 
                 string certificateNumber = S(cert, "CertificateNumber");
                 string html = PRMCertificateTemplate.Build(GetCurrentSampleRow(), GetResultsTable(), cert, GetPrmElectronicSignatures());
