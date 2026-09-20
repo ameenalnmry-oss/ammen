@@ -638,7 +638,7 @@ INSERT dbo.PRM_SampleTests
 (SampleID,TestCode,TestName,SpecificationText,Unit,ResultValue,ResultType,SpecificationLimit,Interpretation,RequiredTest,SortOrder)
 VALUES
 (@SampleID,N'TAMC',N'Total Aerobic Microbial Count',N'NMT 100 CFU/g',N'CFU/g',N'5',N'Numeric',100,N'Conforms',1,10),
-(@SampleID,N'TYMC',N'Total Yeast and Mold Count',N'NMT 10 CFU/g',N'CFU/g',NULL,N'Numeric',10,NULL,1,20);
+(@SampleID,N'TYMC',N'Total Yeast and Mold Count',N'NMT 10 CFU/g',N'CFU/g',NULL,N'Numeric',10,N'Not Tested',1,20);
 SELECT @SampleID;", writerConnection))
         {
             partialSeed.Parameters.Add("@SampleNumber", SqlDbType.NVarChar, 60).Value = partialSampleNumber;
