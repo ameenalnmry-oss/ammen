@@ -191,6 +191,26 @@ IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationProductionStage') IS NULL
             await ExecuteAsync(connectionString, prmItemStageCompatibilitySql, timeoutSeconds: 120);
         }
 
+        if (versionKey.StartsWith("20260827_001", StringComparison.Ordinal))
+        {
+            const string prmEvidenceBindingCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.QualityEventAffectedResults', N'U') IS NULL
+    THROW 53710, 'Required table dbo.QualityEventAffectedResults is missing before 20260827_001 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.QualityEventAffectedResults', N'SpecificationNumericLimit') IS NULL
+    ALTER TABLE dbo.QualityEventAffectedResults
+        ADD SpecificationNumericLimit DECIMAL(18,3) NULL;
+
+IF COL_LENGTH(N'dbo.QualityEventAffectedResults', N'EvidenceSchemaVersion') IS NULL
+    ALTER TABLE dbo.QualityEventAffectedResults
+        ADD EvidenceSchemaVersion TINYINT NOT NULL
+            CONSTRAINT DF_QualityEventAffectedResults_EvidenceSchemaVersion_20260827_001
+            DEFAULT (0) WITH VALUES;
+";
+
+            await ExecuteAsync(connectionString, prmEvidenceBindingCompatibilitySql, timeoutSeconds: 120);
+        }
+
         string sql = System.Text.Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
         await ExecuteAsync(connectionString, sql, timeoutSeconds: 300);
     }
