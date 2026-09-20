@@ -11,6 +11,7 @@ def source(path: str) -> str:
 class V294ReleaseHardeningTests(unittest.TestCase):
     def test_fresh_baseline_ledger_is_verified_by_persisted_checksum(self):
         code = source("Infrastructure/StartupDatabaseMigrator.cs")
+        self.assertIn("using System.Globalization;", code)
         self.assertIn("verifyRecordedBaseline", code)
         self.assertIn("MigrationChecksum=@Checksum", code)
         self.assertIn("baseline ledger record was not created with the expected checksum", code)
