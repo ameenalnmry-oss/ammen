@@ -170,7 +170,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('DatabaseHelper.CanApproveResults(Login.CurrentUser ?? "")', em)
 
         self.assertIn("EnsureUserPermissionInTransaction", helper)
-        self.assertIn('effectiveSubmittedBy, "CanEnterResults", "submit EM results for review"', helper)
+        self.assertIn('effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review"', helper)
         self.assertIn('effectiveReviewedBy, "CanReviewResults", "review EM results"', helper)
         self.assertIn('effectiveApprovedBy, "CanApproveResults", "approve EM results"', helper)
         self.assertIn("GetLockedEMWorkflowStatusInTransaction", helper)

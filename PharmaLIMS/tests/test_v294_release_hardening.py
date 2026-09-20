@@ -82,7 +82,7 @@ class V294ReleaseHardeningTests(unittest.TestCase):
 
     def test_prm_submit_permission_matches_ui_contract(self):
         code = source("ProductionRawMaterialResults.xaml.cs")
-        start = code.index("private async void BtnSubmitReview_Click")
+        start = code.index("private void BtnSubmitReview_Click")
         end = code.index("private async void BtnReview_Click", start)
         submit = code[start:end]
         self.assertIn('"CanSubmitForReview"', submit)

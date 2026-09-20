@@ -814,7 +814,7 @@ THEN 1 ELSE 0 END;", connection, transaction);
                     {
                         throw new InvalidOperationException(
                             "The expected legacy certificate is not the latest cancelled certificate for this sample. " +
-                            "Replacement issuance was stopped to prevent a fork in the certificate reissue lineage. Refresh the controlled reconciliation before continuing.");
+                            "Replacement issuance was stopped to preserve the reissue link and prevent a fork in the certificate reissue lineage. Refresh the controlled reconciliation before continuing.");
                     }
                 }
 
