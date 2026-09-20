@@ -120,6 +120,24 @@ END;");
             throw new InvalidOperationException($"Checksum mismatch for {versionKey}: {relativePath}");
 
         Console.WriteLine("APPLY " + versionKey);
+
+        if (versionKey.StartsWith("20260811_001", StringComparison.Ordinal))
+        {
+            const string areaClassificationCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.ExternalTrendImportRows', N'U') IS NULL
+    THROW 51090, 'Apply migration 20260810_001 before 20260811_001 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.ExternalTrendImportRows', N'AreaClassification') IS NULL
+BEGIN
+    ALTER TABLE dbo.ExternalTrendImportRows
+        ADD AreaClassification NVARCHAR(30) NOT NULL
+            CONSTRAINT DF_ExternalTrendImportRows_AreaClassification
+            DEFAULT (N'Unspecified');
+END;";
+
+            await ExecuteAsync(connectionString, areaClassificationCompatibilitySql, timeoutSeconds: 120);
+        }
+
         string sql = System.Text.Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
         await ExecuteAsync(connectionString, sql, timeoutSeconds: 300);
     }
