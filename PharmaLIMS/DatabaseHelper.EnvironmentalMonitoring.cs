@@ -439,7 +439,8 @@ WHERE Id = @eventId;", connection, transaction))
                     UPDATE dbo.EM_Events
                     SET WorkflowStatus = 'Results Entered'
                     WHERE Id = @eventId
-                      AND ISNULL(WorkflowStatus, N'Pending') NOT IN (N'Approved', N'Closed', N'Cancelled')",
+                      AND ISNULL(WorkflowStatus, N'Pending') NOT IN
+                          (N'Under Review', N'Reviewed', N'Approved', N'Completed', N'Closed', N'Cancelled')",
                     new[]
                     {
                         new SqlParameter("@eventId", eventId)
