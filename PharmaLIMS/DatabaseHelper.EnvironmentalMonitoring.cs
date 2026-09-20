@@ -588,7 +588,7 @@ WHERE Id = @eventId;", connection, transaction))
             ExecuteInTransaction((conn, tx) =>
             {
                 string signerRole = EnsureUserPermissionInTransaction(
-                    conn, tx, effectiveSubmittedBy, "CanEnterResults", "submit EM results for review");
+                    conn, tx, effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review");
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Results Entered", StringComparison.OrdinalIgnoreCase))
