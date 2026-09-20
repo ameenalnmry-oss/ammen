@@ -156,6 +156,41 @@ IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ReviewedAt') IS NU
             await ExecuteAsync(connectionString, cultureMediaApprovalCompatibilitySql, timeoutSeconds: 120);
         }
 
+        if (versionKey.StartsWith("20260824_001", StringComparison.Ordinal))
+        {
+            const string prmItemStageCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.PRM_SpecificationTests', N'U') IS NULL
+    THROW 53201, 'Required table dbo.PRM_SpecificationTests is missing before 20260824_001 compatibility preparation.', 1;
+IF OBJECT_ID(N'dbo.PRM_Samples', N'U') IS NULL
+    THROW 53202, 'Required table dbo.PRM_Samples is missing before 20260824_001 compatibility preparation.', 1;
+IF OBJECT_ID(N'dbo.PRM_SampleTests', N'U') IS NULL
+    THROW 53203, 'Required table dbo.PRM_SampleTests is missing before 20260824_001 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.PRM_SpecificationTests', N'ItemCode') IS NULL
+    ALTER TABLE dbo.PRM_SpecificationTests ADD ItemCode NVARCHAR(80) NULL;
+IF COL_LENGTH(N'dbo.PRM_SpecificationTests', N'ProductionStage') IS NULL
+    ALTER TABLE dbo.PRM_SpecificationTests ADD ProductionStage NVARCHAR(80) NULL;
+
+IF COL_LENGTH(N'dbo.PRM_Samples', N'SpecificationVersionNo') IS NULL
+    ALTER TABLE dbo.PRM_Samples ADD SpecificationVersionNo INT NULL;
+IF COL_LENGTH(N'dbo.PRM_Samples', N'StabilityChamberNo') IS NULL
+    ALTER TABLE dbo.PRM_Samples ADD StabilityChamberNo NVARCHAR(120) NULL;
+IF COL_LENGTH(N'dbo.PRM_Samples', N'StabilityProtocolNo') IS NULL
+    ALTER TABLE dbo.PRM_Samples ADD StabilityProtocolNo NVARCHAR(120) NULL;
+
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SourceSpecificationTestID') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SourceSpecificationTestID INT NULL;
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationVersionNo') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SpecificationVersionNo INT NULL;
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationItemCode') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SpecificationItemCode NVARCHAR(80) NULL;
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationProductionStage') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SpecificationProductionStage NVARCHAR(80) NULL;
+";
+
+            await ExecuteAsync(connectionString, prmItemStageCompatibilitySql, timeoutSeconds: 120);
+        }
+
         string sql = System.Text.Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
         await ExecuteAsync(connectionString, sql, timeoutSeconds: 300);
     }
