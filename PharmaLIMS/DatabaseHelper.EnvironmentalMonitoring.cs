@@ -278,9 +278,20 @@ WHERE EventId = @eventId;", connection, transaction);
             return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
         }
 
-        public static bool CanPrintEMResultReport(int eventId, out string message)
+        public static bool CanPrintEMResultReport(int eventId, string username, out string message)
         {
             message = "";
+
+            string effectiveUsername;
+            try
+            {
+                effectiveUsername = ResolveAuthenticatedSigner(username);
+            }
+            catch (Exception ex)
+            {
+                message = Infrastructure.UserFacingError.SafeMessage(ex, "EM report print authorization");
+                return false;
+            }
 
             if (eventId <= 0)
             {
@@ -319,6 +330,13 @@ WHERE EventId = @eventId;", connection, transaction);
                 // no longer complete. The same fail-closed gate used by approval is reused here.
                 ExecuteInTransaction((connection, transaction) =>
                 {
+                    EnsureUserPermissionInTransaction(
+                        connection,
+                        transaction,
+                        effectiveUsername,
+                        "CanAccessReports",
+                        "print approved EM Result Report");
+
                     string eventNo;
                     using (SqlCommand eventCommand = new SqlCommand(@"
 SELECT EventNo

@@ -86,6 +86,7 @@ namespace PharmaLIMS
         private bool currentCanReviewResults = false;
         private bool currentCanApproveResults = false;
         private bool currentCanManageSettings = false;
+        private bool currentCanAccessReports = false;
 
         private sealed class PaginatorSource : IDocumentPaginatorSource
         {
@@ -526,7 +527,8 @@ SELECT CASE
                     CanSubmit: DatabaseHelper.CanSubmitForReview(username),
                     CanReview: DatabaseHelper.CanReviewResults(username),
                     CanApprove: DatabaseHelper.CanApproveResults(username),
-                    CanManage: DatabaseHelper.CanManageSettings(username));
+                    CanManage: DatabaseHelper.CanManageSettings(username),
+                    CanAccessReports: DatabaseHelper.CanAccessReports(username));
             });
 
             currentCanEditResults = permissions.CanEdit;
@@ -534,6 +536,7 @@ SELECT CASE
             currentCanReviewResults = permissions.CanReview;
             currentCanApproveResults = permissions.CanApprove;
             currentCanManageSettings = permissions.CanManage;
+            currentCanAccessReports = permissions.CanAccessReports;
 
             BtnSaveResults.IsEnabled = currentCanEditResults;
             BtnCalculate.IsEnabled = currentCanEditResults;
@@ -616,7 +619,7 @@ SELECT CASE
             }
 
             string databaseMessage;
-            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, out databaseMessage))
+            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, currentUser, out databaseMessage))
             {
                 message = databaseMessage;
                 return false;
@@ -658,6 +661,7 @@ SELECT CASE
 
             if (BtnPrintReport != null)
                 BtnPrintReport.IsEnabled = hasEvent &&
+                    currentCanAccessReports &&
                     allPlatesEntered &&
                     oosGateOk &&
                     workflowStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase);
