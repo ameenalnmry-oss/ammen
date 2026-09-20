@@ -106,7 +106,6 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="92"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -123,7 +122,11 @@
                     </StackPanel>
                 </Border>
 
-                <StackPanel Grid.Row="1" Margin="0,12,0,8">
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              CanContentScroll="True">
+                    <StackPanel Margin="0,12,0,8">
                     <TextBlock Text="WORKSPACE" Foreground="#7797AA" FontWeight="Bold" FontSize="10" Margin="24,6,0,6"/>
 
                     <Button x:Name="BtnSampleManagement" Style="{StaticResource NavButton}" Click="BtnSampleManagement_Click">
@@ -188,9 +191,10 @@
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Reports and Trends" FontWeight="SemiBold"/><TextBlock Text="Certificates and analytics" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
                         </Grid>
                     </Button>
-                </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
 
-                <Border Grid.Row="3" Background="#102A42" BorderBrush="#28445D" BorderThickness="0,1,0,0" Padding="16,14">
+                <Border Grid.Row="2" Background="#102A42" BorderBrush="#28445D" BorderThickness="0,1,0,0" Padding="16,14">
                     <StackPanel>
                         <TextBlock x:Name="lblUser" Foreground="White" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                         <TextBlock x:Name="lblRole" Foreground="#9FC0D2" FontSize="10.5" Margin="0,2,0,0"/>

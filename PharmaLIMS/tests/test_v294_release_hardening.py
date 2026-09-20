@@ -112,6 +112,17 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("hasExplicitCapaAction", code)
         self.assertIn("ordinary investigation notes do not satisfy CAPA evidence", code)
 
+    def test_main_navigation_scrolls_without_hiding_user_footer(self):
+        xaml = source("MainWindow.xaml")
+        sidebar_start = xaml.index("<!-- Left navigation -->")
+        sidebar_end = xaml.index("<!-- Main workspace -->", sidebar_start)
+        sidebar = xaml[sidebar_start:sidebar_end]
+        self.assertIn('Grid.Row="1"', sidebar)
+        self.assertIn('VerticalScrollBarVisibility="Auto"', sidebar)
+        self.assertIn('HorizontalScrollBarVisibility="Disabled"', sidebar)
+        self.assertIn('<Border Grid.Row="2" Background="#102A42"', sidebar)
+        self.assertNotIn('<Border Grid.Row="3" Background="#102A42"', sidebar)
+
 
 if __name__ == "__main__":
     unittest.main()
