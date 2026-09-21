@@ -100,7 +100,7 @@ namespace PharmaLIMS
         private static bool CanReleaseCultureMedia()
         {
             return IsCultureMediaAdministrator() ||
-                   DatabaseHelper.CanApproveResults(Login.CurrentUser);
+                   DatabaseHelper.CanQaApproveResults(Login.CurrentUser);
         }
 
         private static void RequireCultureMediaReleasePermission()
@@ -879,6 +879,9 @@ WHERE MediaLotID = @MediaLotID
                 decimal differenceG = 0m;
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
+                        conn, tx, reconciledBy, "reconcile culture media stock");
+
                     string receiptStatus;
                     using (var command = new SqlCommand(@"
 SELECT CurrentStockG, ReceiptStatus
@@ -1308,6 +1311,9 @@ WHERE MediaLotID = @MediaLotID
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
+                        conn, tx, signedBy, "reject culture media lot");
+
                     int affected = DatabaseHelper.ExecuteNonQueryWithTransaction(sql,
                         new[]
                         {
@@ -1338,8 +1344,8 @@ WHERE MediaLotID = @MediaLotID
             try
             {
                 RequireCultureMediaReleasePermission();
-                if (!DatabaseHelper.CanApproveResults(Login.CurrentUser ?? string.Empty) && !IsCultureMediaAdministrator())
-                    throw new InvalidOperationException("QA approval permission is required to confirm Culture Media timing controls.");
+                if (!DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? string.Empty) && !IsCultureMediaAdministrator())
+                    throw new InvalidOperationException("QA role and approval permission are required to confirm Culture Media timing controls.");
 
                 DataTable requirements = _repository.Load(CultureMediaQuery.LoadQualificationTimingRequirements);
 
@@ -1388,8 +1394,8 @@ WHERE MediaLotID = @MediaLotID
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
-                    DatabaseHelper.EnsureUserPermissionInTransaction(
-                        conn, tx, signedBy, "CanApproveResults", "confirm Culture Media qualification timing controls");
+                    DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
+                        conn, tx, signedBy, "confirm Culture Media qualification timing controls");
 
                     int invalidCount;
                     int activeCount;
@@ -1848,11 +1854,10 @@ WHERE MediaQualificationID = @MediaQualificationID
                 int mediaLotId = RowInt(reportRow, "MediaLotID");
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
-                    string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
+                    string signerRole = DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
                         conn,
                         tx,
                         releasedBy,
-                        "CanApproveResults",
                         "release culture media lot");
 
                     string lockedPerformedBy;
