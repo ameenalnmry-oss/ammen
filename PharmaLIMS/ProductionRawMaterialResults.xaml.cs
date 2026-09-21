@@ -253,7 +253,7 @@ END;";
         private static bool CanEnterPrmResults() => DatabaseHelper.CanEditResults(GetCurrentUserDisplayName());
         private static bool CanSubmitPrmResults() => DatabaseHelper.CanSubmitForReview(GetCurrentUserDisplayName());
         private static bool CanReviewPrmResults() => DatabaseHelper.CanReviewResults(GetCurrentUserDisplayName());
-        private static bool CanApprovePrmResults() => DatabaseHelper.CanApproveResults(GetCurrentUserDisplayName());
+        private static bool CanApprovePrmResults() => DatabaseHelper.CanQaApproveResults(GetCurrentUserDisplayName());
         private static bool CanIssuePrmCertificate() => DatabaseHelper.CanIssueCertificate(GetCurrentUserDisplayName());
         private static bool CanCancelPrmCertificate() => DatabaseHelper.CanCancelCertificate(GetCurrentUserDisplayName());
         private static bool CanManagePrmQualityEvent() =>
@@ -417,7 +417,14 @@ END;";
             bool timingReconciled = _timingReconciliationStatus.Equals("Reconciled", StringComparison.OrdinalIgnoreCase);
             bool historicalTimingClosed = _timingReconciliationStatus.Equals("Historical Closed", StringComparison.OrdinalIgnoreCase);
             bool editable = hasSample && IsResultEntryStatus(status) && CanEnterPrmResults() && !timingReconciled && !historicalTimingClosed;
-            bool hasCertificate = hasSample && !string.IsNullOrWhiteSpace(TxtCertificateNo?.Text);
+            DataRow activeCertificate = hasSample ? GetActiveCertificateRow() : null;
+            DataRow latestCertificate = hasSample ? GetLatestCertificateRow() : null;
+            bool hasCertificate = activeCertificate != null;
+            bool hasCertificateHistory = latestCertificate != null;
+            bool hasCancelledCertificateAwaitingReissue =
+                !hasCertificate &&
+                hasCertificateHistory &&
+                S(latestCertificate, "CertificateStatus").Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
 
             if (DgResults != null)
                 DgResults.IsReadOnly = !editable;
@@ -457,7 +464,7 @@ END;";
 
             bool certificateQualityAllowed = true;
             string certificateBlockReason = string.Empty;
-            bool baseIssueAllowed = hasSample && !historicalTimingClosed && CanIssuePrmCertificate() && IsOneOf(status, "Approved", "Certificate Issued") && !hasCertificate;
+            bool baseIssueAllowed = hasSample && !historicalTimingClosed && CanIssuePrmCertificate() && IsOneOf(status, "Approved", "Certificate Issued") && !hasCertificateHistory;
             if (baseIssueAllowed)
                 certificateQualityAllowed = IsCurrentPrmCertificateStateIssuable(category, overall, out certificateBlockReason);
 
@@ -465,16 +472,18 @@ END;";
             {
                 BtnIssueCertificate.IsEnabled = baseIssueAllowed && certificateQualityAllowed;
                 BtnIssueCertificate.ToolTip = BtnIssueCertificate.IsEnabled
-                    ? "Issue the controlled microbiology certificate/report. Final batch/material disposition remains outside this screen."
-                    : BuildDisabledWorkflowToolTip(baseIssueAllowed, certificateBlockReason, status, "certificate/report issuance");
+                    ? "Issue the first controlled microbiology certificate/report. Final batch/material disposition remains outside this screen."
+                    : hasCertificateHistory && !hasCertificate
+                        ? "A previous PRM certificate/report exists for this sample. Use Reissue so the replacement remains linked to the cancelled certificate history."
+                        : BuildDisabledWorkflowToolTip(baseIssueAllowed, certificateBlockReason, status, "certificate/report issuance");
             }
 
             if (BtnPrintCertificate != null)
                 BtnPrintCertificate.IsEnabled = hasSample && hasCertificate &&
-                    (DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) || CanIssuePrmCertificate());
+                    DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName());
             if (BtnPreviewCurrentLayout != null)
                 BtnPreviewCurrentLayout.IsEnabled = hasSample && hasCertificate &&
-                    (DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) || CanIssuePrmCertificate());
+                    DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName());
             if (BtnCancelCertificate != null)
             {
                 BtnCancelCertificate.IsEnabled = hasSample && CanCancelPrmCertificate() && hasCertificate;
@@ -485,7 +494,8 @@ END;";
             if (BtnReissueCertificate != null)
             {
                 BtnReissueCertificate.Content = "Reissue";
-                bool baseReissueAllowed = hasSample && !historicalTimingClosed && CanIssuePrmCertificate() && hasCertificate && IsOneOf(status, "Approved", "Certificate Issued");
+                bool hasReissueSource = hasCertificate || hasCancelledCertificateAwaitingReissue;
+                bool baseReissueAllowed = hasSample && !historicalTimingClosed && CanIssuePrmCertificate() && hasReissueSource && IsOneOf(status, "Approved", "Certificate Issued");
                 bool reissueQualityAllowed = true;
                 string reissueBlockReason = string.Empty;
                 if (baseReissueAllowed)
@@ -1522,7 +1532,7 @@ WHERE SampleID = @SampleID
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
                     string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
-                        conn, tx, signature.SignedBy, "CanEnterResults", "submit PRM results for review");
+                        conn, tx, signature.SignedBy, "CanSubmitForReview", "submit PRM results for review");
                     EnsurePrmTimingReconciliationClearedInTransaction(conn, tx, "Submit Review");
                     EnsureAllPrmResultTimingGatesElapsedInTransaction(conn, tx, signature, "Submit Review");
 
@@ -1706,11 +1716,10 @@ WHERE SampleID = @SampleID
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
-                    string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
+                    string signerRole = DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
                         conn,
                         tx,
                         signature.SignedBy,
-                        "CanApproveResults",
                         "approve PRM results");
 
                     string lockedStatus = GetLockedPrmSampleStatusInTransaction(conn, tx);
@@ -1864,8 +1873,8 @@ WHERE SampleID = @SampleID
                 if (cert == null)
                     throw new InvalidOperationException("No active certificate / report found for this sample.");
 
-                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) && !CanIssuePrmCertificate())
-                    throw new InvalidOperationException("You do not have permission to view or print PRM certificates/reports.");
+                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()))
+                    throw new UnauthorizedAccessException("Reports access permission is required to view or print PRM certificates/reports.");
 
                 string certificateNumber = S(cert, "CertificateNumber");
                 string html = LoadPrmCertificateSnapshotHtml(ToInt(cert, "CertificateID"), out string integrityMessage);
@@ -1923,8 +1932,8 @@ WHERE SampleID = @SampleID
                 if (cert == null)
                     throw new InvalidOperationException("No active certificate / report found for this sample.");
 
-                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()) && !CanIssuePrmCertificate())
-                    throw new InvalidOperationException("You do not have permission to preview PRM certificate/report layouts.");
+                if (!DatabaseHelper.CanAccessReports(GetCurrentUserDisplayName()))
+                    throw new UnauthorizedAccessException("Reports access permission is required to preview PRM certificate/report layouts.");
 
                 string certificateNumber = S(cert, "CertificateNumber");
                 string html = PRMCertificateTemplate.Build(GetCurrentSampleRow(), GetResultsTable(), cert, GetPrmElectronicSignatures());
@@ -2015,16 +2024,24 @@ WHERE SampleID = @SampleID
                 if (string.IsNullOrWhiteSpace(reason))
                     throw new InvalidOperationException("Reissue reason is required.");
 
-                DataRow active = GetActiveCertificateRow();
-                if (active == null)
-                    throw new InvalidOperationException("An active certificate/report is required for reissue.");
+                DataRow sourceCertificate = GetActiveCertificateRow() ?? GetLatestCertificateRow();
+                if (sourceCertificate == null)
+                    throw new InvalidOperationException("A prior certificate/report is required for reissue.");
+
+                string sourceStatus = S(sourceCertificate, "CertificateStatus").Trim();
+                if (!sourceStatus.Equals("Active", StringComparison.OrdinalIgnoreCase) &&
+                    !sourceStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "The latest PRM certificate/report is neither Active nor Cancelled. Reissue is blocked until the certificate lifecycle is reconciled.");
+                }
 
                 await EnsurePrmCertificateSchemaReadyForActionAsync();
                 await EnsurePrmQualityEventSchemaReadyForActionAsync();
                 string overall = UpdateOverallInterpretation();
                 EnsureCertificateInterpretationIsIssuable(overall);
 
-                int oldId = ToInt(active, "CertificateID");
+                int oldId = ToInt(sourceCertificate, "CertificateID");
                 if (_controlledLegacyReissueRoute &&
                     !_controlledLegacyReissueCompleted &&
                     _selectedSampleId == _initialSampleId &&

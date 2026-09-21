@@ -791,15 +791,31 @@ WHERE SampleID=@SampleID;", connection, transaction))
                 if (expectedReissuedFromCertificateId.HasValue)
                 {
                     using SqlCommand expectedSource = new SqlCommand(@"
-SELECT COUNT(1)
-FROM dbo.Certificates WITH (UPDLOCK,HOLDLOCK)
-WHERE CertificateID=@CertificateID
-  AND SampleID=@SampleID
-  AND (ISNULL(IsCancelled,0)=1 OR UPPER(ISNULL(CertificateStatus,ISNULL(Status,N'')))=N'CANCELLED');", connection, transaction);
+SELECT CASE WHEN
+    EXISTS
+    (
+        SELECT 1
+        FROM dbo.Certificates WITH (UPDLOCK,HOLDLOCK)
+        WHERE CertificateID=@CertificateID
+          AND SampleID=@SampleID
+          AND (ISNULL(IsCancelled,0)=1 OR UPPER(ISNULL(CertificateStatus,ISNULL(Status,N'')))=N'CANCELLED')
+    )
+    AND @CertificateID =
+    (
+        SELECT TOP(1) CertificateID
+        FROM dbo.Certificates WITH (UPDLOCK,HOLDLOCK)
+        WHERE SampleID=@SampleID
+        ORDER BY ISNULL(RevisionNo,-1) DESC, CertificateID DESC
+    )
+THEN 1 ELSE 0 END;", connection, transaction);
                     expectedSource.Parameters.Add("@CertificateID", SqlDbType.Int).Value = expectedReissuedFromCertificateId.Value;
                     expectedSource.Parameters.Add("@SampleID", SqlDbType.Int).Value = sampleId;
                     if (Convert.ToInt32(expectedSource.ExecuteScalar(), CultureInfo.InvariantCulture) != 1)
-                        throw new InvalidOperationException("The expected legacy certificate is not cancelled for this sample. Replacement issuance was stopped to preserve the reissue link.");
+                    {
+                        throw new InvalidOperationException(
+                            "The expected legacy certificate is not the latest cancelled certificate for this sample. " +
+                            "Replacement issuance was stopped to preserve the reissue link and prevent a fork in the certificate reissue lineage. Refresh the controlled reconciliation before continuing.");
+                    }
                 }
 
                 using (SqlCommand duplicateCommand = new SqlCommand(@"

@@ -33,8 +33,15 @@ internal static class Program
             using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath));
             JsonElement root = document.RootElement;
             JsonElement baseline = root.GetProperty("freshInstallBaseline");
+            string applicationVersion = root.GetProperty("applicationVersion").GetString() ?? string.Empty;
 
             await ApplyControlledFileAsync(projectRoot, databaseConnectionString, baseline.GetProperty("file").GetString()!, baseline.GetProperty("sha256").GetString()!, baseline.GetProperty("versionKey").GetString()!);
+            await RecordMigrationLedgerAsync(
+                databaseConnectionString,
+                baseline.GetProperty("versionKey").GetString()!,
+                baseline.GetProperty("description").GetString() ?? baseline.GetProperty("versionKey").GetString()!,
+                baseline.GetProperty("sha256").GetString()!,
+                applicationVersion);
 
             foreach (JsonElement migration in root.GetProperty("migrations").EnumerateArray())
             {
@@ -52,6 +59,13 @@ internal static class Program
                     migration.GetProperty("file").GetString()!,
                     migration.GetProperty("sha256").GetString()!,
                     versionKey);
+
+                await RecordMigrationLedgerAsync(
+                    databaseConnectionString,
+                    versionKey,
+                    migration.GetProperty("description").GetString() ?? versionKey,
+                    migration.GetProperty("sha256").GetString()!,
+                    applicationVersion);
             }
 
             await VerifySchemaAsync(databaseConnectionString);
@@ -102,6 +116,35 @@ END;");
         }
     }
 
+    private static async Task RecordMigrationLedgerAsync(
+        string connectionString,
+        string versionKey,
+        string description,
+        string checksum,
+        string applicationVersion)
+    {
+        const string sql = @"
+MERGE dbo.LIMS_SchemaVersions WITH (HOLDLOCK) AS target
+USING (SELECT @VersionKey AS VersionKey) AS source
+ON target.VersionKey=source.VersionKey
+WHEN MATCHED THEN UPDATE SET
+    Description=@Description,
+    MigrationChecksum=@Checksum,
+    ApplicationVersion=@ApplicationVersion
+WHEN NOT MATCHED THEN INSERT
+    (VersionKey,Description,MigrationChecksum,ApplicationVersion)
+    VALUES(@VersionKey,@Description,@Checksum,@ApplicationVersion);";
+
+        await using SqlConnection connection = new(connectionString);
+        await connection.OpenAsync();
+        await using SqlCommand command = new(sql, connection) { CommandTimeout = 60 };
+        command.Parameters.Add("@VersionKey", SqlDbType.NVarChar, 100).Value = versionKey;
+        command.Parameters.Add("@Description", SqlDbType.NVarChar, 500).Value = description;
+        command.Parameters.Add("@Checksum", SqlDbType.NVarChar, 128).Value = checksum;
+        command.Parameters.Add("@ApplicationVersion", SqlDbType.NVarChar, 50).Value = applicationVersion;
+        await command.ExecuteNonQueryAsync();
+    }
+
     private static async Task ApplyControlledFileAsync(
         string projectRoot,
         string connectionString,
@@ -120,6 +163,97 @@ END;");
             throw new InvalidOperationException($"Checksum mismatch for {versionKey}: {relativePath}");
 
         Console.WriteLine("APPLY " + versionKey);
+
+        if (versionKey.StartsWith("20260811_001", StringComparison.Ordinal))
+        {
+            const string areaClassificationCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.ExternalTrendImportRows', N'U') IS NULL
+    THROW 51090, 'Apply migration 20260810_001 before 20260811_001 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.ExternalTrendImportRows', N'AreaClassification') IS NULL
+BEGIN
+    ALTER TABLE dbo.ExternalTrendImportRows
+        ADD AreaClassification NVARCHAR(30) NOT NULL
+            CONSTRAINT DF_ExternalTrendImportRows_AreaClassification
+            DEFAULT (N'Unspecified');
+END;";
+
+            await ExecuteAsync(connectionString, areaClassificationCompatibilitySql, timeoutSeconds: 120);
+        }
+
+        if (versionKey.StartsWith("20260823_002", StringComparison.Ordinal))
+        {
+            const string cultureMediaApprovalCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.CultureMediaQualificationRequirements', N'U') IS NULL
+    THROW 53100, 'Required table dbo.CultureMediaQualificationRequirements is missing before 20260823_002 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ApprovalStatus') IS NULL
+    ALTER TABLE dbo.CultureMediaQualificationRequirements ADD ApprovalStatus NVARCHAR(30) NOT NULL
+        CONSTRAINT DF_CultureMediaQualificationRequirements_ApprovalStatus DEFAULT (N'Draft');
+IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ReviewedBy') IS NULL
+    ALTER TABLE dbo.CultureMediaQualificationRequirements ADD ReviewedBy NVARCHAR(100) NULL;
+IF COL_LENGTH(N'dbo.CultureMediaQualificationRequirements', N'ReviewedAt') IS NULL
+    ALTER TABLE dbo.CultureMediaQualificationRequirements ADD ReviewedAt DATETIME2(0) NULL;
+";
+
+            await ExecuteAsync(connectionString, cultureMediaApprovalCompatibilitySql, timeoutSeconds: 120);
+        }
+
+        if (versionKey.StartsWith("20260824_001", StringComparison.Ordinal))
+        {
+            const string prmItemStageCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.PRM_SpecificationTests', N'U') IS NULL
+    THROW 53201, 'Required table dbo.PRM_SpecificationTests is missing before 20260824_001 compatibility preparation.', 1;
+IF OBJECT_ID(N'dbo.PRM_Samples', N'U') IS NULL
+    THROW 53202, 'Required table dbo.PRM_Samples is missing before 20260824_001 compatibility preparation.', 1;
+IF OBJECT_ID(N'dbo.PRM_SampleTests', N'U') IS NULL
+    THROW 53203, 'Required table dbo.PRM_SampleTests is missing before 20260824_001 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.PRM_SpecificationTests', N'ItemCode') IS NULL
+    ALTER TABLE dbo.PRM_SpecificationTests ADD ItemCode NVARCHAR(80) NULL;
+IF COL_LENGTH(N'dbo.PRM_SpecificationTests', N'ProductionStage') IS NULL
+    ALTER TABLE dbo.PRM_SpecificationTests ADD ProductionStage NVARCHAR(80) NULL;
+
+IF COL_LENGTH(N'dbo.PRM_Samples', N'SpecificationVersionNo') IS NULL
+    ALTER TABLE dbo.PRM_Samples ADD SpecificationVersionNo INT NULL;
+IF COL_LENGTH(N'dbo.PRM_Samples', N'StabilityChamberNo') IS NULL
+    ALTER TABLE dbo.PRM_Samples ADD StabilityChamberNo NVARCHAR(120) NULL;
+IF COL_LENGTH(N'dbo.PRM_Samples', N'StabilityProtocolNo') IS NULL
+    ALTER TABLE dbo.PRM_Samples ADD StabilityProtocolNo NVARCHAR(120) NULL;
+
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SourceSpecificationTestID') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SourceSpecificationTestID INT NULL;
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationVersionNo') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SpecificationVersionNo INT NULL;
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationItemCode') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SpecificationItemCode NVARCHAR(80) NULL;
+IF COL_LENGTH(N'dbo.PRM_SampleTests', N'SpecificationProductionStage') IS NULL
+    ALTER TABLE dbo.PRM_SampleTests ADD SpecificationProductionStage NVARCHAR(80) NULL;
+";
+
+            await ExecuteAsync(connectionString, prmItemStageCompatibilitySql, timeoutSeconds: 120);
+        }
+
+        if (versionKey.StartsWith("20260827_001", StringComparison.Ordinal))
+        {
+            const string prmEvidenceBindingCompatibilitySql = @"
+IF OBJECT_ID(N'dbo.QualityEventAffectedResults', N'U') IS NULL
+    THROW 53710, 'Required table dbo.QualityEventAffectedResults is missing before 20260827_001 compatibility preparation.', 1;
+
+IF COL_LENGTH(N'dbo.QualityEventAffectedResults', N'SpecificationNumericLimit') IS NULL
+    ALTER TABLE dbo.QualityEventAffectedResults
+        ADD SpecificationNumericLimit DECIMAL(18,3) NULL;
+
+IF COL_LENGTH(N'dbo.QualityEventAffectedResults', N'EvidenceSchemaVersion') IS NULL
+    ALTER TABLE dbo.QualityEventAffectedResults
+        ADD EvidenceSchemaVersion TINYINT NOT NULL
+            CONSTRAINT DF_QualityEventAffectedResults_EvidenceSchemaVersion_20260827_001
+            DEFAULT (0) WITH VALUES;
+";
+
+            await ExecuteAsync(connectionString, prmEvidenceBindingCompatibilitySql, timeoutSeconds: 120);
+        }
+
         string sql = System.Text.Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
         await ExecuteAsync(connectionString, sql, timeoutSeconds: 300);
     }
@@ -504,7 +638,7 @@ INSERT dbo.PRM_SampleTests
 (SampleID,TestCode,TestName,SpecificationText,Unit,ResultValue,ResultType,SpecificationLimit,Interpretation,RequiredTest,SortOrder)
 VALUES
 (@SampleID,N'TAMC',N'Total Aerobic Microbial Count',N'NMT 100 CFU/g',N'CFU/g',N'5',N'Numeric',100,N'Conforms',1,10),
-(@SampleID,N'TYMC',N'Total Yeast and Mold Count',N'NMT 10 CFU/g',N'CFU/g',NULL,N'Numeric',10,NULL,1,20);
+(@SampleID,N'TYMC',N'Total Yeast and Mold Count',N'NMT 10 CFU/g',N'CFU/g',NULL,N'Numeric',10,N'Not Tested',1,20);
 SELECT @SampleID;", writerConnection))
         {
             partialSeed.Parameters.Add("@SampleNumber", SqlDbType.NVarChar, 60).Value = partialSampleNumber;
@@ -2773,7 +2907,13 @@ SELECT CONVERT(bigint,SCOPE_IDENTITY());", behaviorConnection, tx))
         }
         finally
         {
-            await ExecuteAsync(connectionString, originalTriggerDefinition);
+            await ExecuteAsync(
+                connectionString,
+                "DROP TRIGGER IF EXISTS dbo.TRG_AuditTrail_AppendOnly;");
+
+            await ExecuteAsync(
+                connectionString,
+                originalTriggerDefinition);
         }
 
         bool protectedUpdateBlocked = false;

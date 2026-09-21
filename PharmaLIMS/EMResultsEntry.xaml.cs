@@ -86,6 +86,7 @@ namespace PharmaLIMS
         private bool currentCanReviewResults = false;
         private bool currentCanApproveResults = false;
         private bool currentCanManageSettings = false;
+        private bool currentCanAccessReports = false;
 
         private sealed class PaginatorSource : IDocumentPaginatorSource
         {
@@ -525,8 +526,9 @@ SELECT CASE
                     CanEdit: DatabaseHelper.CanEditResults(username),
                     CanSubmit: DatabaseHelper.CanSubmitForReview(username),
                     CanReview: DatabaseHelper.CanReviewResults(username),
-                    CanApprove: DatabaseHelper.CanApproveResults(username),
-                    CanManage: DatabaseHelper.CanManageSettings(username));
+                    CanApprove: DatabaseHelper.CanQaApproveResults(username),
+                    CanManage: DatabaseHelper.CanManageSettings(username),
+                    CanAccessReports: DatabaseHelper.CanAccessReports(username));
             });
 
             currentCanEditResults = permissions.CanEdit;
@@ -534,6 +536,7 @@ SELECT CASE
             currentCanReviewResults = permissions.CanReview;
             currentCanApproveResults = permissions.CanApprove;
             currentCanManageSettings = permissions.CanManage;
+            currentCanAccessReports = permissions.CanAccessReports;
 
             BtnSaveResults.IsEnabled = currentCanEditResults;
             BtnCalculate.IsEnabled = currentCanEditResults;
@@ -616,7 +619,7 @@ SELECT CASE
             }
 
             string databaseMessage;
-            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, out databaseMessage))
+            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, currentUser, out databaseMessage))
             {
                 message = databaseMessage;
                 return false;
@@ -658,6 +661,7 @@ SELECT CASE
 
             if (BtnPrintReport != null)
                 BtnPrintReport.IsEnabled = hasEvent &&
+                    currentCanAccessReports &&
                     allPlatesEntered &&
                     oosGateOk &&
                     workflowStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase);
@@ -728,7 +732,7 @@ SELECT CASE
             {
                 if (currentEventId <= 0)
                     throw new InvalidOperationException("Load the historical EM event first.");
-                if (!DatabaseHelper.CanApproveResults(Login.CurrentUser ?? string.Empty))
+                if (!DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? string.Empty))
                     throw new UnauthorizedAccessException("QA approval permission is required to reconcile historical EM limit evidence.");
 
                 var dialog = new EMLegacySnapshotReconciliation(currentEventId, currentEventNo) { Owner = this };
@@ -909,9 +913,9 @@ SELECT CASE
 
         private async void BtnApprove_Click(object sender, RoutedEventArgs e)
         {
-            if (!DatabaseHelper.CanApproveResults(Login.CurrentUser ?? ""))
+            if (!DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? ""))
             {
-                MessageBox.Show("You don't have permission to approve EM results.", "Permission Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Only an authorized QA approver can approve EM results.", "Permission Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1688,11 +1692,8 @@ SELECT CASE
             DataRow resultEntry = FindSignature(signatures, "EM Result Entry");
             DataRow review = FindSignature(signatures, "EM Review");
             DataRow approval = FindSignature(signatures, "EM Approval");
-            DataRow print = FindSignature(signatures, "EM Report Print");
 
-            string printedDate = GetSignatureDate(print);
-            if (string.IsNullOrWhiteSpace(printedDate))
-                printedDate = reportGeneratedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+            string printedDate = reportGeneratedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
             TableRow row = new TableRow();
             row.Cells.Add(MakeSignatureBox(
@@ -1715,9 +1716,9 @@ SELECT CASE
 
             row.Cells.Add(MakeSignatureBox(
                 "Printed By", "Report Print",
-                GetSignatureValue(print, "SignerDisplayName", GetSignatureValue(print, "SignedBy", FirstNonEmpty(reportPrintedByDisplay, currentUser))),
+                FirstNonEmpty(currentUser),
                 printedDate,
-                GetSignatureValue(print, "MeaningOfSignature", "Printed from controlled PharmaLIMS records")));
+                "Current controlled report copy prepared for printing"));
 
             group.Rows.Add(row);
             document.Blocks.Add(table);

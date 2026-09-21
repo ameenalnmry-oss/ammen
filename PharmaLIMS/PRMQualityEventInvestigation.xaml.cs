@@ -436,6 +436,7 @@ namespace PharmaLIMS
                     return;
 
                 string note = txtActionNote.Text.Trim();
+                bool isCapaAction = chkCAPARequired.IsChecked == true;
 
                 if (string.IsNullOrWhiteSpace(note))
                 {
@@ -447,6 +448,19 @@ namespace PharmaLIMS
                     txtActionNote.Focus();
                     return;
                 }
+
+                if (isCapaAction && note.Length < 20)
+                {
+                    MessageBox.Show(
+                        "CAPA action evidence must describe the corrective/preventive action clearly (minimum 20 characters).",
+                        "PRM CAPA",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    txtActionNote.Focus();
+                    return;
+                }
+
+                string actionType = isCapaAction ? "PRM CAPA Action" : "PRM Investigation Note";
 
                 DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
                 {
@@ -462,10 +476,11 @@ WHERE QualityEventID=@QualityEventID;",
 
                     DatabaseHelper.ExecuteNonQueryWithTransaction(@"
 INSERT dbo.QualityEventActions(QualityEventID,ActionType,ActionDescription,PerformedBy,PerformedDate)
-VALUES(@QualityEventID,N'PRM Investigation Note',@Note,@User,SYSDATETIME());",
+VALUES(@QualityEventID,@ActionType,@Note,@User,SYSDATETIME());",
                         new[]
                         {
                             new SqlParameter("@QualityEventID", SqlDbType.Int) { Value = qualityEventId },
+                            new SqlParameter("@ActionType", SqlDbType.NVarChar, 80) { Value = actionType },
                             new SqlParameter("@Note", SqlDbType.NVarChar, -1) { Value = note },
                             new SqlParameter("@User", SqlDbType.NVarChar, 100) { Value = currentUser }
                         }, connection, transaction);
@@ -625,6 +640,12 @@ WHERE QualityEventID = @QualityEventID
                     if (!lockedStatus.Equals("QA Review", StringComparison.OrdinalIgnoreCase))
                         throw new InvalidOperationException("The PRM Quality Event is no longer in QA Review. Closure was not committed.");
 
+                    EnsurePrmCapaClosureEvidenceInTransaction(
+                        conn,
+                        tx,
+                        qualityEventId,
+                        chkCAPARequired.IsChecked == true);
+
                     EnsureAffectedPrmEvidenceMatchesCurrentResultsInTransaction(conn, tx, qualityEventId);
                     EnsureReplacementEventCoversCurrentAndLegacyEvidenceInTransaction(
                         conn, tx, qualityEventId, loadedSampleId);
@@ -778,6 +799,35 @@ VALUES
             Close();
         }
 
+        private static void EnsurePrmCapaClosureEvidenceInTransaction(
+            SqlConnection connection,
+            SqlTransaction transaction,
+            int qualityEventId,
+            bool capaRequired)
+        {
+            if (!capaRequired)
+                return;
+
+            using SqlCommand command = new SqlCommand(@"
+SELECT CASE WHEN EXISTS
+(
+    SELECT 1
+    FROM dbo.QualityEventActions WITH (UPDLOCK, HOLDLOCK)
+    WHERE QualityEventID = @QualityEventID
+      AND UPPER(LTRIM(RTRIM(ISNULL(ActionType,N'')))) = N'PRM CAPA ACTION'
+      AND NULLIF(LTRIM(RTRIM(ISNULL(ActionDescription,N''))),N'') IS NOT NULL
+)
+THEN 1 ELSE 0 END;", connection, transaction);
+            command.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+            command.Parameters.Add("@QualityEventID", SqlDbType.Int).Value = qualityEventId;
+
+            if (Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) != 1)
+            {
+                throw new InvalidOperationException(
+                    "PRM Quality Event closure is blocked because CAPA is required but no explicit PRM CAPA Action with a documented description exists in the locked database evidence.");
+            }
+        }
+
         private bool ValidateBeforeCloseInvestigation()
         {
             if (qualityEventId <= 0)
@@ -918,11 +968,34 @@ VALUES
             if (chkCAPARequired.IsChecked == true)
             {
                 actionsTable = SafeLoadActions();
+                bool hasExplicitCapaAction = false;
+                if (actionsTable != null)
+                {
+                    foreach (DataRow actionRow in actionsTable.Rows)
+                    {
+                        if (actionRow.RowState == DataRowState.Deleted)
+                            continue;
 
-                if (actionsTable == null || actionsTable.Rows.Count == 0)
+                        string actionType = actionRow.Table.Columns.Contains("ActionType")
+                            ? Convert.ToString(actionRow["ActionType"], CultureInfo.InvariantCulture) ?? string.Empty
+                            : string.Empty;
+                        string description = actionRow.Table.Columns.Contains("ActionDescription")
+                            ? Convert.ToString(actionRow["ActionDescription"], CultureInfo.InvariantCulture) ?? string.Empty
+                            : string.Empty;
+
+                        if (actionType.Equals("PRM CAPA Action", StringComparison.OrdinalIgnoreCase) &&
+                            !string.IsNullOrWhiteSpace(description))
+                        {
+                            hasExplicitCapaAction = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!hasExplicitCapaAction)
                 {
                     MessageBox.Show(
-                        "CAPA is required. Add at least one CAPA / action note before closure.",
+                        "CAPA is required. Add at least one explicit PRM CAPA action before closure. System workflow actions and ordinary investigation notes do not satisfy CAPA evidence.",
                         "Close Investigation",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);

@@ -2344,11 +2344,10 @@ WHERE MediaPreparationID = @MediaPreparationID
                 int releasedPreparationId = _selectedPreparationId;
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
-                    string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
+                    string signerRole = DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
                         conn,
                         tx,
                         signedBy,
-                        "CanApproveResults",
                         "release prepared culture media");
 
                     string lockedPreparedBy;

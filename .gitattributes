@@ -1,0 +1,5 @@
+# PharmaLIMS controlled-source integrity policy
+# Preserve source files byte-for-byte; manifests and released migrations
+# are integrity-controlled and must not be line-ending normalized by Git.
+
+* -text

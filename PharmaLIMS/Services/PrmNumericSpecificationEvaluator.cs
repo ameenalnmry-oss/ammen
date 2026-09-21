@@ -371,8 +371,9 @@ namespace PharmaLIMS.Services
             return Regex.IsMatch(clause,
                 @"^(?:INCUBATION|INCUBATE(?:D)?|TEMPERATURE|TEMP|GROWTH\s+CONDITIONS?)\s*" +
                 @"(?:(?:RANGE\s*[:=]?\s*)?(?:\d+(?:\.\d+)?)\s*(?:(?:TO|[-\u2013\u2014])\s*\d+(?:\.\d+)?)?|" +
-                @"BETWEEN\s+\d+(?:\.\d+)?\s+AND\s+\d+(?:\.\d+)?)\s*" +
-                @"(?:°?\s*C|CELSIUS|DEGREES?\s+CELSIUS)(?:\s+FOR\s+\d+(?:\.\d+)?\s+(?:HOURS?|DAYS?))?\s*$",
+                @"BETWEEN\s+\d+(?:\.\d+)?\s+AND\s+\d+(?:\.\d+)?)" +
+                @"(?:\s*(?:°?\s*C|CELSIUS|DEGREES?\s+CELSIUS))?" +
+                @"(?:\s+FOR\s+\d+(?:\.\d+)?\s+(?:HOURS?|DAYS?))?\s*$",
                 RuleOptions);
         }
 

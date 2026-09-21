@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
 using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 
 internal static class Program
@@ -32,12 +34,37 @@ internal static class Program
         }.ConnectionString;
 
         Process? application = null;
+        var appSettingsSnapshots = new List<AppSettingsSnapshot>();
         string readinessEventName = @"Local\PharmaLIMS_RuntimeSmoke_LoginReady_" + Guid.NewGuid().ToString("N");
         using EventWaitHandle readinessEvent = new(false, EventResetMode.ManualReset, readinessEventName);
         try
         {
             await ExecuteAsync(masterConnectionString, $"CREATE DATABASE [{databaseName}];", 60);
             Console.WriteLine("Created disposable runtime-smoke database " + databaseName + ".");
+
+            string appPath = ReadArgument(args, "--app")
+                ?? Path.Combine(projectRoot, "bin", "Debug", "net8.0-windows7.0", "PharmaLIMS.exe");
+            appPath = Path.GetFullPath(appPath);
+            if (!File.Exists(appPath))
+                throw new FileNotFoundException("Debug PharmaLIMS executable was not found. Build PharmaLIMS Debug before RuntimeSmoke.", appPath);
+
+            // AppConfig intentionally verifies the connected database against the controlled
+            // Database:Database setting. RuntimeSmoke uses a disposable database, so bind the
+            // copied Debug appsettings files to that disposable identity instead of weakening
+            // the production database-identity guard or teaching AppConfig to trust its own
+            // connection-string override.
+            string smokeSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            string applicationSettingsPath = Path.Combine(
+                Path.GetDirectoryName(appPath) ?? projectRoot,
+                "appsettings.json");
+
+            appSettingsSnapshots.Add(BindRuntimeSmokeDatabaseIdentity(smokeSettingsPath, databaseName));
+            if (!Path.GetFullPath(applicationSettingsPath).Equals(
+                    Path.GetFullPath(smokeSettingsPath),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                appSettingsSnapshots.Add(BindRuntimeSmokeDatabaseIdentity(applicationSettingsPath, databaseName));
+            }
 
             // RuntimeSmoke is intentionally executed as Debug/Development. This allows LocalDB
             // without weakening the Production TLS/credential policy. The Release WPF binary is
@@ -50,12 +77,6 @@ internal static class Program
             StartupDatabaseMigrator migrator = new(database);
             migrator.ProgressChanged += message => Console.WriteLine("[MIGRATION] " + message);
             await migrator.ApplyRequiredUpdatesAsync().ConfigureAwait(false);
-
-            string appPath = ReadArgument(args, "--app")
-                ?? Path.Combine(projectRoot, "bin", "Debug", "net8.0-windows7.0", "PharmaLIMS.exe");
-            appPath = Path.GetFullPath(appPath);
-            if (!File.Exists(appPath))
-                throw new FileNotFoundException("Debug PharmaLIMS executable was not found. Build PharmaLIMS Debug before RuntimeSmoke.", appPath);
 
             ProcessStartInfo startInfo = new(appPath)
             {
@@ -99,6 +120,20 @@ internal static class Program
                     Console.Error.WriteLine("Application cleanup warning: " + cleanupEx.Message);
                 }
                 application.Dispose();
+            }
+
+            for (int index = appSettingsSnapshots.Count - 1; index >= 0; index--)
+            {
+                try
+                {
+                    File.WriteAllBytes(
+                        appSettingsSnapshots[index].Path,
+                        appSettingsSnapshots[index].OriginalBytes);
+                }
+                catch (Exception cleanupEx)
+                {
+                    Console.Error.WriteLine("Runtime-smoke appsettings restore warning: " + cleanupEx.Message);
+                }
             }
 
             try
@@ -146,6 +181,35 @@ END;", 60);
             $"Login did not become interactive within {timeout.TotalSeconds:0} seconds. " +
             $"ReadinessSignal={readinessReceived}; LastTitle='{lastTitle}'.");
     }
+
+    private static AppSettingsSnapshot BindRuntimeSmokeDatabaseIdentity(
+        string settingsPath,
+        string databaseName)
+    {
+        if (!File.Exists(settingsPath))
+        {
+            throw new FileNotFoundException(
+                "RuntimeSmoke requires the copied Development appsettings.json before AppConfig is initialized.",
+                settingsPath);
+        }
+
+        byte[] originalBytes = File.ReadAllBytes(settingsPath);
+        JsonNode root = JsonNode.Parse(originalBytes)
+            ?? throw new InvalidOperationException("RuntimeSmoke appsettings.json is empty or invalid JSON.");
+        JsonObject database = root["Database"] as JsonObject
+            ?? throw new InvalidOperationException("RuntimeSmoke appsettings.json is missing the Database object.");
+
+        database["Database"] = databaseName;
+        string controlledJson = root.ToJsonString(new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+        File.WriteAllText(settingsPath, controlledJson + Environment.NewLine);
+
+        return new AppSettingsSnapshot(settingsPath, originalBytes);
+    }
+
+    private sealed record AppSettingsSnapshot(string Path, byte[] OriginalBytes);
 
     private static async Task ExecuteAsync(string connectionString, string sql, int timeoutSeconds)
     {

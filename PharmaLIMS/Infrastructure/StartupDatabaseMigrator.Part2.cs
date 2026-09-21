@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -14,6 +15,150 @@ namespace PharmaLIMS.Infrastructure
 {
     public sealed partial class StartupDatabaseMigrator
     {
+        private async Task<bool> ProvisionFreshDatabaseBaselineAsync()
+        {
+            string manifestPath = Path.Combine(AppContext.BaseDirectory, "Database", "MigrationManifest.json");
+            if (!File.Exists(manifestPath))
+                throw new FileNotFoundException("The controlled database migration manifest is missing.", manifestPath);
+
+            using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath).ConfigureAwait(false));
+            JsonElement root = document.RootElement;
+            if (!root.TryGetProperty("freshInstallBaseline", out JsonElement baseline) || baseline.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("The controlled fresh-install baseline entry is missing from MigrationManifest.json.");
+
+            string baselineVersionKey = baseline.GetProperty("versionKey").GetString() ?? string.Empty;
+            string baselineDescription = baseline.GetProperty("description").GetString() ?? baselineVersionKey;
+            string relativeFile = baseline.GetProperty("file").GetString() ?? string.Empty;
+            string expectedHash = (baseline.GetProperty("sha256").GetString() ?? string.Empty).ToLowerInvariant();
+            string applicationVersion = root.TryGetProperty("applicationVersion", out JsonElement versionElement)
+                ? versionElement.GetString() ?? string.Empty
+                : string.Empty;
+
+            string baselinePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "Database", relativeFile));
+            string baselineRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "Database", "Baseline")) + Path.DirectorySeparatorChar;
+            if (string.IsNullOrWhiteSpace(baselineVersionKey) ||
+                string.IsNullOrWhiteSpace(relativeFile) ||
+                string.IsNullOrWhiteSpace(expectedHash) ||
+                !baselinePath.StartsWith(baselineRoot, StringComparison.OrdinalIgnoreCase) ||
+                !File.Exists(baselinePath))
+            {
+                throw new InvalidOperationException("The fresh-install baseline manifest entry is invalid or its SQL file is missing.");
+            }
+
+            byte[] baselineBytes = await File.ReadAllBytesAsync(baselinePath).ConfigureAwait(false);
+            string actualHash = Convert.ToHexString(SHA256.HashData(baselineBytes)).ToLowerInvariant();
+            if (!actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Fresh-install baseline checksum mismatch: " + relativeFile);
+
+            bool controlledFreshBaselinePresent = false;
+            await _database.ExecuteInTransactionAsync(async (connection, transaction) =>
+            {
+                await ConfigureMigrationLockTimeoutAsync(connection, transaction).ConfigureAwait(false);
+                await EnsureConnectedDatabaseAsync(connection, transaction).ConfigureAwait(false);
+
+                const string stateSql = @"
+SELECT
+    (CASE WHEN OBJECT_ID(N'dbo.Users',N'U') IS NULL THEN 0 ELSE 1 END
+     + CASE WHEN OBJECT_ID(N'dbo.Samples',N'U') IS NULL THEN 0 ELSE 1 END
+     + CASE WHEN OBJECT_ID(N'dbo.Tests',N'U') IS NULL THEN 0 ELSE 1 END
+     + CASE WHEN OBJECT_ID(N'dbo.EM_Events',N'U') IS NULL THEN 0 ELSE 1 END
+     + CASE WHEN OBJECT_ID(N'dbo.CultureMediaLots',N'U') IS NULL THEN 0 ELSE 1 END) AS OperationalObjectCount,
+    (SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped=0) AS UserTableCount,
+    CASE WHEN OBJECT_ID(N'dbo.LIMS_SchemaVersions',N'U') IS NULL THEN 0 ELSE 1 END AS HasLedger;";
+
+                int operationalObjectCount;
+                int userTableCount;
+                bool hasLedger;
+                await using (SqlCommand state = new SqlCommand(stateSql, connection, transaction))
+                {
+                    state.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    await using SqlDataReader reader = await state.ExecuteReaderAsync().ConfigureAwait(false);
+                    await reader.ReadAsync().ConfigureAwait(false);
+                    operationalObjectCount = reader.GetInt32(0);
+                    userTableCount = reader.GetInt32(1);
+                    hasLedger = reader.GetInt32(2) == 1;
+                }
+
+                if (userTableCount == 0)
+                {
+                    ApplicationLogger.Information($"Applying controlled fresh-install baseline '{baselineVersionKey}'.");
+                    string baselineSql = System.Text.Encoding.UTF8.GetString(baselineBytes).TrimStart('\uFEFF');
+                    await using (SqlCommand apply = new SqlCommand(baselineSql, connection, transaction))
+                    {
+                        apply.CommandTimeout = Math.Max(AppConfig.CommandTimeoutSeconds, 300);
+                        await apply.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    }
+
+                    await using SqlCommand record = new SqlCommand(@"
+INSERT dbo.LIMS_SchemaVersions
+    (VersionKey,Description,MigrationChecksum,ApplicationVersion)
+VALUES
+    (@VersionKey,@Description,@Checksum,@ApplicationVersion);", connection, transaction);
+                    record.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    record.Parameters.Add("@VersionKey", SqlDbType.NVarChar, 100).Value = baselineVersionKey;
+                    record.Parameters.Add("@Description", SqlDbType.NVarChar, 500).Value = baselineDescription;
+                    record.Parameters.Add("@Checksum", SqlDbType.NVarChar, 128).Value = expectedHash;
+                    record.Parameters.Add("@ApplicationVersion", SqlDbType.NVarChar, 50).Value = applicationVersion;
+                    await record.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+                    await using SqlCommand verifyRecordedBaseline = new SqlCommand(@"
+SELECT COUNT(1)
+FROM dbo.LIMS_SchemaVersions WITH (UPDLOCK,HOLDLOCK)
+WHERE VersionKey=@VersionKey
+  AND MigrationChecksum=@Checksum;", connection, transaction);
+                    verifyRecordedBaseline.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    verifyRecordedBaseline.Parameters.Add("@VersionKey", SqlDbType.NVarChar, 100).Value = baselineVersionKey;
+                    verifyRecordedBaseline.Parameters.Add("@Checksum", SqlDbType.NVarChar, 128).Value = expectedHash;
+                    if (Convert.ToInt32(await verifyRecordedBaseline.ExecuteScalarAsync().ConfigureAwait(false), CultureInfo.InvariantCulture) != 1)
+                        throw new InvalidOperationException("The fresh-install baseline ledger record was not created with the expected checksum.");
+
+                    controlledFreshBaselinePresent = true;
+                    return;
+                }
+
+                if (operationalObjectCount != 5 || !hasLedger)
+                {
+                    throw new InvalidOperationException(
+                        "The target database contains a partial or uncontrolled PharmaLIMS schema. " +
+                        "Fresh baseline provisioning is allowed only for an empty database; legacy databases require controlled reconciliation.");
+                }
+
+                bool baselineRowExists;
+                string? recordedBaselineHash;
+                await using (SqlCommand verifyBaseline = new SqlCommand(@"
+SELECT COUNT(1),MAX(MigrationChecksum)
+FROM dbo.LIMS_SchemaVersions WITH (UPDLOCK,HOLDLOCK)
+WHERE VersionKey=@VersionKey;", connection, transaction))
+                {
+                    verifyBaseline.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    verifyBaseline.Parameters.Add("@VersionKey", SqlDbType.NVarChar, 100).Value = baselineVersionKey;
+                    await using SqlDataReader reader = await verifyBaseline.ExecuteReaderAsync().ConfigureAwait(false);
+                    await reader.ReadAsync().ConfigureAwait(false);
+                    baselineRowExists = reader.GetInt32(0) > 0;
+                    recordedBaselineHash = reader.IsDBNull(1) ? null : reader.GetString(1);
+                }
+
+                if (!baselineRowExists)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(recordedBaselineHash) ||
+                    !recordedBaselineHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "Recorded fresh-install baseline checksum does not match the controlled manifest. " +
+                        "Do not continue without controlled reconciliation.");
+                }
+
+                // A prior first-run may have committed the baseline and then
+                // rolled back the all-migrations transaction. Treat the exact
+                // baseline record as a safe, resumable fresh-install state.
+                controlledFreshBaselinePresent = true;
+            }).ConfigureAwait(false);
+
+            return controlledFreshBaselinePresent;
+        }
+
+
         private static async Task EnsureWaterPlanningAsync(SqlConnection connection, SqlTransaction transaction)
         {
             const string sql = @"
@@ -1671,11 +1816,24 @@ IF COL_LENGTH(N'dbo.Users',N'AuthenticationRowVersion') IS NULL
             SqlConnection connection,
             SqlTransaction transaction)
         {
-            // 20260915_000 remains checksum-controlled. This helper repairs only the safe
-            // legacy nullable BIT shape before the historical SQL is replayed.
+            // 20260915_000 remains checksum-controlled. SQL Server can compile references
+            // to newly-added columns before conditional ALTER statements in the historical batch.
+            // Materialize only the additive schema that migration 20260915_000 itself owns, using
+            // dynamic SQL so compile-before-ALTER cannot raise Msg 207. The original migration
+            // remains authoritative for its validation and controlled ledger/checksum.
             const string sql = @"
 IF OBJECT_ID(N'dbo.Users',N'U') IS NULL
     THROW 55110, 'User administration compatibility requires dbo.Users before 20260915_000.', 1;
+
+IF COL_LENGTH(N'dbo.Users',N'MustChangePassword') IS NULL
+BEGIN
+    IF OBJECT_ID(N'dbo.DF_Users_MustChangePassword_20260915',N'D') IS NOT NULL
+        THROW 55113, 'The expected MustChangePassword default constraint name already exists without its column; controlled reconciliation is required.', 1;
+
+    EXEC(N'ALTER TABLE dbo.Users
+        ADD MustChangePassword BIT NOT NULL
+            CONSTRAINT DF_Users_MustChangePassword_20260915 DEFAULT (0) WITH VALUES;');
+END;
 
 IF COL_LENGTH(N'dbo.Users',N'MustChangePassword') IS NOT NULL
    AND EXISTS
@@ -1696,11 +1854,12 @@ IF EXISTS
       AND is_nullable=1
 )
 BEGIN
-    UPDATE dbo.Users
-    SET MustChangePassword=0
-    WHERE MustChangePassword IS NULL;
-    ALTER TABLE dbo.Users ALTER COLUMN MustChangePassword BIT NOT NULL;
+    EXEC(N'UPDATE dbo.Users SET MustChangePassword=0 WHERE MustChangePassword IS NULL;');
+    EXEC(N'ALTER TABLE dbo.Users ALTER COLUMN MustChangePassword BIT NOT NULL;');
 END;
+
+IF COL_LENGTH(N'dbo.Users',N'PasswordChangedAt') IS NULL
+    EXEC(N'ALTER TABLE dbo.Users ADD PasswordChangedAt DATETIME2(0) NULL;');
 
 IF COL_LENGTH(N'dbo.Users',N'PasswordChangedAt') IS NOT NULL
    AND NOT EXISTS

@@ -83,21 +83,37 @@ class V284DeepReviewClosureTests(unittest.TestCase):
         self.assertNotRegex(ui, r"_repository\.(?:Query|Execute|Scalar)\s*\(")
 
     def test_f05_ci_signs_smokes_hashes_and_attests_before_upload(self):
-        ci = text(".github/workflows/ci.yml")
-        sign_at = ci.index("Authenticode-sign published first-party binaries")
-        smoke_at = ci.index("Smoke exact signed Production artifact")
-        manifest_at = ci.index("Generate and verify publish hash manifest and provenance")
-        attest_at = ci.index("Attest publish manifest provenance")
-        upload_at = ci.index("Upload signed, smoke-tested package")
-        self.assertLess(sign_at, smoke_at)
-        self.assertLess(smoke_at, manifest_at)
-        self.assertLess(manifest_at, attest_at)
-        self.assertLess(attest_at, upload_at)
-        self.assertIn("PHARMALIMS_CODESIGN_PFX_BASE64", ci)
-        self.assertIn("PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING", ci)
-        self.assertIn("actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be", ci)
-        self.assertIn("id-token: write", ci)
-        self.assertIn("attestations: write", ci)
+        workflow_paths = [ROOT / ".github/workflows/ci.yml"]
+        repository_workflow = ROOT.parent / ".github/workflows/ci.yml"
+        if repository_workflow.is_file():
+            workflow_paths.append(repository_workflow)
+
+        for workflow_path in workflow_paths:
+            ci = workflow_path.read_text(encoding="utf-8-sig")
+            sign_at = ci.index("Authenticode-sign published first-party binaries")
+            smoke_at = ci.index("Smoke exact signed Production artifact")
+            manifest_at = ci.index("Generate and verify publish hash manifest and provenance")
+            attest_at = ci.index("Attest publish manifest provenance")
+            upload_at = ci.index("Upload signed, smoke-tested package")
+            self.assertLess(sign_at, smoke_at, workflow_path)
+            self.assertLess(smoke_at, manifest_at, workflow_path)
+            self.assertLess(manifest_at, attest_at, workflow_path)
+            self.assertLess(attest_at, upload_at, workflow_path)
+            self.assertIn("PHARMALIMS_CODESIGN_PFX_BASE64", ci, workflow_path)
+            self.assertIn("PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING", ci, workflow_path)
+            self.assertIn("actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be", ci, workflow_path)
+            self.assertIn("id-token: write", ci, workflow_path)
+            self.assertIn("attestations: write", ci, workflow_path)
+
+        if repository_workflow.is_file():
+            active_ci = repository_workflow.read_text(encoding="utf-8-sig")
+            smoke_at = active_ci.index("Smoke exact signed Production artifact")
+            remove_config_at = active_ci.index("Remove site-specific Production configuration from distributable package")
+            manifest_at = active_ci.index("Generate and verify publish hash manifest and provenance")
+            self.assertLess(smoke_at, remove_config_at)
+            self.assertLess(remove_config_at, manifest_at)
+            self.assertIn("Site-specific appsettings.json must not be included in the uploaded Production package.", active_ci)
+
         for script in (
             "scripts/Sign-PublishedArtifact.ps1",
             "scripts/New-PublishManifest.ps1",

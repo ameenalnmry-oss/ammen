@@ -392,6 +392,16 @@ WHERE Username = @Username;", connection, transaction);
             return GetUserPermissionFlag(username, "CanApproveResults", false);
         }
 
+        public static bool CanQaApproveResults(string username)
+        {
+            if (IsDevelopmentAdministrator(username))
+                return true;
+
+            string role = GetUserRole(username);
+            return RoleIsOneOf(role, "QA", "Quality Assurance") &&
+                   GetUserPermissionFlag(username, "CanApproveResults", false);
+        }
+
         public static bool CanIssueCertificate(string username)
         {
             if (IsDevelopmentAdministrator(username))

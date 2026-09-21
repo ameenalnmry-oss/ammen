@@ -57,7 +57,9 @@ class V274GovernanceFailClosedTests(unittest.TestCase):
         self.assertIn("INSERT dbo.PRM_SpecificationSignatures", registration)
         self.assertIn("The specification reviewer must be independent from the draft creator", registration)
         self.assertIn("The specification approver must be independent from the reviewer", registration)
-        self.assertIn('approval ? "CanApproveResults" : "CanReviewResults"', registration)
+        self.assertIn("DatabaseHelper.CanQaApproveResults(Login.CurrentUser)", registration)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", registration)
+        self.assertIn('"CanReviewResults"', registration)
         self.assertIn('approval ? "Approve Specification" : "Review Specification"', registration)
 
         migration = (ROOT / "Database/Migrations/20260913_001_PRM_Standard_Profile_Governance_Hardening.sql").read_text(encoding="utf-8-sig")
@@ -104,7 +106,7 @@ class V274GovernanceFailClosedTests(unittest.TestCase):
     def test_current_version_and_migration_count(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
 if __name__ == "__main__":

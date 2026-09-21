@@ -50,7 +50,7 @@ class ReleaseControlsTests(unittest.TestCase):
             "DatabaseHelper.CanEditResults(currentUser)",
             "DatabaseHelper.CanSubmitForReview(currentUser)",
             "DatabaseHelper.CanReviewResults(currentUser)",
-            "DatabaseHelper.CanApproveResults(currentUser)",
+            "DatabaseHelper.CanQaApproveResults(currentUser)",
             "DatabaseHelper.CanIssueCertificate(currentUser)",
             "DatabaseHelper.CanCancelCertificate(currentUser)",
         )
@@ -59,13 +59,14 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertNotRegex(source, r"private bool CanApproveSample\(\).*RoleIs")
         self.assertNotIn("private string GetCurrentRole()", source)
         self.assertIn("string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction", source)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", source)
         self.assertIn("string signedBy,\n            string signerRole", source)
 
     def test_other_critical_workflows_use_fresh_database_permissions(self):
         expectations = {
             "CultureMediaPreparation.xaml.cs": (
                 "DatabaseHelper.CanReviewResults(Login.CurrentUser)",
-                "DatabaseHelper.CanApproveResults(Login.CurrentUser)",
+                "DatabaseHelper.CanQaApproveResults(Login.CurrentUser)",
                 "DatabaseHelper.CanAccessReports(Login.CurrentUser)",
             ),
             "ExternalTrendImportDialog.xaml.cs": (
@@ -167,12 +168,13 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('DatabaseHelper.CanEditResults(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanSubmitForReview(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanReviewResults(Login.CurrentUser ?? "")', em)
-        self.assertIn('DatabaseHelper.CanApproveResults(Login.CurrentUser ?? "")', em)
+        self.assertIn('DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? "")', em)
 
         self.assertIn("EnsureUserPermissionInTransaction", helper)
-        self.assertIn('effectiveSubmittedBy, "CanEnterResults", "submit EM results for review"', helper)
+        self.assertIn('effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review"', helper)
         self.assertIn('effectiveReviewedBy, "CanReviewResults", "review EM results"', helper)
-        self.assertIn('effectiveApprovedBy, "CanApproveResults", "approve EM results"', helper)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", helper)
+        self.assertIn('effectiveApprovedBy, "approve EM results"', helper)
         self.assertIn("GetLockedEMWorkflowStatusInTransaction", helper)
         self.assertIn("FROM dbo.EM_Events WITH (UPDLOCK, HOLDLOCK)", helper)
         self.assertIn("HasEmSignatureInTransaction", helper)
@@ -205,9 +207,13 @@ class ReleaseControlsTests(unittest.TestCase):
             "sign prepared-media visual review",
             "sign prepared-media sterility review",
             "release prepared culture media",
+            "reject culture media lot",
+            "reject prepared culture media",
+            "reconcile culture media stock",
         ):
             self.assertIn(action, source)
 
+        self.assertGreaterEqual(source.count("EnsureQaApprovalAuthorizationInTransaction"), 5)
         self.assertGreaterEqual(source.count("WITH (UPDLOCK, HOLDLOCK)"), 5)
         self.assertIn("The qualification performer cannot perform the independent review.", source)
         self.assertIn("The final releaser must be independent of both the qualification performer and reviewer.", source)
@@ -495,8 +501,8 @@ class ReleaseControlsTests(unittest.TestCase):
 
         approve = source.split("private async void BtnApprove_Click", 1)[1].split("private async void BtnIssueCertificate_Click", 1)[0]
         self.assertIn("DatabaseHelper.ExecuteInTransaction", approve)
-        self.assertIn("EnsureUserPermissionInTransaction", approve)
-        self.assertIn('"CanApproveResults"', approve)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", approve)
+        self.assertIn('"approve PRM results"', approve)
         self.assertIn("GetLockedPrmSampleStatusInTransaction", approve)
         self.assertIn("HasSignerPerformedPrmActionInTransaction", approve)
         self.assertIn("GetPrmQualityEventStateInTransaction", approve)
@@ -2284,7 +2290,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('DatabaseHelper.CanEditResults(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanSubmitForReview(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanReviewResults(Login.CurrentUser ?? "")', em)
-        self.assertIn('DatabaseHelper.CanApproveResults(Login.CurrentUser ?? "")', em)
+        self.assertIn('DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? "")', em)
 
     def test_v165_prm_migration_guidance_uses_explicit_maintenance_and_manifest_order(self):
         readiness = (ROOT / "Infrastructure/PrmSchemaReadinessService.cs").read_text(encoding="utf-8-sig")
@@ -3450,7 +3456,12 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("does not convert the excursion into a within-limit result", em)
         self.assertIn("Media Lot / Preparation Ref.", em)
         self.assertIn("SignerDisplayName", helper)
-        self.assertIn("LEFT JOIN dbo.Users U ON U.Username=S.SignedBy", helper)
+        signature_start = helper.index("public static DataTable GetEMEventSignatures")
+        signature_end = helper.index("public static int AddEMEventSignature", signature_start)
+        signatures = helper[signature_start:signature_end]
+        self.assertIn("S.SignedBy AS SignerDisplayName", signatures)
+        self.assertNotIn("JOIN dbo.Users", signatures)
+        self.assertNotIn("U.FullName", signatures)
 
     def test_v190_prm_reports_use_unambiguous_dates_and_display_names(self):
         template = (ROOT / "Services/PRMCertificateTemplate.cs").read_text(encoding="utf-8-sig")
@@ -4933,7 +4944,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v228_historical_em_batch_reconciliation_is_atomic_scoped_and_auditable(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
         xaml = (ROOT / "EMLegacySnapshotReconciliation.xaml").read_text(encoding="utf-8-sig")
         runtime = (ROOT / "EMLegacySnapshotReconciliation.xaml.cs").read_text(encoding="utf-8-sig")
@@ -4993,7 +5004,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v230_typed_sql_parameters_and_current_session_log_grouping(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
         helper = (ROOT / "Infrastructure/SqlParameterCollectionExtensions.cs").read_text(encoding="utf-8-sig")
         self.assertIn("SqlDbType sqlDbType", helper)
@@ -5039,7 +5050,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v232_water_controlled_profiles_are_versioned_signed_and_fail_closed(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
         entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260907_000")
         migration_path = ROOT / "Database" / entry["file"]
         self.assertTrue(migration_path.exists())
@@ -5109,7 +5120,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v234_water_profiles_reuse_central_review_approval_and_dev_admin_override(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
         manager = (ROOT / "WaterTestProfileManagement.xaml.cs").read_text(encoding="utf-8-sig")
         xaml = (ROOT / "WaterTestProfileManagement.xaml").read_text(encoding="utf-8-sig")
@@ -5166,7 +5177,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v236_mqc_g_0018_water_profiles_are_source_backed_and_keep_controlled_transitions(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
         manager = (ROOT / "WaterTestProfileManagement.xaml.cs").read_text(encoding="utf-8-sig")
         xaml = (ROOT / "WaterTestProfileManagement.xaml").read_text(encoding="utf-8-sig")
@@ -5228,7 +5239,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v236_water_test_catalog_and_optional_ctg_11_02_ptw_supplement_are_controlled(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
         entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260908_000")
         migration_path = ROOT / "Database" / entry["file"]
@@ -5315,7 +5326,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v238_dashboard_pending_samples_isolated_and_transient_retry_is_bounded(self):
@@ -5341,7 +5352,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v239_sign_in_cancellation_evicts_pool_and_deadlines_are_layered(self):
@@ -5363,7 +5374,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
 
@@ -5407,7 +5418,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
         entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260908_001")
         self.assertEqual(
             hashlib.sha256(migration_path.read_bytes()).hexdigest(),
@@ -5436,7 +5447,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
         entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260908_002")
         self.assertEqual(
             hashlib.sha256(migration_path.read_bytes()).hexdigest(),
@@ -5482,7 +5493,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
         entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260909_000")
         self.assertEqual(
             hashlib.sha256(migration_path.read_bytes()).hexdigest(),
@@ -5528,7 +5539,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
         entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260909_001")
         self.assertEqual(
             hashlib.sha256(migration_path.read_bytes()).hexdigest(),
@@ -5577,7 +5588,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
 
@@ -5604,7 +5615,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v246_prm_legacy_reissue_route_prefills_signed_reason_and_disables_standalone_cancel(self):
@@ -5633,7 +5644,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v247_water_legacy_reissue_route_prefills_reason_locks_target_and_links_replacement(self):
@@ -5673,7 +5684,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v248_large_codebehind_files_are_split_into_controlled_partial_classes(self):
@@ -5702,7 +5713,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v249_water_workflow_reauthorizes_and_rechecks_approval_gates_in_transaction(self):
@@ -5718,10 +5729,11 @@ class ReleaseControlsTests(unittest.TestCase):
             'signatureWindow.SignedBy, "CanEnterResults", "start water analysis"',
             'signatureWindow.SignedBy, "CanEnterResults", "submit water results for review"',
             'signatureWindow.SignedBy, "CanReviewResults", "review water results"',
-            'signatureWindow.SignedBy, "CanApproveResults", "approve water results"',
+            'signatureWindow.SignedBy, "approve water results"',
         ):
             self.assertIn(permission_contract, results)
 
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", results)
         self.assertIn("EnsureSampleWorkflowSeparationInTransaction", security)
         self.assertIn("FROM dbo.ElectronicSignatures WITH (UPDLOCK, HOLDLOCK)", security)
         self.assertIn('signerRole, "Review"', results)
@@ -5740,7 +5752,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v251_water_registration_numbering_and_v249_transaction_gates_are_preserved(self):
@@ -5757,9 +5769,10 @@ class ReleaseControlsTests(unittest.TestCase):
             'signatureWindow.SignedBy, "CanEnterResults", "start water analysis"',
             'signatureWindow.SignedBy, "CanEnterResults", "submit water results for review"',
             'signatureWindow.SignedBy, "CanReviewResults", "review water results"',
-            'signatureWindow.SignedBy, "CanApproveResults", "approve water results"',
+            'signatureWindow.SignedBy, "approve water results"',
         ):
             self.assertIn(permission_contract, results)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", results)
         self.assertIn("EnsureSampleWorkflowSeparationInTransaction", results)
         self.assertIn("EnsureSampleApprovalQualityGatesInTransaction", results)
         self.assertIn("string signedBy,\n            string signerRole", results)
@@ -5804,7 +5817,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v257_preflight_does_not_own_session_application_lock(self):
@@ -5860,7 +5873,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
     def test_v257_preflight_serializes_runs_without_reusing_a_lock_owning_session(self):
         source = (ROOT / "Infrastructure/SystemPreflightService.cs").read_text(encoding="utf-8-sig")
@@ -5874,7 +5887,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("Build: ", ui)
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
     def test_v255_superseding_reconciliation_binds_to_expected_signed_row(self):
         source = (ROOT / "LegacyCertificateEvidenceReconciliation.xaml.cs").read_text(encoding="utf-8-sig")
@@ -5955,7 +5968,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
     def test_v258_prm_numeric_interpretation_is_strict_and_shared_with_runtime_integration(self):
@@ -6033,7 +6046,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
 
@@ -6136,7 +6149,7 @@ class ReleaseControlsTests(unittest.TestCase):
 
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(82, len(manifest["migrations"]))
+        self.assertEqual(83, len(manifest["migrations"]))
 
 
 

@@ -278,9 +278,20 @@ WHERE EventId = @eventId;", connection, transaction);
             return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
         }
 
-        public static bool CanPrintEMResultReport(int eventId, out string message)
+        public static bool CanPrintEMResultReport(int eventId, string username, out string message)
         {
             message = "";
+
+            string effectiveUsername;
+            try
+            {
+                effectiveUsername = ResolveAuthenticatedSigner(username);
+            }
+            catch (Exception ex)
+            {
+                message = Infrastructure.UserFacingError.SafeMessage(ex, "EM report print authorization");
+                return false;
+            }
 
             if (eventId <= 0)
             {
@@ -319,6 +330,13 @@ WHERE EventId = @eventId;", connection, transaction);
                 // no longer complete. The same fail-closed gate used by approval is reused here.
                 ExecuteInTransaction((connection, transaction) =>
                 {
+                    EnsureUserPermissionInTransaction(
+                        connection,
+                        transaction,
+                        effectiveUsername,
+                        "CanAccessReports",
+                        "print approved EM Result Report");
+
                     string eventNo;
                     using (SqlCommand eventCommand = new SqlCommand(@"
 SELECT EventNo
@@ -357,12 +375,11 @@ WHERE Id = @eventId;", connection, transaction))
                     S.ActionType,
                     S.ActionReason,
                     S.SignedBy,
-                    COALESCE(NULLIF(LTRIM(RTRIM(U.FullName)),N''),S.SignedBy) AS SignerDisplayName,
+                    S.SignedBy AS SignerDisplayName,
                     S.UserRole,
                     S.MeaningOfSignature,
                     S.SignedAt
                 FROM dbo.EM_EventSignatures S
-                LEFT JOIN dbo.Users U ON U.Username=S.SignedBy
                 WHERE S.EventID = @eventId
                 ORDER BY S.SignatureID";
 
@@ -439,7 +456,8 @@ WHERE Id = @eventId;", connection, transaction))
                     UPDATE dbo.EM_Events
                     SET WorkflowStatus = 'Results Entered'
                     WHERE Id = @eventId
-                      AND ISNULL(WorkflowStatus, N'Pending') NOT IN (N'Approved', N'Closed', N'Cancelled')",
+                      AND ISNULL(WorkflowStatus, N'Pending') NOT IN
+                          (N'Under Review', N'Reviewed', N'Approved', N'Completed', N'Closed', N'Cancelled')",
                     new[]
                     {
                         new SqlParameter("@eventId", eventId)
@@ -588,7 +606,7 @@ WHERE Id = @eventId;", connection, transaction))
             ExecuteInTransaction((conn, tx) =>
             {
                 string signerRole = EnsureUserPermissionInTransaction(
-                    conn, tx, effectiveSubmittedBy, "CanEnterResults", "submit EM results for review");
+                    conn, tx, effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review");
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Results Entered", StringComparison.OrdinalIgnoreCase))
@@ -791,8 +809,8 @@ WHERE Id = @eventId;", connection, transaction))
 
             ExecuteInTransaction((conn, tx) =>
             {
-                string signerRole = EnsureUserPermissionInTransaction(
-                    conn, tx, effectiveApprovedBy, "CanApproveResults", "approve EM results");
+                string signerRole = EnsureQaApprovalAuthorizationInTransaction(
+                    conn, tx, effectiveApprovedBy, "approve EM results");
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Reviewed", StringComparison.OrdinalIgnoreCase))

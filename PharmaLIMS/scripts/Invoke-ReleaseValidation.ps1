@@ -51,10 +51,13 @@ if ($RunRuntimeSmoke -and -not $RunDatabaseIntegration) {
 Push-Location $root
 try {
     $env:PYTHONDONTWRITEBYTECODE = '1'
+
     python -B scripts/validate_project.py --delivery-package
     Assert-NativeExit 'Delivery source validation'
+
     python -B -m unittest discover -s tests -p "test_*.py" -v
     Assert-NativeExit 'Python source-control regression suite'
+
     ./scripts/Test-SourceManifest.ps1
 
     if ($SourceOnly) {
@@ -72,31 +75,44 @@ try {
         return
     }
 
-    # Restore once through the controlled projects. win-x64 assets are restored for the
-    # Release build/publish path; RuntimeSmoke is built separately as Debug/Development.
+    # Restore the RID-specific release graph first.
+    # Complete RID-specific builds before any non-RID ProjectReference restore,
+    # because those restores can rewrite PharmaLIMS\obj\project.assets.json
+    # and remove the net8.0-windows7.0/win-x64 target.
     dotnet restore PharmaLIMS.csproj --runtime win-x64
     Assert-NativeExit 'WPF win-x64 restore'
+
     dotnet restore tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --runtime win-x64
     Assert-NativeExit 'DatabaseMaintenance restore'
+
+    dotnet build PharmaLIMS.csproj --configuration Release --runtime win-x64 --no-restore
+    Assert-NativeExit 'WPF Release build'
+
+    dotnet build tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --configuration Debug --runtime win-x64 --no-restore
+    Assert-NativeExit 'DatabaseMaintenance build'
+
+    # Non-RID restore/build gates run only after the win-x64 builds above.
     dotnet restore tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj
     Assert-NativeExit 'ReviewRegression restore'
+
+    dotnet build tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-restore
+    Assert-NativeExit 'ReviewRegression build'
+
+    dotnet run --project tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-build --no-restore
+    Assert-NativeExit 'ReviewRegression execution'
+
     if ($RunDatabaseIntegration) {
         dotnet restore tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj
         Assert-NativeExit 'DatabaseIntegration restore'
     }
+
     if ($RunRuntimeSmoke) {
+        # Restore RuntimeSmoke only after all win-x64 builds are complete.
+        # RuntimeSmoke references PharmaLIMS without a RID and therefore may
+        # materialize the non-RID assets used by the Debug/Development smoke.
         dotnet restore tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj
         Assert-NativeExit 'RuntimeSmoke restore'
     }
-
-    dotnet build PharmaLIMS.csproj --configuration Release --runtime win-x64 --no-restore
-    Assert-NativeExit 'WPF Release build'
-    dotnet build tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --configuration Debug --runtime win-x64 --no-restore
-    Assert-NativeExit 'DatabaseMaintenance build'
-    dotnet build tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-restore
-    Assert-NativeExit 'ReviewRegression build'
-    dotnet run --project tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-build --no-restore
-    Assert-NativeExit 'ReviewRegression execution'
 
     if ($RunDatabaseIntegration -or $RunRuntimeSmoke) {
         Start-ControlledLocalDbIfNeeded
@@ -105,6 +121,7 @@ try {
     if ($RunDatabaseIntegration) {
         dotnet build tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj --configuration Release --no-restore
         Assert-NativeExit 'DatabaseIntegration build'
+
         dotnet run --project tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj --configuration Release --no-build --no-restore
         Assert-NativeExit 'Disposable SQL Server integration executable'
     } else {
@@ -119,6 +136,7 @@ try {
         # exact signed artifact and a trusted-TLS pre-migrated SQL Server test database.
         dotnet build tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj --configuration Debug --no-restore
         Assert-NativeExit 'RuntimeSmoke Debug build'
+
         dotnet run --project tests/PharmaLIMS.RuntimeSmoke/PharmaLIMS.RuntimeSmoke.csproj --configuration Debug --no-build --no-restore
         Assert-NativeExit 'WPF RuntimeSmoke execution'
     } else {

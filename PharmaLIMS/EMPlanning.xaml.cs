@@ -1077,6 +1077,67 @@ ORDER BY S.PlanSampleID;",
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                if (!finalControlReading)
+                {
+                    using SqlCommand mediaGate = new SqlCommand(@"
+SELECT TOP(1)
+    s.SampleCode,
+    s.MediaPreparationID,
+    ISNULL(p.MediaPreparationNo,N'') AS MediaPreparationNo,
+    ISNULL(p.ReleaseStatus,N'') AS ReleaseStatus,
+    ISNULL(p.SterilityReview,N'') AS SterilityReview,
+    p.ExpiryDate,
+    CAST(SYSDATETIME() AS date) AS DatabaseDate
+FROM dbo.EM_PlanSamples s WITH(UPDLOCK,HOLDLOCK)
+LEFT JOIN dbo.MediaPreparations p WITH(UPDLOCK,HOLDLOCK)
+    ON p.MediaPreparationID=s.MediaPreparationID
+WHERE s.PlanID=@PlanID
+  AND
+  (
+      s.MediaPreparationID IS NULL
+      OR p.MediaPreparationID IS NULL
+      OR UPPER(LTRIM(RTRIM(ISNULL(p.ReleaseStatus,N''))))<>N'RELEASED'
+      OR UPPER(LTRIM(RTRIM(ISNULL(p.SterilityReview,N'')))) NOT IN (N'PASSED',N'RELEASED',N'GPT PASSED')
+      OR p.ExpiryDate IS NULL
+      OR p.ExpiryDate<CAST(SYSDATETIME() AS date)
+  )
+ORDER BY s.PlanSampleID;", connection, transaction)
+                    {
+                        CommandTimeout = AppConfig.CommandTimeoutSeconds
+                    };
+                    mediaGate.Parameters.AddExplicit("@PlanID", SqlDbType.Int, plan.PlanID);
+
+                    using SqlDataReader mediaReader = mediaGate.ExecuteReader();
+                    if (mediaReader.Read())
+                    {
+                        string sampleCode = mediaReader["SampleCode"] == DBNull.Value
+                            ? "Unknown"
+                            : Convert.ToString(mediaReader["SampleCode"], CultureInfo.InvariantCulture) ?? "Unknown";
+                        string preparationNo = mediaReader["MediaPreparationNo"] == DBNull.Value
+                            ? string.Empty
+                            : Convert.ToString(mediaReader["MediaPreparationNo"], CultureInfo.InvariantCulture) ?? string.Empty;
+                        string releaseStatus = mediaReader["ReleaseStatus"] == DBNull.Value
+                            ? string.Empty
+                            : Convert.ToString(mediaReader["ReleaseStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
+                        string sterilityReview = mediaReader["SterilityReview"] == DBNull.Value
+                            ? string.Empty
+                            : Convert.ToString(mediaReader["SterilityReview"], CultureInfo.InvariantCulture) ?? string.Empty;
+                        string expiry = mediaReader["ExpiryDate"] == DBNull.Value
+                            ? "Not set"
+                            : Convert.ToDateTime(mediaReader["ExpiryDate"], CultureInfo.InvariantCulture)
+                                .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+                        throw new InvalidOperationException(
+                            "EM collection is blocked because the prepared-media release gate is no longer satisfied. " +
+                            "Sample=" + sampleCode +
+                            ", Media Preparation=" + (string.IsNullOrWhiteSpace(preparationNo) ? "Missing" : preparationNo) +
+                            ", Release Status=" + (string.IsNullOrWhiteSpace(releaseStatus) ? "Missing" : releaseStatus) +
+                            ", Sterility Review=" + (string.IsNullOrWhiteSpace(sterilityReview) ? "Missing" : sterilityReview) +
+                            ", Use-Before=" + expiry +
+                            ". Replace/reconcile the plan with a currently released, sterility-approved, unexpired prepared-media batch before collection.");
+                    }
+                }
+
                 foreach (EMCollectionDialog.CollectionItem sample in results)
                 {
                     if (finalControlReading && !sample.IsNegativeControl) continue;

@@ -43,20 +43,46 @@ def source_family(path: Path) -> str:
 
 
 def controlled_source_files() -> set[str]:
-    excluded_parts = {".git", ".vs", "bin", "obj", "artifacts", "__pycache__", ".pytest_cache"}
-    excluded_suffixes = {".pyc", ".user", ".suo"}
+    excluded_parts = {
+        ".git",
+        ".vs",
+        "bin",
+        "obj",
+        "artifacts",
+        "__pycache__",
+        ".pytest_cache",
+    }
+    excluded_suffixes = {
+        ".pyc",
+        ".user",
+        ".suo",
+    }
     excluded_local_settings = {
         "appsettings.Production.json",
         "appsettings.Development.json",
         "appsettings.Local.json",
     }
+
+    # NuGet lock files are governed by the dedicated reproducibility/locked-restore
+    # release gate. Restore/materialization may create them before this validator
+    # runs, so they must not be treated as unmanifested SOURCE_MANIFEST files.
+    # They remain valid repository/release artifacts and are still checked by the
+    # NuGet lock/release-validation pipeline.
+    excluded_generated_files = {
+        "packages.lock.json",
+    }
+
     return {
         path.relative_to(ROOT).as_posix()
         for path in ROOT.rglob("*")
         if path.is_file()
         and path.name != "SOURCE_MANIFEST_SHA256.txt"
         and path.name not in excluded_local_settings
-        and not any(part in excluded_parts for part in path.relative_to(ROOT).parts)
+        and path.name not in excluded_generated_files
+        and not any(
+            part in excluded_parts
+            for part in path.relative_to(ROOT).parts
+        )
         and path.suffix.lower() not in excluded_suffixes
     }
 
@@ -191,8 +217,32 @@ if re.search(r"<RuntimeFrameworkVersion>[^<]+</RuntimeFrameworkVersion>", projec
     error("RuntimeFrameworkVersion must not be patch-pinned; source/F5 builds must accept any compatible installed .NET 8 Windows Desktop patch.")
 if re.search(r"<RollForward>LatestPatch</RollForward>", project_text):
     error("RollForward LatestPatch must not be used with a patch-pinned source build; use the normal .NET 8 framework resolution for F5/debug.")
-if "--self-contained true" not in text(ROOT / ".github/workflows/ci.yml"):
-    error("Production CI must continue publishing a self-contained Windows package.")
+ci_workflow_paths = [ROOT / ".github/workflows/ci.yml"]
+repository_ci_workflow = ROOT.parent / ".github/workflows/ci.yml"
+if repository_ci_workflow.is_file():
+    ci_workflow_paths.append(repository_ci_workflow)
+
+for ci_workflow_path in ci_workflow_paths:
+    ci_workflow = text(ci_workflow_path)
+    for marker, message in (
+        ("--self-contained true", "publishing a self-contained Windows package"),
+        ("Authenticode-sign published first-party binaries", "Authenticode signing"),
+        ("Smoke exact signed Production artifact", "Production artifact smoke"),
+        ("Generate and verify publish hash manifest and provenance", "publish hash manifest verification"),
+        ("Attest publish manifest provenance", "build provenance attestation"),
+        ("Upload signed, smoke-tested package", "controlled package upload"),
+    ):
+        if marker not in ci_workflow:
+            error(f"CI workflow {ci_workflow_path} is missing {message}.")
+
+if repository_ci_workflow.is_file():
+    active_ci_workflow = text(repository_ci_workflow)
+    for marker in (
+        "Remove site-specific Production configuration from distributable package",
+        "Site-specific appsettings.json must not be included in the uploaded Production package.",
+    ):
+        if marker not in active_ci_workflow:
+            error(f"Active repository CI workflow is missing Production configuration redaction control: {marker}")
 match = re.search(r"<Version>([^<]+)</Version>", project_text)
 if not match:
     error("Project Version is missing.")

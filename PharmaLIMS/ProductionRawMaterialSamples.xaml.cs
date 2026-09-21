@@ -422,7 +422,7 @@ VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,
                     throw new InvalidOperationException("Production Stage is required before an In-Process specification can be reviewed or approved.");
                 if (approval && !_masterApprovalStatus.Equals("Reviewed", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("The specification must be independently reviewed before approval.");
-                if (approval ? !DatabaseHelper.CanApproveResults(Login.CurrentUser) : !DatabaseHelper.CanReviewResults(Login.CurrentUser))
+                if (approval ? !DatabaseHelper.CanQaApproveResults(Login.CurrentUser) : !DatabaseHelper.CanReviewResults(Login.CurrentUser))
                     throw new UnauthorizedAccessException("You are not authorized for this specification workflow action.");
 
                 if (approval && !(AppConfig.DevelopmentAdminFullPermissions &&
@@ -450,12 +450,18 @@ WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version;",
                 string category = MasterCategory;
                 DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
                 {
-                    string authorizedRole = DatabaseHelper.EnsureUserPermissionInTransaction(
-                        connection,
-                        transaction,
-                        signature.SignedBy,
-                        approval ? "CanApproveResults" : "CanReviewResults",
-                        approval ? "approve a PRM specification" : "review a PRM specification");
+                    string authorizedRole = approval
+                        ? DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
+                            connection,
+                            transaction,
+                            signature.SignedBy,
+                            "approve a PRM specification")
+                        : DatabaseHelper.EnsureUserPermissionInTransaction(
+                            connection,
+                            transaction,
+                            signature.SignedBy,
+                            "CanReviewResults",
+                            "review a PRM specification");
 
                     string lockedStatus;
                     string lockedReviewedBy;
