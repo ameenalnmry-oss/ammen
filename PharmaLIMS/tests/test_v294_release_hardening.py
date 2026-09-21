@@ -119,6 +119,21 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("prevent a fork in the certificate reissue lineage", code)
         self.assertIn("ORDER BY ISNULL(RevisionNo,-1) DESC, CertificateID DESC", code)
 
+    def test_water_certificate_print_revalidates_exact_issued_document(self):
+        helper = source("DatabaseHelper.Certificates.cs")
+        self.assertIn("public static bool ValidateIssuedCertificateSnapshot(int sampleId, string certificateNumber, out string message)", helper)
+        exact_gate = helper[helper.index("private static bool ValidateIssuedCertificateSnapshotCore"):helper.index("private static bool ValidateCertificateSnapshotJson")]
+        self.assertIn("certificate.CertificateNumber=@CertificateNumber", exact_gate)
+        self.assertIn("ISNULL(certificate.IsCancelled,0)=0", exact_gate)
+        self.assertIn("IN(N'ACTIVE',N'ISSUED')", exact_gate)
+        self.assertIn("The exact issued certificate/report is no longer active", exact_gate)
+
+        report = source("ReportCertificate.xaml.cs")
+        print_start = report.index("private void BtnPrint_Click")
+        print_gate = report[print_start:print_start + 8000]
+        self.assertIn("ValidateIssuedCertificateSnapshot(sampleId, certificateNumber, out string snapshotMessage)", print_gate)
+        self.assertNotIn("ValidateIssuedCertificateSnapshot(sampleId, out string snapshotMessage)", print_gate)
+
     def test_prm_capa_requires_explicit_capa_action(self):
         code = source("PRMQualityEventInvestigation.xaml.cs")
         self.assertIn('"PRM CAPA Action"', code)
