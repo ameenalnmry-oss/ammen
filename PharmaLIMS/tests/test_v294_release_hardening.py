@@ -189,6 +189,29 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", specification_workflow)
         self.assertIn('"approve a PRM specification"', specification_workflow)
 
+    def test_prm_issued_certificate_record_rejects_tampering_but_allows_controlled_cancellation(self):
+        migration = source("Database/Migrations/20260921_003_Protect_PRM_Certificate_Issued_Evidence.sql")
+        self.assertIn("TRG_PRM_Certificates_ProtectIssuedEvidence_20260921", migration)
+        self.assertIn("AFTER UPDATE, DELETE", migration)
+        for field in (
+            "CertificateNumber", "SampleID", "CertificateType", "ReportTitle",
+            "IssueDate", "IssuedBy", "RevisionNo", "ReissuedFromCertificateID",
+            "VerificationCode", "ReportHash", "CreatedBy", "CreatedDate",
+        ):
+            self.assertIn("UPDATE(" + field + ")", migration)
+        self.assertIn("Issued PRM certificate identity/document evidence is immutable", migration)
+        self.assertIn("CertificateStatus<>N''Active''", migration)
+        self.assertIn("CertificateStatus<>N''Cancelled''", migration)
+        self.assertIn("CancelledBy", migration)
+        self.assertIn("CancelledDate", migration)
+        self.assertIn("CancellationReason", migration)
+        self.assertIn("Issued PRM certificate records cannot be deleted", migration)
+
+        integration = source("tests/PharmaLIMS.DatabaseIntegration/Program.cs")
+        self.assertIn("VerifyPrmIssuedCertificateEvidenceProtectionAsync(databaseConnectionString)", integration)
+        self.assertIn("PRM issued-certificate protection allowed ReportHash tampering", integration)
+        self.assertIn("PRM issued-certificate protection allowed certificate deletion", integration)
+
     def test_prm_controlled_open_binds_snapshot_to_certificate_identity(self):
         loader = source("ProductionRawMaterialResults.xaml.Part2.cs")
         self.assertIn("int expectedSampleId", loader)
