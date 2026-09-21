@@ -1292,7 +1292,11 @@ ORDER BY S.SignatureID;", connection, transaction);
             return snapshot;
         }
 
-        private static string LoadPrmCertificateSnapshotHtml(int certificateId, out string message)
+        private static string LoadPrmCertificateSnapshotHtml(
+            int certificateId,
+            int expectedSampleId,
+            string expectedCertificateNumber,
+            out string message)
         {
             message = "Immutable PRM certificate snapshot verified.";
             if (certificateId <= 0)
@@ -1300,6 +1304,9 @@ ORDER BY S.SignatureID;", connection, transaction);
                 message = "This legacy PRM certificate has no immutable issue snapshot.";
                 return string.Empty;
             }
+
+            if (expectedSampleId <= 0 || string.IsNullOrWhiteSpace(expectedCertificateNumber))
+                throw new InvalidOperationException("PRM certificate snapshot validation requires the active sample and certificate number.");
 
             object tableCount = DatabaseHelper.ExecuteScalar(@"
 SELECT COUNT(1) FROM sys.tables WHERE schema_id=SCHEMA_ID(N'dbo') AND name=N'PRM_CertificateSnapshots';");
@@ -1310,7 +1317,7 @@ SELECT COUNT(1) FROM sys.tables WHERE schema_id=SCHEMA_ID(N'dbo') AND name=N'PRM
             }
 
             DataTable snapshot = DatabaseHelper.ExecuteQuery(@"
-SELECT TOP(1) HtmlContent,SnapshotHash
+SELECT TOP(2) SnapshotID,SampleID,CertificateNumber,HtmlContent,SnapshotHash
 FROM dbo.PRM_CertificateSnapshots
 WHERE CertificateID=@CertificateID
 ORDER BY SnapshotID DESC;",
@@ -1321,11 +1328,22 @@ ORDER BY SnapshotID DESC;",
                 return string.Empty;
             }
 
+            if (snapshot.Rows.Count != 1)
+                throw new InvalidOperationException("PRM certificate snapshot integrity validation failed because multiple immutable snapshots exist for one certificate.");
+
+            int snapshotSampleId = ToInt(snapshot.Rows[0], "SampleID");
+            string snapshotCertificateNumber = S(snapshot.Rows[0], "CertificateNumber");
+            if (snapshotSampleId != expectedSampleId ||
+                !snapshotCertificateNumber.Equals(expectedCertificateNumber.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("PRM certificate snapshot identity does not match the active certificate. Opening has been blocked.");
+            }
+
             string html = S(snapshot.Rows[0], "HtmlContent");
             string storedHash = S(snapshot.Rows[0], "SnapshotHash");
             string actualHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(html)));
             if (string.IsNullOrWhiteSpace(html) || !actualHash.Equals(storedHash, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("PRM certificate snapshot integrity validation failed. Printing has been blocked.");
+                throw new InvalidOperationException("PRM certificate snapshot integrity validation failed. Opening has been blocked.");
 
             return html;
         }
