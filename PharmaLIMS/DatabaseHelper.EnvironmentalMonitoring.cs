@@ -809,8 +809,8 @@ WHERE Id = @eventId;", connection, transaction))
 
             ExecuteInTransaction((conn, tx) =>
             {
-                string signerRole = EnsureUserPermissionInTransaction(
-                    conn, tx, effectiveApprovedBy, "CanApproveResults", "approve EM results");
+                string signerRole = EnsureQaApprovalAuthorizationInTransaction(
+                    conn, tx, effectiveApprovedBy, "approve EM results");
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Reviewed", StringComparison.OrdinalIgnoreCase))
