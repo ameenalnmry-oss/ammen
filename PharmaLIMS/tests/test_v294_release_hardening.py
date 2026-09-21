@@ -155,6 +155,25 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         em_ui = source("EMResultsEntry.xaml.cs")
         self.assertIn("CanApprove: DatabaseHelper.CanQaApproveResults(username)", em_ui)
 
+        culture = source("CultureMediaPreparation.xaml.cs") + source("CultureMediaPreparation.xaml.Part2.cs") + source("CultureMediaPreparation.xaml.Part3.cs")
+        self.assertIn("DatabaseHelper.CanQaApproveResults(Login.CurrentUser)", culture)
+        for action in (
+            "confirm Culture Media qualification timing controls",
+            "release culture media lot",
+            "release prepared culture media",
+            "reject culture media lot",
+            "reject prepared culture media",
+            "reconcile culture media stock",
+        ):
+            self.assertIn(action, culture)
+        self.assertGreaterEqual(culture.count("EnsureQaApprovalAuthorizationInTransaction"), 5)
+
+        prm_master = source("ProductionRawMaterialSamples.xaml.cs")
+        self.assertIn("approval ? !DatabaseHelper.CanQaApproveResults(Login.CurrentUser)", prm_master)
+        specification_workflow = prm_master[prm_master.index("private void ChangeSpecificationState"):prm_master.index("private void LoadSpecificationVersion")]
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", specification_workflow)
+        self.assertIn('"approve a PRM specification"', specification_workflow)
+
     def test_main_navigation_allows_qa_certificate_roles_into_water_workflow(self):
         code = source("MainWindow.xaml.cs")
         apply_start = code.index("private void ApplyRolePermissions()")
