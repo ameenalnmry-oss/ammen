@@ -143,7 +143,7 @@ class V294ReleaseHardeningTests(unittest.TestCase):
 
         prm = source("ProductionRawMaterialResults.xaml.cs")
         self.assertIn("DatabaseHelper.CanQaApproveResults(GetCurrentUserDisplayName())", prm)
-        prm_approve = prm[prm.index("private async void BtnApprove_Click"):prm.index("private void BtnIssueCertificate_Click")]
+        prm_approve = prm[prm.index("private async void BtnApprove_Click"):prm.index("private async void BtnIssueCertificate_Click")]
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", prm_approve)
         self.assertNotIn('"CanApproveResults",\n                        "approve PRM results"', prm_approve)
 
