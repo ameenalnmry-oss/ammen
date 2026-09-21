@@ -128,6 +128,24 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("FROM dbo.QualityEventActions WITH (UPDLOCK, HOLDLOCK)", code)
         self.assertIn("no explicit PRM CAPA Action with a documented description exists in the locked database evidence", code)
 
+    def test_main_navigation_allows_qa_certificate_roles_into_water_workflow(self):
+        code = source("MainWindow.xaml.cs")
+        apply_start = code.index("private void ApplyRolePermissions()")
+        apply_end = code.index("private void ApplySystemReadinessReport", apply_start)
+        permissions = code[apply_start:apply_end]
+
+        results_start = permissions.index("BtnResultsEntry.IsEnabled")
+        results_end = permissions.index("BtnEMResults.IsEnabled", results_start)
+        results_gate = permissions[results_start:results_end]
+        for required in ("Login.CanEnterResults", "Login.CanReviewResults", "Login.CanApproveResults", "Login.CanIssueCOA", "Login.CanCancelCOA"):
+            self.assertIn(required, results_gate)
+
+        samples_start = permissions.index("BtnSampleManagement.IsEnabled")
+        samples_end = permissions.index("BtnNewSample.IsEnabled", samples_start)
+        samples_gate = permissions[samples_start:samples_end]
+        for required in ("Login.CanApproveResults", "Login.CanIssueCOA", "Login.CanCancelCOA", "Login.CanAccessReports"):
+            self.assertIn(required, samples_gate)
+
     def test_main_navigation_scrolls_without_hiding_user_footer(self):
         xaml = source("MainWindow.xaml")
         sidebar_start = xaml.index("<!-- Left navigation -->")
