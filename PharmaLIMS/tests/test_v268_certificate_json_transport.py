@@ -37,7 +37,7 @@ class CertificateJsonTransportV268Tests(unittest.TestCase):
         import json
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertEqual(84, len(manifest["migrations"]))
+        self.assertEqual(85, len(manifest["migrations"]))
         auth_entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260911_000")
         self.assertEqual(
             "832ffb73859f2db064043bfe72e04744242ea5a645eec9c07ead919d558859b8",
