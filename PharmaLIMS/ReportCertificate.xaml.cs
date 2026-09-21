@@ -1623,7 +1623,7 @@ THEN 1 ELSE 0 END;",
                 if (!CanIssue())
                 {
                     MessageBox.Show(
-                        "You don't have permission to issue certificates. Only QA can issue COA.",
+                        "You don't have permission to issue certificates/reports.",
                         "Permission Denied",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
