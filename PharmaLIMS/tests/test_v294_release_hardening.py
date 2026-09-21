@@ -189,6 +189,21 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", specification_workflow)
         self.assertIn('"approve a PRM specification"', specification_workflow)
 
+    def test_prm_controlled_open_binds_snapshot_to_certificate_identity(self):
+        loader = source("ProductionRawMaterialResults.xaml.Part2.cs")
+        self.assertIn("int expectedSampleId", loader)
+        self.assertIn("string expectedCertificateNumber", loader)
+        self.assertIn("SELECT TOP(2) SnapshotID,SampleID,CertificateNumber,HtmlContent,SnapshotHash", loader)
+        self.assertIn("snapshot.Rows.Count != 1", loader)
+        self.assertIn("snapshotSampleId != expectedSampleId", loader)
+        self.assertIn("snapshotCertificateNumber.Equals(expectedCertificateNumber.Trim()", loader)
+        self.assertIn("PRM certificate snapshot identity does not match the active certificate", loader)
+
+        ui = source("ProductionRawMaterialResults.xaml.cs")
+        self.assertIn("LoadPrmCertificateSnapshotHtml(", ui)
+        self.assertIn("_selectedSampleId", ui)
+        self.assertIn("certificateNumber", ui)
+
     def test_prm_certificate_history_is_append_only_and_open_action_is_not_mislabeled_as_print(self):
         contract = source("Infrastructure/ComplianceRecordProtectionContract.cs")
         migration = source("Database/Migrations/20260921_002_Protect_PRM_Certificate_History.sql")
