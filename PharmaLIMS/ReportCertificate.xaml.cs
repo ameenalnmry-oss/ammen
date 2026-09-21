@@ -1848,7 +1848,7 @@ THEN 1 ELSE 0 END;",
                 }
 
                 if (!string.IsNullOrWhiteSpace(certificateNumber) &&
-                    !DatabaseHelper.ValidateIssuedCertificateSnapshot(sampleId, out string snapshotMessage))
+                    !DatabaseHelper.ValidateIssuedCertificateSnapshot(sampleId, certificateNumber, out string snapshotMessage))
                 {
                     MessageBox.Show(snapshotMessage + " Printing has been blocked.", "Certificate Integrity Block", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
