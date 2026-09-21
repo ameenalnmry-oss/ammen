@@ -913,9 +913,9 @@ SELECT CASE
 
         private async void BtnApprove_Click(object sender, RoutedEventArgs e)
         {
-            if (!DatabaseHelper.CanApproveResults(Login.CurrentUser ?? ""))
+            if (!DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? ""))
             {
-                MessageBox.Show("You don't have permission to approve EM results.", "Permission Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Only an authorized QA approver can approve EM results.", "Permission Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
