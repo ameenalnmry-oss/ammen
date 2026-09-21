@@ -170,7 +170,7 @@ class V294ReleaseHardeningTests(unittest.TestCase):
 
         prm_master = source("ProductionRawMaterialSamples.xaml.cs")
         self.assertIn("approval ? !DatabaseHelper.CanQaApproveResults(Login.CurrentUser)", prm_master)
-        specification_workflow = prm_master[prm_master.index("private void ChangeSpecificationState"):prm_master.index("private void LoadSpecificationVersion")]
+        specification_workflow = prm_master[prm_master.index("private void ChangeSpecificationState"):prm_master.index("private static string NormalizeControlledResultType")]
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", specification_workflow)
         self.assertIn('"approve a PRM specification"', specification_workflow)
 
