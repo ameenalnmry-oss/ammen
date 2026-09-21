@@ -29,6 +29,7 @@ VALUES
     (N'EM_PlanSignatures', N'TRG_EM_PlanSignatures_AppendOnly', N'append-only and cannot be updated or deleted'),
     (N'EM_ScheduleSignatures', N'TRG_EM_ScheduleSignatures_AppendOnly', N'append-only and cannot be updated or deleted'),
     (N'PRM_CertificateSnapshots', N'TRG_PRM_CertificateSnapshots_AppendOnly', N'append-only and cannot be updated or deleted'),
+    (N'PRM_CertificateHistory', N'TRG_PRM_CertificateHistory_AppendOnly_20260921', N'PRM certificate lifecycle history is append-only and cannot be updated or deleted'),
     (N'PRM_ElectronicSignatures', N'TRG_PRM_ElectronicSignatures_AppendOnly', N'append-only and cannot be updated or deleted'),
     (N'PRM_SpecificationSignatures', N'TRG_PRM_SpecificationSignatures_AppendOnly', N'append-only and cannot be updated or deleted'),
     (N'QualityEventPrintHistory', N'TRG_QualityEventPrintHistory_AppendOnly', N'append-only and cannot be updated or deleted'),

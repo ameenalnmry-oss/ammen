@@ -1919,7 +1919,7 @@ WHERE SampleID = @SampleID
             }
             catch (Exception ex)
             {
-                ShowOperationError("Print Certificate", ex);
+                ShowOperationError("Open Controlled Certificate", ex);
             }
         }
 
