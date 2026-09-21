@@ -128,6 +128,32 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("FROM dbo.QualityEventActions WITH (UPDLOCK, HOLDLOCK)", code)
         self.assertIn("no explicit PRM CAPA Action with a documented description exists in the locked database evidence", code)
 
+    def test_final_result_approval_requires_qa_role_and_permission(self):
+        security = source("DatabaseHelper.SecurityAudit.cs")
+        self.assertIn("public static bool CanQaApproveResults(string username)", security)
+        qa_gate = security[security.index("public static bool CanQaApproveResults"):security.index("public static bool CanIssueCertificate")]
+        self.assertIn('RoleIsOneOf(role, "QA", "Quality Assurance")', qa_gate)
+        self.assertIn('GetUserPermissionFlag(username, "CanApproveResults", false)', qa_gate)
+
+        water = source("ResultsEntry.xaml.cs")
+        self.assertIn("DatabaseHelper.CanQaApproveResults(currentUser)", water)
+        water_approve = water[water.index("private void BtnApprove_Click"):water.index("private void BtnPrintReport_Click")]
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", water_approve)
+        self.assertNotIn('"CanApproveResults", "approve water results"', water_approve)
+
+        prm = source("ProductionRawMaterialResults.xaml.cs")
+        self.assertIn("DatabaseHelper.CanQaApproveResults(GetCurrentUserDisplayName())", prm)
+        prm_approve = prm[prm.index("private async void BtnApprove_Click"):prm.index("private void BtnIssueCertificate_Click")]
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", prm_approve)
+        self.assertNotIn('"CanApproveResults",\n                        "approve PRM results"', prm_approve)
+
+        em_db = source("DatabaseHelper.EnvironmentalMonitoring.cs")
+        em_approve = em_db[em_db.index("public static void ApproveEMEvent"):em_db.index("public static bool CanPrintEMResultReport")]
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", em_approve)
+
+        em_ui = source("EMResultsEntry.xaml.cs")
+        self.assertIn("CanApprove: DatabaseHelper.CanQaApproveResults(username)", em_ui)
+
     def test_main_navigation_allows_qa_certificate_roles_into_water_workflow(self):
         code = source("MainWindow.xaml.cs")
         apply_start = code.index("private void ApplyRolePermissions()")
