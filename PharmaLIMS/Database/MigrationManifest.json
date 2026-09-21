@@ -527,6 +527,12 @@
       "description": "Protect PRM certificate lifecycle history as append-only evidence",
       "file": "Migrations/20260921_002_Protect_PRM_Certificate_History.sql",
       "sha256": "46b7a433714d65c49474b0ee89eb96995a4ac70c41a6a9f1bc3e6caf84c719e6"
+    },
+    {
+      "versionKey": "20260921_003",
+      "description": "Protect issued PRM certificate identity and document evidence while preserving controlled cancellation",
+      "file": "Migrations/20260921_003_Protect_PRM_Certificate_Issued_Evidence.sql",
+      "sha256": "9c6449e78b13117dcedddf4612571bf3ada8b3f8f48ee1d40c331cdd2e533216"
     }
   ]
 }
