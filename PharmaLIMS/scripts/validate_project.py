@@ -217,8 +217,32 @@ if re.search(r"<RuntimeFrameworkVersion>[^<]+</RuntimeFrameworkVersion>", projec
     error("RuntimeFrameworkVersion must not be patch-pinned; source/F5 builds must accept any compatible installed .NET 8 Windows Desktop patch.")
 if re.search(r"<RollForward>LatestPatch</RollForward>", project_text):
     error("RollForward LatestPatch must not be used with a patch-pinned source build; use the normal .NET 8 framework resolution for F5/debug.")
-if "--self-contained true" not in text(ROOT / ".github/workflows/ci.yml"):
-    error("Production CI must continue publishing a self-contained Windows package.")
+ci_workflow_paths = [ROOT / ".github/workflows/ci.yml"]
+repository_ci_workflow = ROOT.parent / ".github/workflows/ci.yml"
+if repository_ci_workflow.is_file():
+    ci_workflow_paths.append(repository_ci_workflow)
+
+for ci_workflow_path in ci_workflow_paths:
+    ci_workflow = text(ci_workflow_path)
+    for marker, message in (
+        ("--self-contained true", "publishing a self-contained Windows package"),
+        ("Authenticode-sign published first-party binaries", "Authenticode signing"),
+        ("Smoke exact signed Production artifact", "Production artifact smoke"),
+        ("Generate and verify publish hash manifest and provenance", "publish hash manifest verification"),
+        ("Attest publish manifest provenance", "build provenance attestation"),
+        ("Upload signed, smoke-tested package", "controlled package upload"),
+    ):
+        if marker not in ci_workflow:
+            error(f"CI workflow {ci_workflow_path} is missing {message}.")
+
+if repository_ci_workflow.is_file():
+    active_ci_workflow = text(repository_ci_workflow)
+    for marker in (
+        "Remove site-specific Production configuration from distributable package",
+        "Site-specific appsettings.json must not be included in the uploaded Production package.",
+    ):
+        if marker not in active_ci_workflow:
+            error(f"Active repository CI workflow is missing Production configuration redaction control: {marker}")
 match = re.search(r"<Version>([^<]+)</Version>", project_text)
 if not match:
     error("Project Version is missing.")

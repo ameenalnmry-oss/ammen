@@ -208,6 +208,16 @@ jobs:
           PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING: ${{ secrets.PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING }}
         run: ./scripts/Invoke-ProductionArtifactSmoke.ps1 -AppPath ./artifacts/publish/PharmaLIMS.exe
 
+      - name: Remove site-specific Production configuration from distributable package
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          Remove-Item -LiteralPath ./artifacts/publish/appsettings.json -Force -ErrorAction SilentlyContinue
+          if (Test-Path -LiteralPath ./artifacts/publish/appsettings.json) {
+              throw "Site-specific appsettings.json must not be included in the uploaded Production package."
+          }
+
       - name: Generate and verify publish hash manifest and provenance
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         working-directory: PharmaLIMS
