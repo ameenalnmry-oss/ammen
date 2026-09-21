@@ -50,7 +50,7 @@ class ReleaseControlsTests(unittest.TestCase):
             "DatabaseHelper.CanEditResults(currentUser)",
             "DatabaseHelper.CanSubmitForReview(currentUser)",
             "DatabaseHelper.CanReviewResults(currentUser)",
-            "DatabaseHelper.CanApproveResults(currentUser)",
+            "DatabaseHelper.CanQaApproveResults(currentUser)",
             "DatabaseHelper.CanIssueCertificate(currentUser)",
             "DatabaseHelper.CanCancelCertificate(currentUser)",
         )
@@ -59,6 +59,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertNotRegex(source, r"private bool CanApproveSample\(\).*RoleIs")
         self.assertNotIn("private string GetCurrentRole()", source)
         self.assertIn("string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction", source)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", source)
         self.assertIn("string signedBy,\n            string signerRole", source)
 
     def test_other_critical_workflows_use_fresh_database_permissions(self):
@@ -167,12 +168,13 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('DatabaseHelper.CanEditResults(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanSubmitForReview(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanReviewResults(Login.CurrentUser ?? "")', em)
-        self.assertIn('DatabaseHelper.CanApproveResults(Login.CurrentUser ?? "")', em)
+        self.assertIn('DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? "")', em)
 
         self.assertIn("EnsureUserPermissionInTransaction", helper)
         self.assertIn('effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review"', helper)
         self.assertIn('effectiveReviewedBy, "CanReviewResults", "review EM results"', helper)
-        self.assertIn('effectiveApprovedBy, "CanApproveResults", "approve EM results"', helper)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", helper)
+        self.assertIn('effectiveApprovedBy, "approve EM results"', helper)
         self.assertIn("GetLockedEMWorkflowStatusInTransaction", helper)
         self.assertIn("FROM dbo.EM_Events WITH (UPDLOCK, HOLDLOCK)", helper)
         self.assertIn("HasEmSignatureInTransaction", helper)
@@ -495,8 +497,8 @@ class ReleaseControlsTests(unittest.TestCase):
 
         approve = source.split("private async void BtnApprove_Click", 1)[1].split("private async void BtnIssueCertificate_Click", 1)[0]
         self.assertIn("DatabaseHelper.ExecuteInTransaction", approve)
-        self.assertIn("EnsureUserPermissionInTransaction", approve)
-        self.assertIn('"CanApproveResults"', approve)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", approve)
+        self.assertIn('"approve PRM results"', approve)
         self.assertIn("GetLockedPrmSampleStatusInTransaction", approve)
         self.assertIn("HasSignerPerformedPrmActionInTransaction", approve)
         self.assertIn("GetPrmQualityEventStateInTransaction", approve)
@@ -2284,7 +2286,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('DatabaseHelper.CanEditResults(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanSubmitForReview(Login.CurrentUser ?? "")', em)
         self.assertIn('DatabaseHelper.CanReviewResults(Login.CurrentUser ?? "")', em)
-        self.assertIn('DatabaseHelper.CanApproveResults(Login.CurrentUser ?? "")', em)
+        self.assertIn('DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? "")', em)
 
     def test_v165_prm_migration_guidance_uses_explicit_maintenance_and_manifest_order(self):
         readiness = (ROOT / "Infrastructure/PrmSchemaReadinessService.cs").read_text(encoding="utf-8-sig")
@@ -5723,10 +5725,11 @@ class ReleaseControlsTests(unittest.TestCase):
             'signatureWindow.SignedBy, "CanEnterResults", "start water analysis"',
             'signatureWindow.SignedBy, "CanEnterResults", "submit water results for review"',
             'signatureWindow.SignedBy, "CanReviewResults", "review water results"',
-            'signatureWindow.SignedBy, "CanApproveResults", "approve water results"',
+            'signatureWindow.SignedBy, "approve water results"',
         ):
             self.assertIn(permission_contract, results)
 
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", results)
         self.assertIn("EnsureSampleWorkflowSeparationInTransaction", security)
         self.assertIn("FROM dbo.ElectronicSignatures WITH (UPDLOCK, HOLDLOCK)", security)
         self.assertIn('signerRole, "Review"', results)
@@ -5762,9 +5765,10 @@ class ReleaseControlsTests(unittest.TestCase):
             'signatureWindow.SignedBy, "CanEnterResults", "start water analysis"',
             'signatureWindow.SignedBy, "CanEnterResults", "submit water results for review"',
             'signatureWindow.SignedBy, "CanReviewResults", "review water results"',
-            'signatureWindow.SignedBy, "CanApproveResults", "approve water results"',
+            'signatureWindow.SignedBy, "approve water results"',
         ):
             self.assertIn(permission_contract, results)
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", results)
         self.assertIn("EnsureSampleWorkflowSeparationInTransaction", results)
         self.assertIn("EnsureSampleApprovalQualityGatesInTransaction", results)
         self.assertIn("string signedBy,\n            string signerRole", results)
