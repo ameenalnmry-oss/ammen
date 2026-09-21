@@ -189,6 +189,21 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", specification_workflow)
         self.assertIn('"approve a PRM specification"', specification_workflow)
 
+    def test_prm_certificate_history_is_append_only_and_open_action_is_not_mislabeled_as_print(self):
+        contract = source("Infrastructure/ComplianceRecordProtectionContract.cs")
+        migration = source("Database/Migrations/20260921_002_Protect_PRM_Certificate_History.sql")
+        self.assertIn("PRM_CertificateHistory", contract)
+        self.assertIn("TRG_PRM_CertificateHistory_AppendOnly_20260921", contract)
+        self.assertIn("INSTEAD OF UPDATE, DELETE", migration)
+        self.assertIn("PRM certificate lifecycle history is append-only and cannot be updated or deleted", migration)
+
+        xaml = source("ProductionRawMaterialResults.xaml")
+        self.assertIn('x:Name="BtnPrintCertificate" Content="Open Controlled Certificate"', xaml)
+        self.assertNotIn('x:Name="BtnPrintCertificate" Content="Print Certificate"', xaml)
+
+        code = source("ProductionRawMaterialResults.xaml.cs")
+        self.assertIn('ShowOperationError("Open Controlled Certificate", ex);', code)
+
     def test_main_navigation_allows_qa_certificate_roles_into_water_workflow(self):
         code = source("MainWindow.xaml.cs")
         apply_start = code.index("private void ApplyRolePermissions()")
