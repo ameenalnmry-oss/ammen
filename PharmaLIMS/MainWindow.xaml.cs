@@ -327,12 +327,18 @@ SELECT @Result;");
             BtnSampleManagement.IsEnabled = Login.CanRegisterSamples ||
                                             Login.CanEnterResults ||
                                             Login.CanReviewResults ||
+                                            Login.CanApproveResults ||
+                                            Login.CanIssueCOA ||
+                                            Login.CanCancelCOA ||
                                             Login.CanAccessReports;
 
             BtnNewSample.IsEnabled = Login.CanRegisterSamples;
 
             BtnResultsEntry.IsEnabled = Login.CanEnterResults ||
-                                        Login.CanReviewResults;
+                                        Login.CanReviewResults ||
+                                        Login.CanApproveResults ||
+                                        Login.CanIssueCOA ||
+                                        Login.CanCancelCOA;
 
             BtnEMResults.IsEnabled = Login.CanAccessEM;
             BtnEMPlanning.IsEnabled = Login.CanAccessEM && Login.CanRegisterSamples;
