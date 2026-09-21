@@ -253,7 +253,7 @@ END;";
         private static bool CanEnterPrmResults() => DatabaseHelper.CanEditResults(GetCurrentUserDisplayName());
         private static bool CanSubmitPrmResults() => DatabaseHelper.CanSubmitForReview(GetCurrentUserDisplayName());
         private static bool CanReviewPrmResults() => DatabaseHelper.CanReviewResults(GetCurrentUserDisplayName());
-        private static bool CanApprovePrmResults() => DatabaseHelper.CanApproveResults(GetCurrentUserDisplayName());
+        private static bool CanApprovePrmResults() => DatabaseHelper.CanQaApproveResults(GetCurrentUserDisplayName());
         private static bool CanIssuePrmCertificate() => DatabaseHelper.CanIssueCertificate(GetCurrentUserDisplayName());
         private static bool CanCancelPrmCertificate() => DatabaseHelper.CanCancelCertificate(GetCurrentUserDisplayName());
         private static bool CanManagePrmQualityEvent() =>
@@ -1716,11 +1716,10 @@ WHERE SampleID = @SampleID
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
-                    string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
+                    string signerRole = DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
                         conn,
                         tx,
                         signature.SignedBy,
-                        "CanApproveResults",
                         "approve PRM results");
 
                     string lockedStatus = GetLockedPrmSampleStatusInTransaction(conn, tx);
