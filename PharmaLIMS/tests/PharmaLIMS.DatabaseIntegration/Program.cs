@@ -71,6 +71,7 @@ internal static class Program
             await VerifySchemaAsync(databaseConnectionString);
             await VerifyUserAdministrationSignatureEvidenceSchemaAsync(databaseConnectionString);
             await VerifyComplianceProtectionTamperDetectionAsync(databaseConnectionString);
+            await VerifyPrmIssuedCertificateEvidenceProtectionAsync(databaseConnectionString);
             VerifyPrmNumericInterpretationEngine();
             await VerifyPrmResultOptimisticConcurrencyAsync(databaseConnectionString);
             await VerifyPrmSampleWideStateConcurrencyAsync(databaseConnectionString);
@@ -114,6 +115,161 @@ END;");
                 Console.Error.WriteLine("Temporary database cleanup warning: " + cleanupEx.Message);
             }
         }
+    }
+
+    private static async Task VerifyPrmIssuedCertificateEvidenceProtectionAsync(string connectionString)
+    {
+        const string seedSql = @"
+DECLARE @SampleID int;
+
+INSERT dbo.PRM_Samples
+(
+    SampleNumber,
+    SampleCategory
+)
+VALUES
+(
+    N'PRM-CERT-PROTECT-001',
+    N'Finished Product'
+);
+
+SET @SampleID = CAST(SCOPE_IDENTITY() AS int);
+
+INSERT dbo.PRM_Certificates
+(
+    CertificateNumber,
+    SampleID,
+    CertificateType,
+    ReportTitle,
+    IssueDate,
+    IssuedBy,
+    CertificateStatus,
+    RevisionNo,
+    IsCancelled,
+    ReissuedFromCertificateID,
+    VerificationCode,
+    ReportHash,
+    CreatedBy,
+    CreatedDate
+)
+VALUES
+(
+    N'PRM-PROTECT-2026-001',
+    @SampleID,
+    N'FP',
+    N'Finished Product Microbiology Certificate',
+    SYSDATETIME(),
+    N'Integration Tester',
+    N'Active',
+    1,
+    0,
+    NULL,
+    N'0123456789AB',
+    REPLICATE(N'A',64),
+    N'Integration Tester',
+    SYSDATETIME()
+);
+
+SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+        int certificateId;
+        await using (SqlConnection seedConnection = new(connectionString))
+        {
+            await seedConnection.OpenAsync();
+            await using SqlCommand seedCommand = new(seedSql, seedConnection) { CommandTimeout = 60 };
+            object? result = await seedCommand.ExecuteScalarAsync();
+            certificateId = Convert.ToInt32(result);
+        }
+
+        if (certificateId <= 0)
+            throw new InvalidOperationException("PRM issued-certificate protection rehearsal did not create a certificate.");
+
+        try
+        {
+            await ExecuteAsync(
+                connectionString,
+                $"UPDATE dbo.PRM_Certificates SET ReportHash=REPLICATE(N'B',64) WHERE CertificateID={certificateId};",
+                timeoutSeconds: 120);
+            throw new InvalidOperationException("PRM issued-certificate protection allowed ReportHash tampering.");
+        }
+        catch (SqlException ex) when (ex.Number == 55243)
+        {
+            // Expected immutable issued-document evidence protection.
+        }
+
+        try
+        {
+            await ExecuteAsync(
+                connectionString,
+                $"UPDATE dbo.PRM_Certificates SET CertificateStatus=N'Cancelled' WHERE CertificateID={certificateId};",
+                timeoutSeconds: 120);
+            throw new InvalidOperationException("PRM issued-certificate protection allowed an incomplete cancellation transition.");
+        }
+        catch (SqlException ex) when (ex.Number == 55246)
+        {
+            // Expected fail-closed lifecycle enforcement.
+        }
+
+        await ExecuteAsync(
+            connectionString,
+            $@"
+UPDATE dbo.PRM_Certificates
+SET CertificateStatus=N'Cancelled',
+    IsCancelled=1,
+    CancelledBy=N'Integration Tester',
+    CancelledDate=SYSDATETIME(),
+    CancellationReason=N'Controlled integration-test cancellation'
+WHERE CertificateID={certificateId};",
+            timeoutSeconds: 120);
+
+        try
+        {
+            await ExecuteAsync(
+                connectionString,
+                $"UPDATE dbo.PRM_Certificates SET CancellationReason=N'TAMPER' WHERE CertificateID={certificateId};",
+                timeoutSeconds: 120);
+            throw new InvalidOperationException("PRM issued-certificate protection allowed cancelled evidence to be rewritten.");
+        }
+        catch (SqlException ex) when (ex.Number == 55246)
+        {
+            // Cancelled lifecycle evidence cannot be rewritten.
+        }
+
+        try
+        {
+            await ExecuteAsync(
+                connectionString,
+                $"DELETE FROM dbo.PRM_Certificates WHERE CertificateID={certificateId};",
+                timeoutSeconds: 120);
+            throw new InvalidOperationException("PRM issued-certificate protection allowed certificate deletion.");
+        }
+        catch (SqlException ex) when (ex.Number == 55242)
+        {
+            // Expected non-delete protection.
+        }
+
+        await using SqlConnection verifyConnection = new(connectionString);
+        await verifyConnection.OpenAsync();
+        await using SqlCommand verifyCommand = new(@"
+SELECT CertificateNumber,CertificateStatus,IsCancelled,CancelledBy,CancellationReason,ReportHash
+FROM dbo.PRM_Certificates
+WHERE CertificateID=@CertificateID;", verifyConnection);
+        verifyCommand.Parameters.Add("@CertificateID", SqlDbType.Int).Value = certificateId;
+        await using SqlDataReader reader = await verifyCommand.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+            throw new InvalidOperationException("PRM issued-certificate protection rehearsal lost the certificate record.");
+
+        if (!reader.GetString(0).Equals("PRM-PROTECT-2026-001", StringComparison.Ordinal) ||
+            !reader.GetString(1).Equals("Cancelled", StringComparison.Ordinal) ||
+            !reader.GetBoolean(2) ||
+            !reader.GetString(3).Equals("Integration Tester", StringComparison.Ordinal) ||
+            !reader.GetString(4).Equals("Controlled integration-test cancellation", StringComparison.Ordinal) ||
+            !reader.GetString(5).Equals(new string('A', 64), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("PRM issued-certificate protection rehearsal did not preserve the controlled certificate state.");
+        }
+
+        Console.WriteLine("PRM issued-certificate evidence protection PASS.");
     }
 
     private static async Task RecordMigrationLedgerAsync(
