@@ -521,6 +521,12 @@
       "description": "Harden append-only evidence triggers to reject zero-row UPDATE/DELETE while preserving INSERT validation",
       "file": "Migrations/20260921_001_Harden_AppendOnly_Protection_Triggers.sql",
       "sha256": "6574df0533af5d398ef1aaa6ad93d818f08e6d9d23ca417f033a26c5692e9d56"
+    },
+    {
+      "versionKey": "20260921_002",
+      "description": "Protect PRM certificate lifecycle history as append-only evidence",
+      "file": "Migrations/20260921_002_Protect_PRM_Certificate_History.sql",
+      "sha256": "46b7a433714d65c49474b0ee89eb96995a4ac70c41a6a9f1bc3e6caf84c719e6"
     }
   ]
 }
