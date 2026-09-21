@@ -267,21 +267,46 @@ SELECT CASE WHEN EXISTS
 
         public static bool ValidateIssuedCertificateSnapshot(int sampleId, out string message)
         {
+            return ValidateIssuedCertificateSnapshotCore(sampleId, null, out message);
+        }
+
+        public static bool ValidateIssuedCertificateSnapshot(int sampleId, string certificateNumber, out string message)
+        {
+            if (string.IsNullOrWhiteSpace(certificateNumber))
+            {
+                message = "A certificate/report number is required for exact issued-document validation.";
+                return false;
+            }
+
+            return ValidateIssuedCertificateSnapshotCore(sampleId, certificateNumber.Trim(), out message);
+        }
+
+        private static bool ValidateIssuedCertificateSnapshotCore(int sampleId, string certificateNumber, out string message)
+        {
             message = string.Empty;
             DataTable snapshot = ExecuteQuery(@"
-SELECT TOP(1) snap.SnapshotContent,snap.SnapshotHash,certificate.ReportHash
+SELECT TOP(1) snap.SnapshotContent,snap.SnapshotHash,certificate.ReportHash,certificate.CertificateNumber
 FROM dbo.CertificateDocumentSnapshots snap
 INNER JOIN dbo.Certificates certificate ON certificate.CertificateID=snap.CertificateID
 WHERE snap.SampleID=@SampleID
+  AND (@CertificateNumber IS NULL OR certificate.CertificateNumber=@CertificateNumber)
   AND ISNULL(certificate.IsCancelled,0)=0
   AND UPPER(ISNULL(certificate.CertificateStatus,certificate.Status)) IN(N'ACTIVE',N'ISSUED')
 ORDER BY certificate.CertificateID DESC;", new[]
             {
-                new SqlParameter("@SampleID", SqlDbType.Int) { Value = sampleId }
+                new SqlParameter("@SampleID", SqlDbType.Int) { Value = sampleId },
+                new SqlParameter("@CertificateNumber", SqlDbType.NVarChar, 50)
+                {
+                    Value = string.IsNullOrWhiteSpace(certificateNumber)
+                        ? (object)DBNull.Value
+                        : certificateNumber
+                }
             });
             if (snapshot.Rows.Count == 0)
             {
-                message = "The immutable issued-document snapshot is missing.";
+                message = string.IsNullOrWhiteSpace(certificateNumber)
+                    ? "The immutable issued-document snapshot is missing."
+                    : "The exact issued certificate/report is no longer active or its immutable snapshot is missing.";
                 return false;
             }
 
