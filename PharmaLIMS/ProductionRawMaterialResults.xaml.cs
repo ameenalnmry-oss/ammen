@@ -1877,7 +1877,11 @@ WHERE SampleID = @SampleID
                     throw new UnauthorizedAccessException("Reports access permission is required to view or print PRM certificates/reports.");
 
                 string certificateNumber = S(cert, "CertificateNumber");
-                string html = LoadPrmCertificateSnapshotHtml(ToInt(cert, "CertificateID"), out string integrityMessage);
+                string html = LoadPrmCertificateSnapshotHtml(
+                    ToInt(cert, "CertificateID"),
+                    _selectedSampleId,
+                    certificateNumber,
+                    out string integrityMessage);
                 if (string.IsNullOrWhiteSpace(html))
                 {
                     if (AppConfig.IsProduction)
