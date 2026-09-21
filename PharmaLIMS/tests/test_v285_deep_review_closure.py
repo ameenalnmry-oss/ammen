@@ -23,7 +23,7 @@ class V284DeepReviewClosureTests(unittest.TestCase):
         self.assertIn('AppConfig.IsProduction ? "BLOCKER" : "WARNING"', preflight)
         for table in (
             "CertificateDocumentSnapshots", "CertificatePrintHistory", "CultureMediaPrintHistory",
-            "EM_PlanSignatures", "EM_ScheduleSignatures", "PRM_CertificateSnapshots",
+            "EM_PlanSignatures", "EM_ScheduleSignatures", "PRM_CertificateSnapshots", "PRM_CertificateHistory",
             "PRM_SpecificationSignatures", "QualityEventPrintHistory", "QualityEventSignatures",
             "Water_PlanSignatures",
         ):
