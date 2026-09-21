@@ -66,7 +66,7 @@ class ReleaseControlsTests(unittest.TestCase):
         expectations = {
             "CultureMediaPreparation.xaml.cs": (
                 "DatabaseHelper.CanReviewResults(Login.CurrentUser)",
-                "DatabaseHelper.CanApproveResults(Login.CurrentUser)",
+                "DatabaseHelper.CanQaApproveResults(Login.CurrentUser)",
                 "DatabaseHelper.CanAccessReports(Login.CurrentUser)",
             ),
             "ExternalTrendImportDialog.xaml.cs": (
@@ -207,9 +207,13 @@ class ReleaseControlsTests(unittest.TestCase):
             "sign prepared-media visual review",
             "sign prepared-media sterility review",
             "release prepared culture media",
+            "reject culture media lot",
+            "reject prepared culture media",
+            "reconcile culture media stock",
         ):
             self.assertIn(action, source)
 
+        self.assertGreaterEqual(source.count("EnsureQaApprovalAuthorizationInTransaction"), 5)
         self.assertGreaterEqual(source.count("WITH (UPDLOCK, HOLDLOCK)"), 5)
         self.assertIn("The qualification performer cannot perform the independent review.", source)
         self.assertIn("The final releaser must be independent of both the qualification performer and reviewer.", source)
