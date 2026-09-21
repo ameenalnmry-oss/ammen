@@ -148,7 +148,8 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertNotIn('"CanApproveResults",\n                        "approve PRM results"', prm_approve)
 
         em_db = source("DatabaseHelper.EnvironmentalMonitoring.cs")
-        em_approve = em_db[em_db.index("public static void ApproveEMEvent"):em_db.index("public static bool CanPrintEMResultReport")]
+        em_approve_start = em_db.index("public static void ApproveEMEvent")
+        em_approve = em_db[em_approve_start:em_approve_start + 10000]
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", em_approve)
 
         em_ui = source("EMResultsEntry.xaml.cs")
