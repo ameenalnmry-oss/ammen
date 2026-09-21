@@ -526,7 +526,7 @@ SELECT CASE
                     CanEdit: DatabaseHelper.CanEditResults(username),
                     CanSubmit: DatabaseHelper.CanSubmitForReview(username),
                     CanReview: DatabaseHelper.CanReviewResults(username),
-                    CanApprove: DatabaseHelper.CanApproveResults(username),
+                    CanApprove: DatabaseHelper.CanQaApproveResults(username),
                     CanManage: DatabaseHelper.CanManageSettings(username),
                     CanAccessReports: DatabaseHelper.CanAccessReports(username));
             });
@@ -732,7 +732,7 @@ SELECT CASE
             {
                 if (currentEventId <= 0)
                     throw new InvalidOperationException("Load the historical EM event first.");
-                if (!DatabaseHelper.CanApproveResults(Login.CurrentUser ?? string.Empty))
+                if (!DatabaseHelper.CanQaApproveResults(Login.CurrentUser ?? string.Empty))
                     throw new UnauthorizedAccessException("QA approval permission is required to reconcile historical EM limit evidence.");
 
                 var dialog = new EMLegacySnapshotReconciliation(currentEventId, currentEventNo) { Owner = this };
