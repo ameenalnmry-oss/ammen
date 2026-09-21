@@ -45,6 +45,9 @@ namespace PharmaLIMS
                 int rejectedPreparationId = _selectedPreparationId;
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
+                        conn, tx, signedBy, "reject prepared culture media");
+
                     int affected = DatabaseHelper.ExecuteNonQueryWithTransaction(@"
 UPDATE dbo.MediaPreparations
 SET ReleaseStatus = 'Rejected',
