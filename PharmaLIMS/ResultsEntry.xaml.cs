@@ -224,7 +224,7 @@ SELECT
         private bool CanCorrectSampleTimes() => DatabaseHelper.CanRegisterSamples(currentUser);
         private bool CanSubmitForReview() => DatabaseHelper.CanSubmitForReview(currentUser);
         private bool CanReviewSample() => DatabaseHelper.CanReviewResults(currentUser);
-        private bool CanApproveSample() => DatabaseHelper.CanApproveResults(currentUser);
+        private bool CanApproveSample() => DatabaseHelper.CanQaApproveResults(currentUser);
         private bool CanOpenOrIssueCertificate() => DatabaseHelper.CanIssueCertificate(currentUser);
         private bool CanCancelCertificate() => DatabaseHelper.CanCancelCertificate(currentUser);
 
@@ -2963,8 +2963,8 @@ WHERE SampleID=@SampleID
 
                 ExecuteInLocalTransaction((con, tran) =>
                 {
-                    string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
-                        con, tran, signatureWindow.SignedBy, "CanApproveResults", "approve water results");
+                    string signerRole = DatabaseHelper.EnsureQaApprovalAuthorizationInTransaction(
+                        con, tran, signatureWindow.SignedBy, "approve water results");
 
                     string lockedStatus = LockAndValidateSampleStatusInTransaction(
                         con, tran, status, "QA approval");
