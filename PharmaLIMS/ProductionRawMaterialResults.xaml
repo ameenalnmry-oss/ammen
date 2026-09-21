@@ -231,7 +231,7 @@
                                 <Button x:Name="BtnQualityEvent" Content="Investigation" Background="#B45309" Style="{StaticResource ActionButton}" Click="BtnQualityEvent_Click"
                                         ToolTip="Open, continue, or view the PRM Quality Event investigation"/>
                                 <Button x:Name="BtnIssueCertificate" Content="Issue Certificate" Background="#1D4ED8" Style="{StaticResource ActionButton}" Click="BtnIssueCertificate_Click"/>
-                                <Button x:Name="BtnPrintCertificate" Content="Print Certificate" Background="#334155" Style="{StaticResource ActionButton}" Click="BtnPrintCertificate_Click"/>
+                                <Button x:Name="BtnPrintCertificate" Content="Open Controlled Certificate" Background="#334155" Style="{StaticResource ActionButton}" Click="BtnPrintCertificate_Click"/>
                                 <Button x:Name="BtnPreviewCurrentLayout" Content="Preview Current Layout" Background="#D97706" Style="{StaticResource ActionButton}" Click="BtnPreviewCurrentLayout_Click"
                                         ToolTip="Preview the current report template with a permanent PREVIEW watermark. The issued immutable snapshot is not changed."/>
                                 <Button x:Name="BtnCancelCertificate" Content="Cancel Certificate" Background="#DC2626" Style="{StaticResource ActionButton}" Click="BtnCancelCertificate_Click"/>
