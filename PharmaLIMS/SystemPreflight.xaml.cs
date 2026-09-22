@@ -106,11 +106,10 @@ namespace PharmaLIMS
                 string.Equals(check.Check, "PRM approved-profile signature evidence", StringComparison.OrdinalIgnoreCase)) == true;
 
             BtnPrmSpecifications.Visibility = hasPrmSpecificationFinding ? Visibility.Visible : Visibility.Collapsed;
+            // Opening the controlled master is diagnostic/remediation navigation only.
+            // Save/Review/Approve remain permission-checked and electronically signed inside the PRM workflow.
             BtnPrmSpecifications.IsEnabled = hasPrmSpecificationFinding &&
-                !string.IsNullOrWhiteSpace(Login.CurrentUser) &&
-                (DatabaseHelper.CanEditResults(Login.CurrentUser) ||
-                 DatabaseHelper.CanReviewResults(Login.CurrentUser) ||
-                 DatabaseHelper.CanQaApproveResults(Login.CurrentUser));
+                !string.IsNullOrWhiteSpace(Login.CurrentUser);
 
             bool hasWaterProfileFinding = _lastReport?.Checks.Any(check =>
                 (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
@@ -166,14 +165,8 @@ namespace PharmaLIMS
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(Login.CurrentUser) ||
-                    !(DatabaseHelper.CanEditResults(Login.CurrentUser) ||
-                      DatabaseHelper.CanReviewResults(Login.CurrentUser) ||
-                      DatabaseHelper.CanQaApproveResults(Login.CurrentUser)))
-                {
-                    throw new UnauthorizedAccessException(
-                        "PRM specification draft, review, or QA approval permission is required to open the controlled Specification Master remediation workflow.");
-                }
+                if (string.IsNullOrWhiteSpace(Login.CurrentUser))
+                    throw new UnauthorizedAccessException("An authenticated user is required to open the controlled PRM Specification Master.");
 
                 var manager = new ProductionRawMaterialSamples(specificationMasterOnly: true)
                 {
