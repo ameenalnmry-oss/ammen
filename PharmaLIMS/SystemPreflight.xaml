@@ -106,6 +106,13 @@
             <TextBlock Text="Preflight checks are read-only. Historical EM and legacy-certificate remediation open separate signed append-only reconciliation workflows; original regulated records are never rewritten."
                        Foreground="#64748B" FontSize="10.5" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="BtnPrmSpecifications"
+                        Content="Manage PRM Specifications"
+                        Click="BtnPrmSpecifications_Click"
+                        Background="#EDE9FE"
+                        Foreground="#6D28D9"
+                        Visibility="Collapsed"
+                        ToolTip="Open the controlled PRM Specification Master remediation workflow without enabling PRM sample registration."/>
                 <Button x:Name="BtnWaterProfiles"
                         Content="Manage Water Profiles"
                         Click="BtnWaterProfiles_Click"
