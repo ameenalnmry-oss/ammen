@@ -28,9 +28,15 @@ namespace PharmaLIMS
         private int _masterVersion;
         private string _masterApprovalStatus = "Draft";
         private bool _returnToRegistrationAfterMaster;
+        private readonly bool _specificationMasterOnly;
 
-        public ProductionRawMaterialSamples()
+        public ProductionRawMaterialSamples() : this(false)
         {
+        }
+
+        public ProductionRawMaterialSamples(bool specificationMasterOnly)
+        {
+            _specificationMasterOnly = specificationMasterOnly;
             _isLoading = true;
             InitializeComponent();
             Loaded += ProductionRawMaterialSamples_Loaded;
@@ -65,8 +71,18 @@ namespace PharmaLIMS
                 SetDefaultValues();
                 ApplyCategoryLayout();
                 DgSpecificationTests.ItemsSource = _specificationTests;
-                await LoadSamplesAsync();
-                TxtStatus.Text = "Production & Raw Material Samples module is ready.";
+
+                if (_specificationMasterOnly)
+                {
+                    Title = "PRM Specification Master";
+                    OpenSpecificationMasterPanel();
+                    TxtStatus.Text = "PRM Specification Master remediation mode is ready.";
+                }
+                else
+                {
+                    await LoadSamplesAsync();
+                    TxtStatus.Text = "Production & Raw Material Samples module is ready.";
+                }
             }
             catch (Exception ex)
             {
@@ -85,6 +101,11 @@ namespace PharmaLIMS
         private void BtnOpenSpecificationMaster_Click(object sender, RoutedEventArgs e)
         {
             _returnToRegistrationAfterMaster = PnlRegistration.Visibility == Visibility.Visible;
+            OpenSpecificationMasterPanel();
+        }
+
+        private void OpenSpecificationMasterPanel()
+        {
             PnlTypeSelection.Visibility = Visibility.Collapsed;
             PnlRegistration.Visibility = Visibility.Collapsed;
             PnlSpecificationMaster.Visibility = Visibility.Visible;
@@ -94,6 +115,12 @@ namespace PharmaLIMS
 
         private void BtnCloseSpecificationMaster_Click(object sender, RoutedEventArgs e)
         {
+            if (_specificationMasterOnly)
+            {
+                Close();
+                return;
+            }
+
             PnlSpecificationMaster.Visibility = Visibility.Collapsed;
             if (_returnToRegistrationAfterMaster)
             {
