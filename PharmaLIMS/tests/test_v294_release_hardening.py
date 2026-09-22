@@ -260,6 +260,25 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         for required in ("Login.CanApproveResults", "Login.CanIssueCOA", "Login.CanCancelCOA", "Login.CanAccessReports"):
             self.assertIn(required, samples_gate)
 
+    def test_preflight_exposes_prm_specification_remediation_without_unlocking_registration(self):
+        xaml = source("SystemPreflight.xaml")
+        code = source("SystemPreflight.xaml.cs")
+        prm = source("ProductionRawMaterialSamples.xaml.cs")
+
+        self.assertIn('x:Name="BtnPrmSpecifications"', xaml)
+        self.assertIn('Content="Manage PRM Specifications"', xaml)
+        self.assertIn('Click="BtnPrmSpecifications_Click"', xaml)
+        self.assertIn('"PRM approved-profile signature evidence"', code)
+        self.assertIn("new ProductionRawMaterialSamples(specificationMasterOnly: true)", code)
+        self.assertIn("await RunPreflightAsync();", code)
+
+        self.assertIn("public ProductionRawMaterialSamples(bool specificationMasterOnly)", prm)
+        self.assertIn("_specificationMasterOnly = specificationMasterOnly;", prm)
+        self.assertIn("OpenSpecificationMasterPanel();", prm)
+        self.assertIn('Title = "PRM Specification Master";', prm)
+        self.assertIn("if (_specificationMasterOnly)", prm)
+        self.assertIn("Close();", prm)
+
     def test_main_navigation_scrolls_without_hiding_user_footer(self):
         xaml = source("MainWindow.xaml")
         sidebar_start = xaml.index("<!-- Left navigation -->")
