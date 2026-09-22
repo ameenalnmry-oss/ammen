@@ -73,6 +73,8 @@ namespace PharmaLIMS
             }
             catch (Exception ex)
             {
+                BtnPrmSpecifications.Visibility = Visibility.Collapsed;
+                BtnPrmSpecifications.IsEnabled = false;
                 BtnWaterProfiles.Visibility = Visibility.Collapsed;
                 BtnWaterProfiles.IsEnabled = false;
                 BtnEmReconcile.Visibility = Visibility.Collapsed;
@@ -97,6 +99,18 @@ namespace PharmaLIMS
 
         private void UpdateRemediationActions()
         {
+            bool hasPrmSpecificationFinding = _lastReport?.Checks.Any(check =>
+                (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(check.Status, "BLOCKER", StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(check.Area, "Master Data", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(check.Check, "PRM approved-profile signature evidence", StringComparison.OrdinalIgnoreCase)) == true;
+
+            BtnPrmSpecifications.Visibility = hasPrmSpecificationFinding ? Visibility.Visible : Visibility.Collapsed;
+            // Opening the controlled master is diagnostic/remediation navigation only.
+            // Save/Review/Approve remain permission-checked and electronically signed inside the PRM workflow.
+            BtnPrmSpecifications.IsEnabled = hasPrmSpecificationFinding &&
+                !string.IsNullOrWhiteSpace(Login.CurrentUser);
+
             bool hasWaterProfileFinding = _lastReport?.Checks.Any(check =>
                 (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(check.Status, "BLOCKER", StringComparison.OrdinalIgnoreCase)) &&
@@ -129,6 +143,48 @@ namespace PharmaLIMS
             BtnCertificateReconcile.IsEnabled = hasLegacyCertificateFinding &&
                 !string.IsNullOrWhiteSpace(Login.CurrentUser) &&
                 DatabaseHelper.CanApproveResults(Login.CurrentUser);
+        }
+
+        private async void BtnPrmSpecifications_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                bool hasFinding = _lastReport?.Checks.Any(check =>
+                    (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(check.Status, "BLOCKER", StringComparison.OrdinalIgnoreCase)) &&
+                    string.Equals(check.Area, "Master Data", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(check.Check, "PRM approved-profile signature evidence", StringComparison.OrdinalIgnoreCase)) == true;
+
+                if (!hasFinding)
+                {
+                    MessageBox.Show(
+                        "No unresolved PRM approved-profile signature finding is present in the current preflight report.",
+                        "PRM Specification Master",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(Login.CurrentUser))
+                    throw new UnauthorizedAccessException("An authenticated user is required to open the controlled PRM Specification Master.");
+
+                var manager = new ProductionRawMaterialSamples(specificationMasterOnly: true)
+                {
+                    Owner = this
+                };
+                manager.ShowDialog();
+
+                await RunPreflightAsync();
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.Error("Unable to open controlled PRM Specification Master from System Preflight.", ex);
+                MessageBox.Show(
+                    UserFacingError.SafeMessage(ex, "PRM Specification Master"),
+                    "PRM Specification Master",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         private async void BtnWaterProfiles_Click(object sender, RoutedEventArgs e)
