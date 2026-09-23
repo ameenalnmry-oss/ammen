@@ -2054,10 +2054,23 @@ WHERE SampleID = @SampleID
 
                 await EnsurePrmCertificateSchemaReadyForActionAsync();
                 await EnsurePrmQualityEventSchemaReadyForActionAsync();
-                string overall = UpdateOverallInterpretation();
-                EnsureCertificateInterpretationIsIssuable(overall);
 
                 int oldId = ToInt(sourceCertificate, "CertificateID");
+                bool routedControlledLegacyReissue =
+                    _controlledLegacyReissueRoute &&
+                    !_controlledLegacyReissueCompleted &&
+                    _selectedSampleId == _initialSampleId &&
+                    oldId == _initialLegacyCertificateId;
+
+                // A routed legacy reissue must not reinterpret a pre-cutover issued record
+                // with today's specification parser. The transaction below revalidates the
+                // signed QA reconciliation and reconstructs the controlled historical result
+                // evidence that existed before the source certificate was issued.
+                string overall = routedControlledLegacyReissue
+                    ? S(GetCurrentSampleRow(), "ResultInterpretation").Trim()
+                    : UpdateOverallInterpretation();
+                EnsureCertificateInterpretationIsIssuable(overall);
+
                 if (_controlledLegacyReissueRoute &&
                     !_controlledLegacyReissueCompleted &&
                     _selectedSampleId == _initialSampleId &&
