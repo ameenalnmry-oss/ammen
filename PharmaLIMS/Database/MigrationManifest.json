@@ -1,7 +1,7 @@
 ﻿{
   "application": "PharmaLIMS",
-  "applicationVersion": "2026.9.18.294",
-  "generatedAtUtc": "2026-09-20T21:31:44Z",
+  "applicationVersion": "2026.9.23.295",
+  "generatedAtUtc": "2026-09-23T19:26:23Z",
   "baselineThrough": "20260722_003",
   "freshInstallBaseline": {
     "versionKey": "BASELINE_20260823_001",
