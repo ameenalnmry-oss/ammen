@@ -495,7 +495,19 @@ END;";
             {
                 BtnReissueCertificate.Content = "Reissue";
                 bool hasReissueSource = hasCertificate || hasCancelledCertificateAwaitingReissue;
-                bool baseReissueAllowed = hasSample && !historicalTimingClosed && CanIssuePrmCertificate() && hasReissueSource && IsOneOf(status, "Approved", "Certificate Issued");
+                bool controlledHistoricalLegacyReissue =
+                    historicalTimingClosed &&
+                    _controlledLegacyReissueRoute &&
+                    !_controlledLegacyReissueCompleted &&
+                    _selectedSampleId == _initialSampleId &&
+                    activeCertificate != null &&
+                    ToInt(activeCertificate, "CertificateID") == _initialLegacyCertificateId;
+                bool baseReissueAllowed =
+                    hasSample &&
+                    CanIssuePrmCertificate() &&
+                    hasReissueSource &&
+                    IsOneOf(status, "Approved", "Certificate Issued") &&
+                    (!historicalTimingClosed || controlledHistoricalLegacyReissue);
                 bool reissueQualityAllowed = true;
                 string reissueBlockReason = string.Empty;
                 if (baseReissueAllowed)
@@ -2600,7 +2612,8 @@ WHERE SampleID=@SampleID;",
         private void EnsurePrmTimingReconciliationClearedInTransaction(
             SqlConnection conn,
             SqlTransaction tx,
-            string actionName)
+            string actionName,
+            bool allowHistoricalClosedForControlledLegacyReissue = false)
         {
             object value = ExecuteScalarInTransaction(conn, tx, @"
 SELECT LTRIM(RTRIM(ISNULL(TimingReconciliationStatus,N'Not Required')))
@@ -2619,7 +2632,8 @@ WHERE SampleID=@SampleID;",
                     "Re-enter affected results after their frozen eligibility times and obtain the independent QA reconciliation signature first.");
             }
 
-            if (timingStatus.Equals("Historical Closed", StringComparison.OrdinalIgnoreCase))
+            if (timingStatus.Equals("Historical Closed", StringComparison.OrdinalIgnoreCase) &&
+                !allowHistoricalClosedForControlledLegacyReissue)
             {
                 throw new InvalidOperationException(
                     actionName + " is blocked for this legacy sample because migration 20260906_001 identified historical timing evidence that cannot be rewritten. " +
