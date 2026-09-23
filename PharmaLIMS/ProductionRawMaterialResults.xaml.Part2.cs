@@ -678,28 +678,44 @@ WHERE SampleID = @SampleID;",
                         throw new InvalidOperationException("Certificate issuance is blocked because Analysis Completed precedes Analysis Started.");
                 }
 
-                PrmAuthoritativeSampleResultState authoritative =
-                    PrmSampleResultStateService.DeriveAuthoritativeState(results);
-                if (!authoritative.AllRequiredResultsEntered)
-                    throw new InvalidOperationException(
-                        "Certificate issuance is blocked because one or more required PRM tests are incomplete.");
-                PrmSampleResultStateService.EnsurePersistedInterpretationsMatchEvidence(
-                    authoritative, "Certificate / Report Issuance");
-                EnsureWorkflowInterpretationIsComplete(
-                    authoritative.OverallInterpretation, "Certificate / Report Issuance");
+                string authoritativeOverall;
+                if (controlledHistoricalLegacyReissue)
+                {
+                    issuanceStage = "controlled historical result evidence reconstruction";
+                    results = LoadControlledHistoricalLegacyResultsInTransaction(
+                        conn,
+                        tx,
+                        reissuedFromCertificateId);
+                    authoritativeOverall = DeriveControlledHistoricalLegacyInterpretation(results);
+                }
+                else
+                {
+                    PrmAuthoritativeSampleResultState authoritative =
+                        PrmSampleResultStateService.DeriveAuthoritativeState(results);
+                    if (!authoritative.AllRequiredResultsEntered)
+                        throw new InvalidOperationException(
+                            "Certificate issuance is blocked because one or more required PRM tests are incomplete.");
+                    PrmSampleResultStateService.EnsurePersistedInterpretationsMatchEvidence(
+                        authoritative, "Certificate / Report Issuance");
+                    EnsureWorkflowInterpretationIsComplete(
+                        authoritative.OverallInterpretation, "Certificate / Report Issuance");
+                    authoritativeOverall = authoritative.OverallInterpretation;
+                }
 
                 string persistedInterpretation = S(sample, "ResultInterpretation").Trim();
-                if (!persistedInterpretation.Equals(authoritative.OverallInterpretation, StringComparison.OrdinalIgnoreCase))
+                if (!persistedInterpretation.Equals(authoritativeOverall, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException(
-                        "Certificate issuance is blocked because the approved sample summary no longer matches the authoritative PRM test evidence.");
+                        controlledHistoricalLegacyReissue
+                            ? "Controlled legacy reissue is blocked because the historical result evidence does not match the persisted final interpretation of the issued sample."
+                            : "Certificate issuance is blocked because the approved sample summary no longer matches the authoritative PRM test evidence.");
                 }
 
                 EnsureCertificateInterpretationIsIssuableInTransaction(
                     conn,
                     tx,
                     category,
-                    authoritative.OverallInterpretation);
+                    authoritativeOverall);
 
                 int latestCertificateId = 0;
                 string latestCertificateStatus = string.Empty;
@@ -920,6 +936,146 @@ VALUES(@CertificateID,@SampleID,@CertificateNumber,@HtmlContent,@SnapshotHash,@C
             }
 
             return certNo;
+        }
+
+        private DataTable LoadControlledHistoricalLegacyResultsInTransaction(
+            SqlConnection conn,
+            SqlTransaction tx,
+            int sourceCertificateId)
+        {
+            DataTable historical = new DataTable();
+            using (SqlCommand command = new SqlCommand(@"
+SELECT
+    t.*,
+    e.EvidenceID AS HistoricalEvidenceID,
+    e.OriginalResultValue AS HistoricalResultValue,
+    e.OriginalInterpretation AS HistoricalInterpretation,
+    e.OriginalRemarks AS HistoricalRemarks,
+    e.OriginalEnteredBy AS HistoricalEnteredBy,
+    e.OriginalEnteredDate AS HistoricalEnteredDate,
+    c.IssueDate AS SourceCertificateIssueDate
+FROM dbo.PRM_SampleTests t WITH(UPDLOCK,HOLDLOCK)
+INNER JOIN dbo.PRM_Certificates c WITH(UPDLOCK,HOLDLOCK)
+    ON c.CertificateID=@CertificateID
+   AND c.SampleID=t.SampleID
+LEFT JOIN dbo.PRM_TimingMigrationTestEvidence e WITH(HOLDLOCK)
+    ON e.SampleID=t.SampleID
+   AND e.SampleTestID=t.SampleTestID
+WHERE t.SampleID=@SampleID
+  AND NULLIF(
+        LTRIM(RTRIM(ISNULL(
+            CASE WHEN e.EvidenceID IS NOT NULL THEN e.OriginalResultValue ELSE t.ResultValue END,
+            N''))),
+        N'') IS NOT NULL
+ORDER BY ISNULL(t.SortOrder,t.SampleTestID),t.SampleTestID;", conn, tx))
+            {
+                command.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                command.Parameters.Add("@CertificateID", SqlDbType.Int).Value = sourceCertificateId;
+                command.Parameters.Add("@SampleID", SqlDbType.Int).Value = _selectedSampleId;
+                using SqlDataReader reader = command.ExecuteReader();
+                historical.Load(reader);
+            }
+
+            if (historical.Rows.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "Controlled legacy reissue is blocked because no attributable historical PRM result evidence was found for the source certificate.");
+            }
+
+            bool hasRequiredResult = false;
+            foreach (DataRow row in historical.Rows)
+            {
+                bool hasCapturedMigrationEvidence =
+                    historical.Columns.Contains("HistoricalEvidenceID") &&
+                    row["HistoricalEvidenceID"] != DBNull.Value;
+
+                if (hasCapturedMigrationEvidence)
+                {
+                    row["ResultValue"] = row["HistoricalResultValue"] == DBNull.Value
+                        ? DBNull.Value
+                        : row["HistoricalResultValue"];
+                    row["Interpretation"] = row["HistoricalInterpretation"] == DBNull.Value
+                        ? DBNull.Value
+                        : row["HistoricalInterpretation"];
+                    row["Remarks"] = row["HistoricalRemarks"] == DBNull.Value
+                        ? DBNull.Value
+                        : row["HistoricalRemarks"];
+                    row["EnteredBy"] = row["HistoricalEnteredBy"] == DBNull.Value
+                        ? DBNull.Value
+                        : row["HistoricalEnteredBy"];
+                    row["EnteredDate"] = row["HistoricalEnteredDate"] == DBNull.Value
+                        ? DBNull.Value
+                        : row["HistoricalEnteredDate"];
+                }
+
+                string resultValue = S(row, "ResultValue").Trim();
+                string enteredBy = S(row, "EnteredBy").Trim();
+                if (string.IsNullOrWhiteSpace(resultValue) ||
+                    string.IsNullOrWhiteSpace(enteredBy) ||
+                    row["EnteredDate"] == DBNull.Value)
+                {
+                    throw new InvalidOperationException(
+                        "Controlled legacy reissue is blocked because the historical result evidence is incomplete or unattributable. No retrospective result evidence will be created.");
+                }
+
+                DateTime enteredDate = Convert.ToDateTime(row["EnteredDate"], CultureInfo.InvariantCulture);
+                DateTime sourceIssueDate = Convert.ToDateTime(
+                    row["SourceCertificateIssueDate"],
+                    CultureInfo.InvariantCulture);
+                if (enteredDate > sourceIssueDate)
+                {
+                    throw new InvalidOperationException(
+                        "Controlled legacy reissue is blocked because a persisted PRM result was entered after the source certificate issue date. Historical evidence cannot be reconstructed safely.");
+                }
+
+                if (!historical.Columns.Contains("RequiredTest") ||
+                    row["RequiredTest"] == DBNull.Value ||
+                    Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture))
+                {
+                    hasRequiredResult = true;
+                }
+            }
+
+            if (!hasRequiredResult)
+            {
+                throw new InvalidOperationException(
+                    "Controlled legacy reissue is blocked because no required historical PRM result evidence is available.");
+            }
+
+            return historical;
+        }
+
+        private static string DeriveControlledHistoricalLegacyInterpretation(DataTable historicalResults)
+        {
+            bool hasConforms = false;
+            bool hasDoesNotConform = false;
+
+            foreach (DataRow row in historicalResults.Rows)
+            {
+                string interpretation = S(row, "Interpretation").Trim();
+                if (interpretation.Equals("Conforms", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasConforms = true;
+                    continue;
+                }
+
+                if (interpretation.Equals("Does Not Conform", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasDoesNotConform = true;
+                    continue;
+                }
+
+                throw new InvalidOperationException(
+                    "Controlled legacy reissue is blocked because a historical PRM result has an incomplete or non-final persisted interpretation. The legacy result will not be reinterpreted retrospectively.");
+            }
+
+            if (hasDoesNotConform)
+                return "Does Not Conform";
+            if (hasConforms)
+                return "Conforms";
+
+            throw new InvalidOperationException(
+                "Controlled legacy reissue is blocked because no final historical PRM interpretation is available.");
         }
 
         private void CancelCertificate(int certificateId, string reason, ElectronicSignature signature)
