@@ -11,7 +11,7 @@ def text(path):
 class V288UserAdministrationWriteCompatibilityTests(unittest.TestCase):
     def test_release_identity_and_controlled_migration(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
+        self.assertEqual("2026.9.23.295", manifest["applicationVersion"])
         self.assertEqual(85, len(manifest["migrations"]))
         entry = next(x for x in manifest["migrations"] if x["versionKey"] == "20260917_000")
         path = ROOT / "Database" / entry["file"]
