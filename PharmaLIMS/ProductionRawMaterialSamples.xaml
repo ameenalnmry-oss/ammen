@@ -658,8 +658,8 @@
                             <Button Content="New Draft" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnNewSpecification_Click"/>
                             <Button Content="Clone Active Approved" Background="#0369A1" Style="{StaticResource PrimaryButton}" Click="BtnCloneActiveApproved_Click"
                                     ToolTip="Loads the currently active approved version into a new unsaved draft. No database change occurs until Save Draft."/>
-                            <Button Content="Load Pharmacopeial Template" Background="#7C3AED" Style="{StaticResource PrimaryButton}" Click="BtnLoadPharmacopoeialTemplate_Click"
-                                    ToolTip="Loads the harmonized USP/Ph. Eur. microbiology acceptance template for the selected category. QA review and approval are still required."/>
+                            <Button Content="Load Controlled Template" Background="#7C3AED" Style="{StaticResource PrimaryButton}" Click="BtnLoadPharmacopoeialTemplate_Click"
+                                    ToolTip="Loads the controlled microbiology template for the selected category. Production / In-Process uses the MEDICA MQC-G-0021 site profile with separate result rows; other categories retain their controlled defaults. QA review and approval are still required."/>
                             <Button Content="Load" Background="#2563EB" Style="{StaticResource PrimaryButton}" Click="BtnLoadSpecification_Click"/>
                             <Button Content="Save Draft" Background="#0F766E" Style="{StaticResource PrimaryButton}" Click="BtnSaveSpecification_Click"/>
                             <Button Content="Review" Background="#D97706" Style="{StaticResource PrimaryButton}" Click="BtnReviewSpecification_Click"/>
