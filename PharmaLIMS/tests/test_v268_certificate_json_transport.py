@@ -36,7 +36,7 @@ class CertificateJsonTransportV268Tests(unittest.TestCase):
     def test_v268_transport_regression_keeps_controlled_migration_set_unchanged(self):
         import json
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
-        self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
+        self.assertEqual("2026.9.23.295", manifest["applicationVersion"])
         self.assertEqual(85, len(manifest["migrations"]))
         auth_entry = next(item for item in manifest["migrations"] if item["versionKey"] == "20260911_000")
         self.assertEqual(
