@@ -11,7 +11,7 @@ foreach ($line in Get-Content -LiteralPath $manifestPath) {
     $file = Join-Path $root $Matches.Path
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { $failures += "Missing: $($Matches.Path)"; continue }
     $actual = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actual -ne $Matches.Hash.ToLowerInvariant()) { $failures += "Hash mismatch: $($Matches.Path) expected=$($Matches.Hash.ToLowerInvariant()) actual=$actual" }
+    if ($actual -ne $Matches.Hash.ToLowerInvariant()) { $failures += "Hash mismatch: $($Matches.Path)" }
 }
 if ($failures.Count) { $failures | ForEach-Object { Write-Error $_ }; throw 'Source manifest verification failed.' }
 Write-Host 'Source manifest verification passed.'
