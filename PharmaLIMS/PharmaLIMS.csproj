@@ -17,8 +17,8 @@
 		<AssemblyName>PharmaLIMS</AssemblyName>
 		<RootNamespace>PharmaLIMS</RootNamespace>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-		<Version>2026.9.18.294</Version>
-		<FileVersion>2026.9.18.294</FileVersion>
+		<Version>2026.9.23.295</Version>
+		<FileVersion>2026.9.23.295</FileVersion>
 		<!-- Do not pin RuntimeFrameworkVersion: F5/debug should use any installed compatible .NET 8 Windows Desktop patch.
 		     Production CI publishes self-contained win-x64, so deployment does not depend on a machine runtime patch. -->
 		<DeploymentEnvironment Condition="'$(DeploymentEnvironment)' == ''">Production</DeploymentEnvironment>
