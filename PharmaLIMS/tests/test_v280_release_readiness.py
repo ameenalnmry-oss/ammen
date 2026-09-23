@@ -53,10 +53,10 @@ class ReleaseReadinessV280Tests(unittest.TestCase):
     def test_version_identity_is_v281(self):
         project = (ROOT / 'PharmaLIMS.csproj').read_text(encoding='utf-8-sig')
         assembly = (ROOT / 'AssemblyInfo.cs').read_text(encoding='utf-8-sig')
-        self.assertIn('<Version>2026.9.18.294</Version>', project)
-        self.assertIn('AssemblyVersion("2026.9.18.294")', assembly)
-        self.assertTrue((ROOT / 'SBOM_2026.9.18.294.cdx.json').exists())
-        self.assertTrue((ROOT / 'RELEASE_NOTES_2026.9.18.294.md').exists())
+        self.assertIn('<Version>2026.9.23.295</Version>', project)
+        self.assertIn('AssemblyVersion("2026.9.23.295")', assembly)
+        self.assertTrue((ROOT / 'SBOM_2026.9.23.295.cdx.json').exists())
+        self.assertTrue((ROOT / 'RELEASE_NOTES_2026.9.23.295.md').exists())
 
 if __name__ == '__main__':
     unittest.main()
