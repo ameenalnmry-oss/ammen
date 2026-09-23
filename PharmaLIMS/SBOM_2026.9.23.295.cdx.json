@@ -1,15 +1,15 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:fd354be3-4f9a-4076-ab79-51185bc1b2e7",
+  "serialNumber": "urn:uuid:20260923-0295-4295-8295-202609230295",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-09-17T21:30:00Z",
+    "timestamp": "2026-09-23T19:26:23Z",
     "component": {
       "type": "application",
-      "bom-ref": "pkg:generic/PharmaLIMS@2026.9.18.294",
+      "bom-ref": "pkg:generic/PharmaLIMS@2026.9.23.295",
       "name": "PharmaLIMS",
-      "version": "2026.9.18.294",
+      "version": "2026.9.23.295",
       "properties": []
     },
     "properties": [
@@ -308,6 +308,10 @@
       {
         "name": "pharmalims:v294PharmacopoeialProfileTemplates",
         "value": "Correct SQL Server sys.columns.max_length contract for DATETIME2(0) from 8 to 6 in UserAdministrationSignatures startup verification, System Preflight, and DatabaseIntegration; no historical migration SQL changed."
+      },
+      {
+        "name": "pharmalims:v295ReleaseGapClosure",
+        "value": "23-Sep-2026 controlled review closure: release identity advanced and Clone Active Approved no longer silently substitutes a 120-hour timing value when historical controlled timing is absent. Production CI generates the authoritative resolved publish SBOM."
       }
     ]
   },

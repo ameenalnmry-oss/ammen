@@ -12,7 +12,7 @@ def text(path):
 class UserManagementRegressionTests(unittest.TestCase):
     def test_release_identity_and_security_migration(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
+        self.assertEqual("2026.9.23.295", manifest["applicationVersion"])
         self.assertEqual(85, len(manifest["migrations"]))
         migration = next(x for x in manifest["migrations"] if x["versionKey"] == "20260915_000")
         self.assertEqual("Migrations/20260915_000_User_Administration_Security_Hardening.sql", migration["file"])

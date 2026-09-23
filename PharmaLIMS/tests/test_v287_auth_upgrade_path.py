@@ -55,8 +55,8 @@ class V287AuthenticationUpgradePathTests(unittest.TestCase):
 
     def test_release_identity_is_v287(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.9.18.294</Version>", text("PharmaLIMS.csproj"))
+        self.assertEqual("2026.9.23.295", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.9.23.295</Version>", text("PharmaLIMS.csproj"))
 
 if __name__ == "__main__":
     unittest.main()

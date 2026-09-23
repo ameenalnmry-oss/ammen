@@ -12,8 +12,8 @@ def source(path: str) -> str:
 class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
     def test_release_version_is_v294(self):
         manifest = json.loads(source("Database/MigrationManifest.json"))
-        self.assertEqual("2026.9.18.294", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.9.18.294</Version>", source("PharmaLIMS.csproj"))
+        self.assertEqual("2026.9.23.295", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.9.23.295</Version>", source("PharmaLIMS.csproj"))
 
     def test_specification_master_exposes_template_loader(self):
         xaml = source("ProductionRawMaterialSamples.xaml")
@@ -81,6 +81,17 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertNotIn("INSERT dbo.PRM_SpecificationTests", handler)
         self.assertNotIn("UPDATE dbo.PRM_SpecificationTests", handler)
         self.assertNotIn("DELETE dbo.PRM_SpecificationTests", handler)
+
+
+    def test_clone_active_approved_does_not_invent_missing_timing(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        start = code.index("private void BtnCloneActiveApproved_Click")
+        end = code.index("private void BtnLoadPharmacopoeialTemplate_Click", start)
+        handler = code[start:end]
+        self.assertIn(": 0m,", handler)
+        self.assertIn("clonedTimingRequiresCompletion", handler)
+        self.assertIn("no controlled Minimum Elapsed Hours", handler)
+        self.assertNotIn(": 120m,", handler)
 
 
 if __name__ == "__main__":
