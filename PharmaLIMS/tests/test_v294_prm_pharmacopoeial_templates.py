@@ -53,6 +53,22 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertNotIn("ApprovalStatus=N'Approved'", handler)
         self.assertNotIn("Approve Specification", handler)
 
+    def test_clone_active_approved_creates_unsaved_draft_only(self):
+        xaml = source("ProductionRawMaterialSamples.xaml")
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        self.assertIn('Content="Clone Active Approved"', xaml)
+        self.assertIn('Click="BtnCloneActiveApproved_Click"', xaml)
+        handler_start = code.index("private void BtnCloneActiveApproved_Click")
+        handler_end = code.index("private void BtnLoadPharmacopoeialTemplate_Click", handler_start)
+        handler = code[handler_start:handler_end]
+        self.assertIn("ApprovalStatus=N'Approved'", handler)
+        self.assertIn("IsActive=1", handler)
+        self.assertIn("_masterVersion = 0;", handler)
+        self.assertIn('TxtMasterVersion.Text = "New";', handler)
+        self.assertNotIn("INSERT dbo.PRM_SpecificationTests", handler)
+        self.assertNotIn("UPDATE dbo.PRM_SpecificationTests", handler)
+        self.assertNotIn("DELETE dbo.PRM_SpecificationTests", handler)
+
 
 if __name__ == "__main__":
     unittest.main()
