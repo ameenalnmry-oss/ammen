@@ -83,5 +83,16 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertNotIn("DELETE dbo.PRM_SpecificationTests", handler)
 
 
+    def test_clone_active_approved_does_not_invent_missing_timing(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        start = code.index("private void BtnCloneActiveApproved_Click")
+        end = code.index("private void BtnLoadPharmacopoeialTemplate_Click", start)
+        handler = code[start:end]
+        self.assertIn(": 0m,", handler)
+        self.assertIn("clonedTimingRequiresCompletion", handler)
+        self.assertIn("no controlled Minimum Elapsed Hours", handler)
+        self.assertNotIn(": 120m,", handler)
+
+
 if __name__ == "__main__":
     unittest.main()
