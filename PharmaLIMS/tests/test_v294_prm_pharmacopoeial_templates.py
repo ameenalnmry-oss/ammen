@@ -18,7 +18,7 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
     def test_specification_master_exposes_template_loader(self):
         xaml = source("ProductionRawMaterialSamples.xaml")
         code = source("ProductionRawMaterialSamples.xaml.cs")
-        self.assertIn("Load Pharmacopeial Template", xaml)
+        self.assertIn("Load Controlled Template", xaml)
         self.assertIn("BtnLoadPharmacopoeialTemplate_Click", xaml)
         self.assertIn("private void ApplyPharmacopoeialMicrobiologyTemplate", code)
 
@@ -40,9 +40,22 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertNotIn('TestCode = "ECOLI"', raw_block)
         self.assertIn("material-monograph/risk-assessment dependent", raw_block)
 
-    def test_in_process_is_not_mislabeled_as_direct_pharmacopoeial_category(self):
+    def test_in_process_uses_separate_medica_controlled_test_rows(self):
         code = source("ProductionRawMaterialSamples.xaml.cs")
-        self.assertIn("in-process acceptance is a site control, not a standalone pharmacopoeial dosage-form category", code)
+        start = code.index('if (normalized.Equals("Production / In-Process"')
+        end = code.index('TxtMasterReference.Text =\n                "USP <61>/<62>/<1111>', start)
+        block = code[start:end]
+        self.assertIn('TxtMasterReference.Text = "MQC-G-0021"', block)
+        self.assertIn('TestCode = "TAMC"', block)
+        self.assertIn('SpecificationText = "NMT 1000 CFU/g"', block)
+        self.assertIn('TestCode = "TYMC"', block)
+        self.assertIn('SpecificationText = "NMT 100 CFU/g"', block)
+        self.assertIn('TestCode = "ECOLI"', block)
+        self.assertIn('TestCode = "SALMONELLA"', block)
+        self.assertIn('TestCode = "SAUREUS"', block)
+        self.assertIn('TestCode = "PAERUGINOSA"', block)
+        self.assertIn('TestCode = "CALBICANS"', block)
+        self.assertNotIn('TMC&TMYC', block)
 
     def test_create_profile_for_scope_preloads_template_but_does_not_approve(self):
         code = source("ProductionRawMaterialSamples.xaml.cs")
