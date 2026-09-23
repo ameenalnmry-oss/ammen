@@ -285,18 +285,96 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
 
             if (normalized.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase))
             {
-                TxtMasterReference.Text =
-                    "Internal in-process microbiology control aligned to USP <61>/<62>/<1111> and Ph. Eur. 2.6.12/2.6.13/5.1.4 " +
-                    "non-aqueous oral finished-product criteria: TAMC 10^3 (maximum acceptable count 2000 CFU/g), TYMC 10^2 (maximum acceptable count 200 CFU/g), " +
-                    "and Escherichia coli absent in 1 g; in-process acceptance is a site control, not a standalone pharmacopoeial dosage-form category.";
+                // MEDICA's controlled in-process profile is intentionally row-based:
+                // every reportable microbiology determination receives its own result,
+                // interpretation and traceable result-entry record. Do not collapse
+                // TAMC/TYMC or specified organisms into a single free-text result.
+                TxtMasterReference.Text = "MQC-G-0021";
+
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "TAMC",
+                    TestName = "Total Aerobic Microbial Count (TAMC)",
+                    SpecificationText = "NMT 1000 CFU/g",
+                    Unit = "CFU/g",
+                    ResultType = "Numeric",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 72m,
+                    SortOrder = 10
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "TYMC",
+                    TestName = "Total Yeast and Mold Count (TYMC)",
+                    SpecificationText = "NMT 100 CFU/g",
+                    Unit = "CFU/g",
+                    ResultType = "Numeric",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 120m,
+                    SortOrder = 20
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "ECOLI",
+                    TestName = "Escherichia coli",
+                    SpecificationText = "Absent in 1 g",
+                    Unit = string.Empty,
+                    ResultType = "Qualitative",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 120m,
+                    SortOrder = 30
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "SALMONELLA",
+                    TestName = "Salmonella spp.",
+                    SpecificationText = "Absent in 10 g",
+                    Unit = string.Empty,
+                    ResultType = "Qualitative",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 120m,
+                    SortOrder = 40
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "SAUREUS",
+                    TestName = "Staphylococcus aureus",
+                    SpecificationText = "Absent in 1 g",
+                    Unit = string.Empty,
+                    ResultType = "Qualitative",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 120m,
+                    SortOrder = 50
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "PAERUGINOSA",
+                    TestName = "Pseudomonas aeruginosa",
+                    SpecificationText = "Absent in 1 g",
+                    Unit = string.Empty,
+                    ResultType = "Qualitative",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 120m,
+                    SortOrder = 60
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "CALBICANS",
+                    TestName = "Candida albicans",
+                    SpecificationText = "Absent in 1 g",
+                    Unit = string.Empty,
+                    ResultType = "Qualitative",
+                    RequiredTest = true,
+                    MinimumElapsedHours = 120m,
+                    SortOrder = 70
+                });
+                return;
             }
-            else
-            {
-                TxtMasterReference.Text =
-                    "USP <61>/<62>/<1111>; Ph. Eur. 2.6.12/2.6.13/5.1.4 - non-aqueous preparations for oral use: " +
-                    "TAMC criterion 10^3 (maximum acceptable count 2000 CFU/g), TYMC criterion 10^2 (maximum acceptable count 200 CFU/g), " +
-                    "and Escherichia coli absent in 1 g.";
-            }
+
+            TxtMasterReference.Text =
+                "USP <61>/<62>/<1111>; Ph. Eur. 2.6.12/2.6.13/5.1.4 - non-aqueous preparations for oral use: " +
+                "TAMC criterion 10^3 (maximum acceptable count 2000 CFU/g), TYMC criterion 10^2 (maximum acceptable count 200 CFU/g), " +
+                "and Escherichia coli absent in 1 g.";
 
             _specificationTests.Add(new SpecificationTestDraft
             {
