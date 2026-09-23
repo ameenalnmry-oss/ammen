@@ -627,16 +627,30 @@
                         </Grid>
 
                         <TextBlock x:Name="TxtMasterState" Text="New Draft" FontWeight="Bold" Foreground="#7C3AED" Margin="0,0,0,10"/>
-                        <DataGrid x:Name="DgSpecificationTests" Height="300" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" SelectionUnit="FullRow">
+                        <DataGrid x:Name="DgSpecificationTests"
+                                  Height="300"
+                                  MinWidth="1375"
+                                  HorizontalAlignment="Left"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="True"
+                                  CanUserDeleteRows="True"
+                                  CanUserResizeColumns="True"
+                                  SelectionUnit="FullRow"
+                                  HeadersVisibility="Column"
+                                  ColumnHeaderHeight="40"
+                                  RowHeight="38"
+                                  MinColumnWidth="80"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Code" Binding="{Binding TestCode, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
-                                <DataGridTextColumn Header="Test Name" Binding="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" Width="180"/>
-                                <DataGridTextColumn Header="Specification / Acceptance Criteria" Binding="{Binding SpecificationText, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-                                <DataGridTextColumn Header="Unit" Binding="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
-                                <DataGridTextColumn Header="Result Type" Binding="{Binding ResultType, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
-                                <DataGridCheckBoxColumn Header="Required" Binding="{Binding RequiredTest}" Width="80"/>
-                                <DataGridTextColumn Header="Min Elapsed h" Binding="{Binding MinimumElapsedHours, UpdateSourceTrigger=PropertyChanged}" Width="105"/>
-                                <DataGridTextColumn Header="Order" Binding="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                                <DataGridTextColumn Header="Code" Binding="{Binding TestCode, UpdateSourceTrigger=PropertyChanged}" Width="125" MinWidth="110"/>
+                                <DataGridTextColumn Header="Test Name" Binding="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" Width="220" MinWidth="180"/>
+                                <DataGridTextColumn Header="Specification / Acceptance Criteria" Binding="{Binding SpecificationText, UpdateSourceTrigger=PropertyChanged}" Width="480" MinWidth="360"/>
+                                <DataGridTextColumn Header="Unit" Binding="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" Width="120" MinWidth="100"/>
+                                <DataGridTextColumn Header="Result Type" Binding="{Binding ResultType, UpdateSourceTrigger=PropertyChanged}" Width="150" MinWidth="130"/>
+                                <DataGridCheckBoxColumn Header="Required" Binding="{Binding RequiredTest}" Width="95" MinWidth="90"/>
+                                <DataGridTextColumn Header="Min Elapsed h" Binding="{Binding MinimumElapsedHours, UpdateSourceTrigger=PropertyChanged}" Width="130" MinWidth="120"/>
+                                <DataGridTextColumn Header="Order" Binding="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" Width="90" MinWidth="80"/>
                             </DataGrid.Columns>
                         </DataGrid>
 
