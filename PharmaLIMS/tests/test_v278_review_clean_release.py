@@ -9,9 +9,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 class V278ReviewCleanReleaseTests(unittest.TestCase):
     def test_release_identity_and_current_artifacts_are_v278(self):
         migration_manifest = json.loads((ROOT / "Database" / "MigrationManifest.json").read_text(encoding="utf-8-sig"))
-        self.assertEqual("2026.9.18.294", migration_manifest["applicationVersion"])
-        self.assertTrue((ROOT / "RELEASE_NOTES_2026.9.18.294.md").is_file())
-        self.assertTrue((ROOT / "SBOM_2026.9.18.294.cdx.json").is_file())
+        self.assertEqual("2026.9.23.295", migration_manifest["applicationVersion"])
+        self.assertTrue((ROOT / "RELEASE_NOTES_2026.9.23.295.md").is_file())
+        self.assertTrue((ROOT / "SBOM_2026.9.23.295.cdx.json").is_file())
         self.assertFalse((ROOT / "RELEASE_NOTES_2026.9.14.277.md").exists())
         self.assertFalse((ROOT / "SBOM_2026.9.14.277.cdx.json").exists())
 
