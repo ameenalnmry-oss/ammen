@@ -107,6 +107,25 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("A prior PRM certificate/report already exists for this sample.", code)
         self.assertIn("ReissuedFromCertificateID remains traceable", code)
 
+    def test_prm_historical_closed_allows_only_signed_routed_legacy_reissue(self):
+        ui = source("ProductionRawMaterialResults.xaml.cs")
+        issue = source("ProductionRawMaterialResults.xaml.Part2.cs")
+
+        self.assertIn("controlledHistoricalLegacyReissue", ui)
+        self.assertIn("(!historicalTimingClosed || controlledHistoricalLegacyReissue)", ui)
+        self.assertIn("allowHistoricalClosedForControlledLegacyReissue", ui)
+
+        self.assertIn("LegacyCertificateEvidenceReconciliations R WITH(UPDLOCK,HOLDLOCK)", issue)
+        self.assertIn("CONTROLLED_REISSUE_REQUIRED", issue)
+        self.assertIn("R.ReconciliationID=", issue)
+        self.assertIn("SELECT MAX(R2.ReconciliationID)", issue)
+        self.assertIn("allowHistoricalClosedForControlledLegacyReissue: controlledHistoricalLegacyReissue", issue)
+        self.assertIn("No retrospective signatures will be fabricated.", issue)
+        self.assertIn('actionType.Equals("Result Entry"', issue)
+        self.assertIn('actionType.Equals("Review"', issue)
+        self.assertIn('actionType.Equals("Approval"', issue)
+        self.assertIn('actionType.Equals("Certificate Reissue"', issue)
+
     def test_prm_document_access_requires_reports_permission(self):
         code = source("ProductionRawMaterialResults.xaml.cs")
         self.assertIn("Reports access permission is required to view or print PRM certificates/reports.", code)
