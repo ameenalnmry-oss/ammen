@@ -656,6 +656,8 @@
 
                         <WrapPanel HorizontalAlignment="Right" Margin="0,12,0,0">
                             <Button Content="New Draft" Background="#475569" Style="{StaticResource PrimaryButton}" Click="BtnNewSpecification_Click"/>
+                            <Button Content="Clone Active Approved" Background="#0369A1" Style="{StaticResource PrimaryButton}" Click="BtnCloneActiveApproved_Click"
+                                    ToolTip="Loads the currently active approved version into a new unsaved draft. No database change occurs until Save Draft."/>
                             <Button Content="Load Pharmacopeial Template" Background="#7C3AED" Style="{StaticResource PrimaryButton}" Click="BtnLoadPharmacopoeialTemplate_Click"
                                     ToolTip="Loads the harmonized USP/Ph. Eur. microbiology acceptance template for the selected category. QA review and approval are still required."/>
                             <Button Content="Load" Background="#2563EB" Style="{StaticResource PrimaryButton}" Click="BtnLoadSpecification_Click"/>
