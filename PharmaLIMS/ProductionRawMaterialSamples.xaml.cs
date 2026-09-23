@@ -137,6 +137,86 @@ namespace PharmaLIMS
 
         private void BtnNewSpecification_Click(object sender, RoutedEventArgs e) => NewSpecificationDraft();
 
+        private void BtnCloneActiveApproved_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string specificationNo = (TxtMasterSpecificationNo.Text ?? string.Empty).Trim();
+                string category = MasterCategory;
+                if (string.IsNullOrWhiteSpace(specificationNo) || string.IsNullOrWhiteSpace(category))
+                    throw new InvalidOperationException("Specification No. and Sample Category are required before cloning the active approved version.");
+
+                DataTable table = DatabaseHelper.ExecuteQuery(@"
+SELECT *
+FROM dbo.PRM_SpecificationTests
+WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
+  AND LTRIM(RTRIM(SampleCategory))=@Category
+  AND ApprovalStatus=N'Approved'
+  AND IsActive=1
+  AND VersionNo=(
+      SELECT MAX(VersionNo)
+      FROM dbo.PRM_SpecificationTests
+      WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
+        AND LTRIM(RTRIM(SampleCategory))=@Category
+        AND ApprovalStatus=N'Approved'
+        AND IsActive=1)
+ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
+                    new[]
+                    {
+                        new SqlParameter("@SpecificationNo", SqlDbType.NVarChar, 120) { Value = specificationNo },
+                        new SqlParameter("@Category", SqlDbType.NVarChar, 40) { Value = category }
+                    });
+
+                if (table.Rows.Count == 0)
+                    throw new InvalidOperationException("No active approved specification version was found for the selected number and category.");
+
+                int sourceVersion = Convert.ToInt32(table.Rows[0]["VersionNo"], CultureInfo.InvariantCulture);
+
+                _masterVersion = 0;
+                _masterApprovalStatus = "Draft";
+                TxtMasterVersion.Text = "New";
+                TxtMasterReference.Text = table.Rows[0]["CompendialReference"] == DBNull.Value
+                    ? string.Empty
+                    : Convert.ToString(table.Rows[0]["CompendialReference"], CultureInfo.InvariantCulture) ?? string.Empty;
+                TxtMasterItemCode.Text = table.Rows[0].Table.Columns.Contains("ItemCode") && table.Rows[0]["ItemCode"] != DBNull.Value
+                    ? Convert.ToString(table.Rows[0]["ItemCode"], CultureInfo.InvariantCulture) ?? string.Empty
+                    : string.Empty;
+                SetComboText(
+                    CmbMasterProductionStage,
+                    table.Rows[0].Table.Columns.Contains("ProductionStage") && table.Rows[0]["ProductionStage"] != DBNull.Value
+                        ? Convert.ToString(table.Rows[0]["ProductionStage"], CultureInfo.InvariantCulture) ?? string.Empty
+                        : string.Empty);
+                DpMasterEffective.SelectedDate = DateTime.Today;
+
+                _specificationTests.Clear();
+                foreach (DataRow row in table.Rows)
+                {
+                    _specificationTests.Add(new SpecificationTestDraft
+                    {
+                        TestCode = Convert.ToString(row["TestCode"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        TestName = Convert.ToString(row["TestName"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        SpecificationText = Convert.ToString(row["SpecificationText"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        Unit = row["Unit"] == DBNull.Value ? string.Empty : Convert.ToString(row["Unit"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        ResultType = Convert.ToString(row["ResultType"], CultureInfo.InvariantCulture) ?? "Text",
+                        RequiredTest = row["RequiredTest"] != DBNull.Value && Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture),
+                        MinimumElapsedHours = row.Table.Columns.Contains("MinimumElapsedHours") && row["MinimumElapsedHours"] != DBNull.Value
+                            ? Convert.ToDecimal(row["MinimumElapsedHours"], CultureInfo.InvariantCulture)
+                            : 120m,
+                        SortOrder = row["SortOrder"] == DBNull.Value ? 0 : Convert.ToInt32(row["SortOrder"], CultureInfo.InvariantCulture)
+                    });
+                }
+
+                TxtMasterState.Text = "New Draft cloned from active approved v" +
+                    sourceVersion.ToString(CultureInfo.InvariantCulture) +
+                    " — verify scope, then Save Draft.";
+                TxtStatus.Text = "Active approved specification cloned into an unsaved draft. No database change has occurred.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Clone Active Approved", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void BtnLoadPharmacopoeialTemplate_Click(object sender, RoutedEventArgs e)
         {
             string category = MasterCategory;
