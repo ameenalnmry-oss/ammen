@@ -201,7 +201,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                         RequiredTest = row["RequiredTest"] != DBNull.Value && Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture),
                         MinimumElapsedHours = row.Table.Columns.Contains("MinimumElapsedHours") && row["MinimumElapsedHours"] != DBNull.Value
                             ? Convert.ToDecimal(row["MinimumElapsedHours"], CultureInfo.InvariantCulture)
-                            : 120m,
+                            : 0m,
                         SortOrder = row["SortOrder"] == DBNull.Value ? 0 : Convert.ToInt32(row["SortOrder"], CultureInfo.InvariantCulture)
                     });
                 }
@@ -209,7 +209,11 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                 TxtMasterState.Text = "New Draft cloned from active approved v" +
                     sourceVersion.ToString(CultureInfo.InvariantCulture) +
                     " — verify scope, then Save Draft.";
-                TxtStatus.Text = "Active approved specification cloned into an unsaved draft. No database change has occurred.";
+                bool clonedTimingRequiresCompletion = _specificationTests.Any(test =>
+                    test.RequiredTest && test.MinimumElapsedHours <= 0m);
+                TxtStatus.Text = clonedTimingRequiresCompletion
+                    ? "Active approved specification cloned into an unsaved draft. One or more required legacy rows have no controlled Minimum Elapsed Hours; enter and verify timing before Save Draft."
+                    : "Active approved specification cloned into an unsaved draft. No database change has occurred.";
             }
             catch (Exception ex)
             {
