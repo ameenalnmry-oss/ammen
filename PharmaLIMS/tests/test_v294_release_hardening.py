@@ -122,6 +122,8 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("allowHistoricalClosedForControlledLegacyReissue: controlledHistoricalLegacyReissue", issue)
         self.assertIn("LoadControlledHistoricalLegacyResultsInTransaction", issue)
         self.assertIn("PRM_TimingMigrationTestEvidence e WITH(HOLDLOCK)", issue)
+        self.assertIn("e.TimingMigrationTestEvidenceID AS HistoricalEvidenceID", issue)
+        self.assertNotIn("e.EvidenceID", issue)
         self.assertIn("HistoricalResultValue", issue)
         self.assertIn("HistoricalInterpretation", issue)
         self.assertIn("entered after the source certificate issue date", issue)

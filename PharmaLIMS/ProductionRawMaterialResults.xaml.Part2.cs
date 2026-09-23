@@ -947,7 +947,7 @@ VALUES(@CertificateID,@SampleID,@CertificateNumber,@HtmlContent,@SnapshotHash,@C
             using (SqlCommand command = new SqlCommand(@"
 SELECT
     t.*,
-    e.EvidenceID AS HistoricalEvidenceID,
+    e.TimingMigrationTestEvidenceID AS HistoricalEvidenceID,
     e.OriginalResultValue AS HistoricalResultValue,
     e.OriginalInterpretation AS HistoricalInterpretation,
     e.OriginalRemarks AS HistoricalRemarks,
@@ -964,7 +964,7 @@ LEFT JOIN dbo.PRM_TimingMigrationTestEvidence e WITH(HOLDLOCK)
 WHERE t.SampleID=@SampleID
   AND NULLIF(
         LTRIM(RTRIM(ISNULL(
-            CASE WHEN e.EvidenceID IS NOT NULL THEN e.OriginalResultValue ELSE t.ResultValue END,
+            CASE WHEN e.TimingMigrationTestEvidenceID IS NOT NULL THEN e.OriginalResultValue ELSE t.ResultValue END,
             N''))),
         N'') IS NOT NULL
 ORDER BY ISNULL(t.SortOrder,t.SampleTestID),t.SampleTestID;", conn, tx))
