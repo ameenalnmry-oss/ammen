@@ -602,7 +602,53 @@ WHERE SampleID = @SampleID;",
                 if (!IsOneOf(status, "Approved", "Certificate Issued"))
                     throw new InvalidOperationException("The PRM sample is no longer approved for certificate issuance.");
 
-                EnsurePrmTimingReconciliationClearedInTransaction(conn, tx, "Certificate / Report Issuance");
+                bool controlledHistoricalLegacyReissue = false;
+                if (isReissue &&
+                    _controlledLegacyReissueRoute &&
+                    !_controlledLegacyReissueCompleted &&
+                    _selectedSampleId == _initialSampleId &&
+                    reissuedFromCertificateId == _initialLegacyCertificateId)
+                {
+                    object reconciliationAuthorized = ExecuteScalarInTransaction(conn, tx, @"
+SELECT CASE WHEN EXISTS
+(
+    SELECT 1
+    FROM dbo.LegacyCertificateEvidenceReconciliations R WITH(UPDLOCK,HOLDLOCK)
+    WHERE R.ReconciliationID=@ReconciliationID
+      AND R.CertificateModule=N'PRM'
+      AND R.CertificateID=@CertificateID
+      AND UPPER(LTRIM(RTRIM(ISNULL(R.Disposition,N''))))=N'CONTROLLED_REISSUE_REQUIRED'
+      AND NULLIF(LTRIM(RTRIM(ISNULL(R.EvidenceReference,N''))),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(R.EvidenceSummary,N''))),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(R.Reason,N''))),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(R.SignedBy,N''))),N'') IS NOT NULL
+      AND R.SignedAt IS NOT NULL
+      AND R.ReconciliationID=
+      (
+          SELECT MAX(R2.ReconciliationID)
+          FROM dbo.LegacyCertificateEvidenceReconciliations R2 WITH(UPDLOCK,HOLDLOCK)
+          WHERE R2.CertificateModule=N'PRM'
+            AND R2.CertificateID=@CertificateID
+      )
+)
+THEN 1 ELSE 0 END;",
+                        new SqlParameter("@ReconciliationID", SqlDbType.Int) { Value = _initialLegacyReconciliationId },
+                        new SqlParameter("@CertificateID", SqlDbType.Int) { Value = _initialLegacyCertificateId });
+
+                    if (Convert.ToInt32(reconciliationAuthorized ?? 0, CultureInfo.InvariantCulture) != 1)
+                    {
+                        throw new InvalidOperationException(
+                            "Controlled legacy reissue is blocked because the routed signed QA reconciliation is no longer the latest valid CONTROLLED_REISSUE_REQUIRED disposition for this certificate. Return to Legacy Certificate Evidence Reconciliation and refresh.");
+                    }
+
+                    controlledHistoricalLegacyReissue = true;
+                }
+
+                EnsurePrmTimingReconciliationClearedInTransaction(
+                    conn,
+                    tx,
+                    "Certificate / Report Issuance",
+                    allowHistoricalClosedForControlledLegacyReissue: controlledHistoricalLegacyReissue);
 
                 object analysisStartedValue = ExecuteScalarInTransaction(conn, tx, @"
 SELECT AnalysisStartedDate
@@ -614,16 +660,23 @@ SELECT AnalysisCompletedDate
 FROM dbo.PRM_Samples WITH (UPDLOCK, HOLDLOCK)
 WHERE SampleID = @SampleID;",
                     new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId });
-                if (analysisStartedValue == null || analysisStartedValue == DBNull.Value ||
-                    analysisCompletedValue == null || analysisCompletedValue == DBNull.Value)
+                bool analysisStartedPresent = analysisStartedValue != null && analysisStartedValue != DBNull.Value;
+                bool analysisCompletedPresent = analysisCompletedValue != null && analysisCompletedValue != DBNull.Value;
+                if (!analysisStartedPresent || !analysisCompletedPresent)
                 {
-                    throw new InvalidOperationException(
-                        "Certificate issuance is blocked because Analysis Started and Analysis Completed date/time are required.");
+                    if (!controlledHistoricalLegacyReissue)
+                    {
+                        throw new InvalidOperationException(
+                            "Certificate issuance is blocked because Analysis Started and Analysis Completed date/time are required.");
+                    }
                 }
-                DateTime analysisStarted = Convert.ToDateTime(analysisStartedValue, CultureInfo.InvariantCulture);
-                DateTime analysisCompleted = Convert.ToDateTime(analysisCompletedValue, CultureInfo.InvariantCulture);
-                if (analysisCompleted < analysisStarted)
-                    throw new InvalidOperationException("Certificate issuance is blocked because Analysis Completed precedes Analysis Started.");
+                else
+                {
+                    DateTime analysisStarted = Convert.ToDateTime(analysisStartedValue, CultureInfo.InvariantCulture);
+                    DateTime analysisCompleted = Convert.ToDateTime(analysisCompletedValue, CultureInfo.InvariantCulture);
+                    if (analysisCompleted < analysisStarted)
+                        throw new InvalidOperationException("Certificate issuance is blocked because Analysis Completed precedes Analysis Started.");
+                }
 
                 PrmAuthoritativeSampleResultState authoritative =
                     PrmSampleResultStateService.DeriveAuthoritativeState(results);
@@ -780,6 +833,32 @@ SELECT CAST(SCOPE_IDENTITY() AS int);",
                 // metadata varies by provider and can make Rows.Add fail even though the
                 // underlying signature was recorded successfully.
                 signatureSnapshot = LoadPrmElectronicSignatureSnapshotInTransaction(conn, tx);
+
+                if (controlledHistoricalLegacyReissue)
+                {
+                    bool hasResultEntry = false;
+                    bool hasReview = false;
+                    bool hasApproval = false;
+                    bool hasReissueSignature = false;
+                    foreach (DataRow signatureRow in signatureSnapshot.Rows)
+                    {
+                        string actionType = Convert.ToString(signatureRow["ActionType"], CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
+                        if (actionType.Equals("Result Entry", StringComparison.OrdinalIgnoreCase))
+                            hasResultEntry = true;
+                        else if (actionType.Equals("Review", StringComparison.OrdinalIgnoreCase))
+                            hasReview = true;
+                        else if (actionType.Equals("Approval", StringComparison.OrdinalIgnoreCase))
+                            hasApproval = true;
+                        else if (actionType.Equals("Certificate Reissue", StringComparison.OrdinalIgnoreCase))
+                            hasReissueSignature = true;
+                    }
+
+                    if (!hasResultEntry || !hasReview || !hasApproval || !hasReissueSignature)
+                    {
+                        throw new InvalidOperationException(
+                            "Controlled legacy reissue is blocked because the replacement certificate would not contain a complete Result Entry / Review / Approval / Certificate Reissue electronic-signature chain. No retrospective signatures will be fabricated.");
+                    }
+                }
 
                 DataRow certificateSnapshotRow = BuildPrmCertificateSnapshotRow(
                     certificateId, certNo, prefix, reportTitle, issueDate, signature.SignedBy,
