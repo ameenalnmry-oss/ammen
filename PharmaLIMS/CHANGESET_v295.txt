@@ -1,0 +1,12 @@
+PharmaLIMS 2026.9.23.295 - Final Review Gap Closure
+
+Changed:
+- PharmaLIMS.csproj / AssemblyInfo.cs / Database/MigrationManifest.json: controlled release identity advanced to 2026.9.23.295.
+- ProductionRawMaterialSamples.xaml.cs: Clone Active Approved no longer invents 120 hours when historical timing is absent.
+- Regression tests: current release identity updated and missing-timing clone behavior covered.
+- Release notes, source-bundle SBOM declaration and replacement README refreshed.
+
+Preserved:
+- All 85 historical controlled migration entries and migration SQL bytes.
+- Water, EM and Culture Media functional behavior.
+- PRM approval, certificate, legacy reissue and append-only evidence controls.
