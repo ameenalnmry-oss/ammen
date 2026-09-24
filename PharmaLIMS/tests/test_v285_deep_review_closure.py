@@ -121,6 +121,17 @@ class V284DeepReviewClosureTests(unittest.TestCase):
         ):
             self.assertTrue((ROOT / script).is_file(), script)
 
+    def test_f05_active_production_config_validation_does_not_repeat_delivery_package_gate(self):
+        repository_workflow = ROOT.parent / ".github/workflows/ci.yml"
+        self.assertTrue(repository_workflow.is_file())
+        ci = repository_workflow.read_text(encoding="utf-8-sig")
+        start = ci.index("- name: Validate controlled Production configuration")
+        end = ci.index("- name: Publish self-contained Windows package", start)
+        block = ci[start:end]
+        self.assertIn("validate_project.py --production-publish", block)
+        self.assertNotIn("Invoke-ReleaseValidation.ps1 -SkipBuild -ValidateProductionConfig", block)
+        self.assertNotIn("--delivery-package", block)
+
     def test_f05_publish_manifest_is_path_safe_and_hash_verified(self):
         verifier = text("scripts/Test-PublishManifest.ps1")
         generator = text("scripts/New-PublishManifest.ps1")
