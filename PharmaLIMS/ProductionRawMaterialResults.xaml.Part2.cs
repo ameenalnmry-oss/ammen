@@ -2745,5 +2745,46 @@ ORDER BY ISNULL(SortOrder, SampleTestID), SampleTestID;",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
+        private void RefreshTimingDisplay()
+        {
+            // AcceptChanges in AddPrmTimingDisplayColumns must never accept an
+            // operator's unsaved result or remarks along with display values.
+            if (_isLoading || _selectedSampleId <= 0 || _resultsTable == null || HasPendingResultChanges())
+                return;
+
+            try
+            {
+                AddPrmTimingDisplayColumns(_resultsTable);
+            }
+            catch (Exception)
+            {
+                TxtStatus.Text = "Timing could not be refreshed. Reload the sample before entering results.";
+            }
+        }
+
+        private string ReadCurrentResultTimingStatus(DataRow row)
+        {
+            if (row["MinimumElapsedHours"] == DBNull.Value)
+                return "Timing Missing";
+
+            decimal hours = Convert.ToDecimal(row["MinimumElapsedHours"], CultureInfo.InvariantCulture);
+            if (hours < 0m)
+                return "Timing Missing";
+
+            DataTable clock = DatabaseHelper.ExecuteQuery(@"
+SELECT AnalysisStartedDate, SYSDATETIME() AS DatabaseNow
+FROM dbo.PRM_Samples
+WHERE SampleID=@SampleID;",
+                new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId } });
+            if (clock.Rows.Count != 1)
+                throw new InvalidOperationException("The selected PRM sample no longer exists.");
+            if (clock.Rows[0]["AnalysisStartedDate"] == DBNull.Value)
+                return "Not Started";
+
+            DateTime started = Convert.ToDateTime(clock.Rows[0]["AnalysisStartedDate"], CultureInfo.InvariantCulture);
+            DateTime now = Convert.ToDateTime(clock.Rows[0]["DatabaseNow"], CultureInfo.InvariantCulture);
+            return now >= started.AddHours(Convert.ToDouble(hours, CultureInfo.InvariantCulture)) ? "Eligible" : "Waiting";
+        }
+
     }
 }
