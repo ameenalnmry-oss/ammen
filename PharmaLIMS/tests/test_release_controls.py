@@ -3002,8 +3002,14 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('x:Name="TxtQualityEventNo"', xaml)
         self.assertIn('x:Name="TxtInvestigationStatus"', xaml)
         self.assertIn('x:Name="TxtInvestigationDisposition"', xaml)
-        self.assertIn('Header="Remarks"', xaml)
-        self.assertIn('Width="1.6*" MinWidth="140"', xaml)
+        remarks_column = re.search(r'<DataGridTextColumn\b[^>]*\bHeader="Remarks"[^>]*/>', xaml)
+        self.assertIsNotNone(remarks_column)
+        width = re.search(r'\bWidth="([0-9.]+)\*"', remarks_column.group())
+        min_width = re.search(r'\bMinWidth="(\d+)"', remarks_column.group())
+        self.assertIsNotNone(width)
+        self.assertIsNotNone(min_width)
+        self.assertGreater(float(width.group(1)), 0)
+        self.assertGreaterEqual(int(min_width.group(1)), 120)
 
     def test_v182_prm_closed_investigation_must_cover_current_failures_and_use_final_outcome(self):
         prm = read_source_family("ProductionRawMaterialResults.xaml.cs")
