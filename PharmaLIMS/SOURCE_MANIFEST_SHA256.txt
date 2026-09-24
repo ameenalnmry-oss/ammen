@@ -1,5 +1,5 @@
 # PharmaLIMS source integrity manifest
-21c784f0bd5cf661d397753894d6c9a57eb5bd853d9daa8e5b0ae2c31c11c9c8  .github/workflows/ci.yml
+292eca41fc007dee9a0b12fab1b9bd88a092451c865c9a813c8e2a236377315d  .github/workflows/ci.yml
 aafb9c0113da2468afeb8555a30580d99b87a4f6c3f03d508e15252124e7b65b  .gitignore
 c2810ba9e3a192d01be75eb4b0cda66dba97b710e9cff48d1cb978a376654ece  AISystemReview.xaml
 7e5ba86df31bd309ef7f19a001ef287462616b95b91ea63ed726d347bafcde15  AISystemReview.xaml.cs
