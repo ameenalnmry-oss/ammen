@@ -69,9 +69,6 @@ jobs:
 
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
-          $v294TestHash = (Get-FileHash -LiteralPath "PharmaLIMS/tests/test_v294_prm_pharmacopoeial_templates.py" -Algorithm SHA256).Hash.ToLowerInvariant()
-          Write-Host "V294_TEST_SHA256=$v294TestHash"
-
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
