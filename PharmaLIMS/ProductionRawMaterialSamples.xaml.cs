@@ -427,7 +427,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
             TxtMasterState.Text = "New Draft";
             DpMasterEffective.SelectedDate = DateTime.Today;
             _specificationTests.Clear();
-            _specificationTests.Add(new SpecificationTestDraft { ResultType = "Text", RequiredTest = true, SortOrder = 1, MinimumElapsedHours = 120m });
+            _specificationTests.Add(new SpecificationTestDraft { ResultType = "Text", RequiredTest = true, SortOrder = 1, MinimumElapsedHours = 0m });
         }
 
         private string MasterCategory => GetComboText(CmbMasterCategory).Trim();
@@ -482,7 +482,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                         RequiredTest = row["RequiredTest"] != DBNull.Value && Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture),
                         MinimumElapsedHours = row.Table.Columns.Contains("MinimumElapsedHours") && row["MinimumElapsedHours"] != DBNull.Value
                             ? Convert.ToDecimal(row["MinimumElapsedHours"], CultureInfo.InvariantCulture)
-                            : 120m,
+                            : 0m,
                         SortOrder = row["SortOrder"] == DBNull.Value ? 0 : Convert.ToInt32(row["SortOrder"], CultureInfo.InvariantCulture)
                     });
                 }
@@ -530,15 +530,40 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     DatabaseHelper.EnsureUserPermissionInTransaction(
                         connection, transaction, Login.CurrentUser, "CanEnterResults", "maintain PRM specification drafts");
 
+                    string draftCreatedBy = Login.CurrentUser;
+                    DateTime draftCreatedDate;
+
                     if (_masterVersion <= 0)
                     {
                         using SqlCommand versionCommand = new SqlCommand("SELECT ISNULL(MAX(VersionNo),0)+1 FROM dbo.PRM_SpecificationTests WITH(UPDLOCK,HOLDLOCK) WHERE SpecificationNo=@No AND SampleCategory=@Category", connection, transaction);
                         versionCommand.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                         versionCommand.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
                         _masterVersion = Convert.ToInt32(versionCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
+
+                        using SqlCommand createdAtCommand = new SqlCommand("SELECT SYSDATETIME();", connection, transaction);
+                        draftCreatedDate = Convert.ToDateTime(createdAtCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
                     }
                     else
                     {
+                        using (SqlCommand creatorCommand = new SqlCommand(@"
+SELECT TOP(1) CreatedBy, CreatedDate
+FROM dbo.PRM_SpecificationTests WITH(UPDLOCK,HOLDLOCK)
+WHERE SpecificationNo=@No
+  AND SampleCategory=@Category
+  AND VersionNo=@Version
+  AND ApprovalStatus=N'Draft'
+ORDER BY SpecificationTestID;", connection, transaction))
+                        {
+                            creatorCommand.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
+                            creatorCommand.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
+                            creatorCommand.Parameters.Add("@Version", SqlDbType.Int).Value = _masterVersion;
+                            using SqlDataReader creatorReader = creatorCommand.ExecuteReader();
+                            if (!creatorReader.Read())
+                                throw new DBConcurrencyException("The specification draft no longer exists or is no longer editable. Reload before saving.");
+                            draftCreatedBy = creatorReader.IsDBNull(0) ? string.Empty : creatorReader.GetString(0).Trim();
+                            draftCreatedDate = creatorReader.GetDateTime(1);
+                        }
+
                         using SqlCommand delete = new SqlCommand("DELETE dbo.PRM_SpecificationTests WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version AND ApprovalStatus=N'Draft'", connection, transaction);
                         delete.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                         delete.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
@@ -551,8 +576,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     {
                         using SqlCommand insert = new SqlCommand(@"
 INSERT dbo.PRM_SpecificationTests
-(SpecificationNo,SampleCategory,ItemCode,ProductionStage,CompendialReference,VersionNo,TestCode,TestName,SpecificationText,Unit,ResultType,RequiredTest,MinimumElapsedHours,SortOrder,ApprovalStatus,EffectiveDate,IsActive,CreatedBy)
-VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,@Criteria,@Unit,@Type,@Required,@MinimumElapsedHours,@Order,N'Draft',@Effective,0,@User);", connection, transaction);
+(SpecificationNo,SampleCategory,ItemCode,ProductionStage,CompendialReference,VersionNo,TestCode,TestName,SpecificationText,Unit,ResultType,RequiredTest,MinimumElapsedHours,SortOrder,ApprovalStatus,EffectiveDate,IsActive,CreatedBy,CreatedDate)
+VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,@Criteria,@Unit,@Type,@Required,@MinimumElapsedHours,@Order,N'Draft',@Effective,0,@CreatedBy,@CreatedDate);", connection, transaction);
                         insert.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                         insert.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
                         insert.Parameters.Add("@ItemCode", SqlDbType.NVarChar, 80).Value = itemCode;
@@ -571,7 +596,10 @@ VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,
                         minimumElapsedParameter.Value = test.MinimumElapsedHours;
                         insert.Parameters.Add("@Order", SqlDbType.Int).Value = test.SortOrder > 0 ? test.SortOrder : ++order;
                         insert.Parameters.Add("@Effective", SqlDbType.Date).Value = DpMasterEffective.SelectedDate.HasValue ? DpMasterEffective.SelectedDate.Value.Date : DBNull.Value;
-                        insert.Parameters.Add("@User", SqlDbType.NVarChar, 120).Value = Login.CurrentUser;
+                        insert.Parameters.Add("@CreatedBy", SqlDbType.NVarChar, 120).Value = string.IsNullOrWhiteSpace(draftCreatedBy) ? DBNull.Value : draftCreatedBy;
+                        SqlParameter createdDateParameter = insert.Parameters.Add("@CreatedDate", SqlDbType.DateTime2);
+                        createdDateParameter.Scale = 0;
+                        createdDateParameter.Value = draftCreatedDate;
                         insert.ExecuteNonQuery();
                     }
 
@@ -784,7 +812,7 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             public string Unit { get; set; } = string.Empty;
             public string ResultType { get; set; } = "Text";
             public bool RequiredTest { get; set; } = true;
-            public decimal MinimumElapsedHours { get; set; } = 120m;
+            public decimal MinimumElapsedHours { get; set; } = 0m;
             public int SortOrder { get; set; }
         }
 
