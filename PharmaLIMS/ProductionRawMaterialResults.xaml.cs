@@ -16,6 +16,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 #nullable disable
 
@@ -34,6 +35,7 @@ namespace PharmaLIMS
         private bool _controlledLegacyReissueCompleted = false;
         private bool _isLoading = false;
         private DataTable _resultsTable;
+        private readonly DispatcherTimer _timingDisplayTimer = new() { Interval = TimeSpan.FromSeconds(30) };
         private bool _analysisStartRecorded = false;
         private string _timingReconciliationStatus = "Not Required";
         private string _selectedResultGroup = string.Empty;
@@ -269,6 +271,9 @@ END;";
         {
             InitializeComponent();
             Loaded += ProductionRawMaterialResults_Loaded;
+            _timingDisplayTimer.Tick += (_, _) => RefreshTimingDisplay();
+            Loaded += (_, _) => _timingDisplayTimer.Start();
+            Closed += (_, _) => _timingDisplayTimer.Stop();
         }
 
         public ProductionRawMaterialResults(int sampleId) : this()
@@ -1132,8 +1137,44 @@ WHERE SampleID=@SampleID;",
                 return;
             }
 
-            string timingStatus = Convert.ToString(rowView["TimingStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
+            // The displayed status can age while the window stays open. When
+            // there are pending edits, query the database clock without changing
+            // DataRow state; otherwise refresh all display-only values.
+            string timingStatus;
+            if (!HasPendingResultChanges())
+            {
+                try
+                {
+                    AddPrmTimingDisplayColumns(_resultsTable);
+                    timingStatus = Convert.ToString(rowView["TimingStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
+                }
+                catch (Exception)
+                {
+                    e.Cancel = true;
+                    TxtStatus.Text = "Timing could not be verified. Reload the sample before entering results.";
+                    return;
+                }
+            }
+            else
+            {
+                try
+                {
+                    timingStatus = ReadCurrentResultTimingStatus(rowView.Row);
+                }
+                catch (Exception)
+                {
+                    e.Cancel = true;
+                    TxtStatus.Text = "Timing could not be verified. Reload the sample before entering results.";
+                    return;
+                }
+            }
             if (timingStatus.Equals("Eligible", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            // The signed Development override is enforced and audited during
+            // Save Results. It applies to Waiting only, never missing evidence.
+            if (timingStatus.Equals("Waiting", StringComparison.OrdinalIgnoreCase) &&
+                AppConfig.AllowEarlyMicrobiologyResults)
                 return;
 
             e.Cancel = true;
