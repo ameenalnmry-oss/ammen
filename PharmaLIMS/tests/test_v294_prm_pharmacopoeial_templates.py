@@ -93,6 +93,34 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertIn("no controlled Minimum Elapsed Hours", handler)
         self.assertNotIn(": 120m,", handler)
 
+    def test_load_specification_does_not_invent_missing_timing(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        start = code.index("private void BtnLoadSpecification_Click")
+        end = code.index("private void BtnSaveSpecification_Click", start)
+        handler = code[start:end]
+        self.assertIn(": 0m,", handler)
+        self.assertNotIn(": 120m,", handler)
+
+    def test_new_blank_specification_requires_explicit_timing(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        start = code.index("private void NewSpecificationDraft()")
+        end = code.index("private string MasterCategory", start)
+        handler = code[start:end]
+        self.assertIn("MinimumElapsedHours = 0m", handler)
+        draft_class = code[code.index("private sealed class SpecificationTestDraft"):]
+        self.assertIn("public decimal MinimumElapsedHours { get; set; } = 0m;", draft_class)
+
+    def test_draft_resave_preserves_original_creator_identity(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        start = code.index("private void BtnSaveSpecification_Click")
+        end = code.index("private void BtnReviewSpecification_Click", start)
+        handler = code[start:end]
+        self.assertIn("SELECT TOP(1) CreatedBy, CreatedDate", handler)
+        self.assertIn("draftCreatedBy", handler)
+        self.assertIn("draftCreatedDate", handler)
+        self.assertIn("CreatedBy,CreatedDate", handler)
+        self.assertNotIn('@User);", handler)
+
 
 if __name__ == "__main__":
     unittest.main()
