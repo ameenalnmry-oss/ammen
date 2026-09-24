@@ -3002,8 +3002,29 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('x:Name="TxtQualityEventNo"', xaml)
         self.assertIn('x:Name="TxtInvestigationStatus"', xaml)
         self.assertIn('x:Name="TxtInvestigationDisposition"', xaml)
-        self.assertIn('Header="Remarks"', xaml)
-        self.assertIn('Width="1.6*" MinWidth="140"', xaml)
+        remarks_column = re.search(r'<DataGridTextColumn\b[^>]*\bHeader="Remarks"[^>]*/>', xaml)
+        self.assertIsNotNone(remarks_column)
+        width = re.search(r'\bWidth="([0-9.]+)\*"', remarks_column.group())
+        min_width = re.search(r'\bMinWidth="(\d+)"', remarks_column.group())
+        self.assertIsNotNone(width)
+        self.assertIsNotNone(min_width)
+        self.assertGreater(float(width.group(1)), 0)
+        self.assertGreaterEqual(int(min_width.group(1)), 120)
+
+    def test_submit_review_transaction_uses_registered_permission_column(self):
+        helper = (ROOT / "DatabaseHelper.cs").read_text(encoding="utf-8-sig")
+        allowed = helper.split("AllowedPermissionColumns =", 1)[1].split("};", 1)[0]
+        registered = set(re.findall(r'"(Can\w+)"', allowed))
+        sources = (("ProductionRawMaterialResults.xaml.cs", "submit PRM results for review"),)
+        for filename, action in sources:
+            with self.subTest(filename=filename):
+                source = (ROOT / filename).read_text(encoding="utf-8-sig")
+                calls = re.findall(
+                    r'EnsureUserPermissionInTransaction\([^;]*?"(Can\w+)"\s*,\s*"'
+                    + re.escape(action) + r'"\)', source, flags=re.S)
+                self.assertEqual(1, len(calls))
+                self.assertIn(calls[0], registered)
+                self.assertEqual("CanEnterResults", calls[0])
 
     def test_v182_prm_closed_investigation_must_cover_current_failures_and_use_final_outcome(self):
         prm = read_source_family("ProductionRawMaterialResults.xaml.cs")

@@ -314,7 +314,10 @@
                             </Grid>
                         </Border>
 
-                        <Border Grid.Row="3" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,10">
+                        <Border x:Name="CertificateReasonPanel" Grid.Row="3"
+                                Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1"
+                                CornerRadius="12" Padding="10" Margin="0,0,0,10"
+                                Visibility="Collapsed">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="190"/>
@@ -327,16 +330,21 @@
 
                         <DataGrid x:Name="DgResults" Grid.Row="4"
                                   AutoGenerateColumns="False" IsReadOnly="False" SelectionMode="Single"
-                                  RowHeight="36" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  BeginningEdit="DgResults_BeginningEdit"
+                                  RowHeight="36" MinHeight="260" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                   BorderBrush="#CBD5E1" BorderThickness="1" CanUserAddRows="False" CanUserDeleteRows="False">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Test" Binding="{Binding TestName}" Width="2*" MinWidth="150" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Specification" Binding="{Binding SpecificationText}" Width="2.4*" MinWidth="190" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Result" Binding="{Binding ResultValue, UpdateSourceTrigger=PropertyChanged}" Width="1.1*" MinWidth="95"/>
-                                <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="0.8*" MinWidth="75" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Type" Binding="{Binding ResultType}" Width="1.1*" MinWidth="100" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Interpretation" Binding="{Binding Interpretation}" Width="1.4*" MinWidth="130" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="1.6*" MinWidth="140"/>
+                                <DataGridTextColumn Header="Test" Binding="{Binding TestName}" Width="2*" MinWidth="180" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Specification" Binding="{Binding SpecificationText}" Width="2.2*" MinWidth="180" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Result" Binding="{Binding ResultValue, UpdateSourceTrigger=PropertyChanged}" Width="1*" MinWidth="90"/>
+                                <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="0.8*" MinWidth="70" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding ResultType}" Width="1*" MinWidth="95" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Min h" Binding="{Binding MinimumElapsedHours, StringFormat=0.##}" Width="0.7*" MinWidth="65" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Eligible At" Binding="{Binding EligibleAtText}" Width="1.25*" MinWidth="130" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Timing" Binding="{Binding TimingStatus}" Width="0.9*" MinWidth="90" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Interpretation" Binding="{Binding Interpretation}" Width="1.2*" MinWidth="120" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="1.4*" MinWidth="130"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
