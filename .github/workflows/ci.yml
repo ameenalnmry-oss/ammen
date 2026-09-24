@@ -185,7 +185,9 @@ jobs:
       - name: Validate controlled Production configuration
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         working-directory: PharmaLIMS
-        run: ./scripts/Invoke-ReleaseValidation.ps1 -SkipBuild -ValidateProductionConfig
+        run: |
+          python -B scripts/validate_project.py --production-publish
+          if ($LASTEXITCODE -ne 0) { throw "Production configuration validation failed with native exit code $LASTEXITCODE." }
 
       - name: Publish self-contained Windows package
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
