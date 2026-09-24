@@ -119,7 +119,7 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertIn("draftCreatedBy", handler)
         self.assertIn("draftCreatedDate", handler)
         self.assertIn("CreatedBy,CreatedDate", handler)
-        self.assertNotIn('@User);", handler)
+        self.assertNotIn('insert.Parameters.Add("@User"', handler)
 
 
 if __name__ == "__main__":
