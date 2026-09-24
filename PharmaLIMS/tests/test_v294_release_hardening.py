@@ -97,8 +97,8 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         start = code.index("private void BtnSubmitReview_Click")
         end = code.index("private void BtnReview_Click", start)
         submit = code[start:end]
-        self.assertIn('"CanSubmitForReview"', submit)
-        self.assertNotIn('"CanEnterResults", "submit PRM results for review"', submit)
+        self.assertIn('"CanEnterResults", "submit PRM results for review"', submit)
+        self.assertNotIn('"CanSubmitForReview"', submit)
 
     def test_prm_certificate_reissue_lineage_is_fail_closed(self):
         code = source("ProductionRawMaterialResults.xaml.Part2.cs")

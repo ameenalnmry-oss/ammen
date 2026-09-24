@@ -3011,6 +3011,21 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertGreater(float(width.group(1)), 0)
         self.assertGreaterEqual(int(min_width.group(1)), 120)
 
+    def test_submit_review_transaction_uses_registered_permission_column(self):
+        helper = (ROOT / "DatabaseHelper.cs").read_text(encoding="utf-8-sig")
+        allowed = helper.split("AllowedPermissionColumns =", 1)[1].split("};", 1)[0]
+        registered = set(re.findall(r'"(Can\w+)"', allowed))
+        sources = (("ProductionRawMaterialResults.xaml.cs", "submit PRM results for review"),)
+        for filename, action in sources:
+            with self.subTest(filename=filename):
+                source = (ROOT / filename).read_text(encoding="utf-8-sig")
+                calls = re.findall(
+                    r'EnsureUserPermissionInTransaction\([^;]*?"(Can\w+)"\s*,\s*"'
+                    + re.escape(action) + r'"\)', source, flags=re.S)
+                self.assertEqual(1, len(calls))
+                self.assertIn(calls[0], registered)
+                self.assertEqual("CanEnterResults", calls[0])
+
     def test_v182_prm_closed_investigation_must_cover_current_failures_and_use_final_outcome(self):
         prm = read_source_family("ProductionRawMaterialResults.xaml.cs")
         state = prm.split('private const string PrmQualityEventStateSql = @"', 1)[1].split('";', 1)[0]

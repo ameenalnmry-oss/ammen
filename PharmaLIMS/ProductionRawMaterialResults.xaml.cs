@@ -1641,7 +1641,7 @@ WHERE SampleID = @SampleID
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
                     string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
-                        conn, tx, signature.SignedBy, "CanSubmitForReview", "submit PRM results for review");
+                        conn, tx, signature.SignedBy, "CanEnterResults", "submit PRM results for review");
                     EnsurePrmTimingReconciliationClearedInTransaction(conn, tx, "Submit Review");
                     EnsureAllPrmResultTimingGatesElapsedInTransaction(conn, tx, signature, "Submit Review");
 
