@@ -144,6 +144,22 @@ class V284DeepReviewClosureTests(unittest.TestCase):
         self.assertIn("signtool", signer.lower())
         self.assertIn(" verify ", signer)
 
+    def test_prm_results_grid_exposes_controlled_timing_and_hides_certificate_reason_by_default(self):
+        xaml = text("ProductionRawMaterialResults.xaml")
+        code = text("ProductionRawMaterialResults.xaml.cs")
+        self.assertIn('x:Name="CertificateReasonPanel"', xaml)
+        self.assertIn('Visibility="Collapsed"', xaml)
+        self.assertIn('Header="Min h"', xaml)
+        self.assertIn('Header="Eligible At"', xaml)
+        self.assertIn('Header="Timing"', xaml)
+        self.assertIn('BeginningEdit="DgResults_BeginningEdit"', xaml)
+        self.assertIn('MinHeight="260"', xaml)
+        self.assertIn('AddPrmTimingDisplayColumns(_resultsTable)', code)
+        self.assertIn('row["TimingStatus"] = databaseNow >= eligibleAt ? "Eligible" : "Waiting";', code)
+        self.assertIn('private void DgResults_BeginningEdit', code)
+        self.assertIn('Result entry is locked until the controlled minimum elapsed time is complete.', code)
+        self.assertIn('CertificateReasonPanel.Visibility', code)
+
     def test_release_identity_is_v285(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
         self.assertEqual("2026.9.23.295", manifest["applicationVersion"])
