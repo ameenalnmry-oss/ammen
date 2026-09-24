@@ -330,6 +330,7 @@
 
                         <DataGrid x:Name="DgResults" Grid.Row="4"
                                   AutoGenerateColumns="False" IsReadOnly="False" SelectionMode="Single"
+                                  BeginningEdit="DgResults_BeginningEdit"
                                   RowHeight="36" MinHeight="260" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                   BorderBrush="#CBD5E1" BorderThickness="1" CanUserAddRows="False" CanUserDeleteRows="False">
