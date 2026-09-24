@@ -521,6 +521,21 @@ END;";
             if (TxtCertificateReason != null)
                 TxtCertificateReason.IsReadOnly = !hasSample || (!CanCancelPrmCertificate() && !CanIssuePrmCertificate());
 
+            if (CertificateReasonPanel != null)
+            {
+                bool controlledLegacyReasonRequired =
+                    _controlledLegacyReissueRoute &&
+                    !_controlledLegacyReissueCompleted &&
+                    _selectedSampleId == _initialSampleId;
+                bool certificateReasonRelevant =
+                    controlledLegacyReasonRequired ||
+                    (BtnCancelCertificate?.IsEnabled ?? false) ||
+                    (BtnReissueCertificate?.IsEnabled ?? false);
+                CertificateReasonPanel.Visibility = certificateReasonRelevant
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+
             ApplyControlledLegacyReissueUiState();
         }
 
@@ -1045,9 +1060,91 @@ ORDER BY ISNULL(SortOrder, SampleTestID), SampleTestID;";
                 new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId }
             });
 
+            AddPrmTimingDisplayColumns(_resultsTable);
             DgResults.ItemsSource = _resultsTable.DefaultView;
             UpdateWorkflowControls();
             TxtStatus.Text = "Loaded " + _resultsTable.Rows.Count + " microbiology test(s).";
+        }
+
+        private void AddPrmTimingDisplayColumns(DataTable results)
+        {
+            if (results == null)
+                return;
+
+            if (!results.Columns.Contains("EligibleAtText"))
+                results.Columns.Add("EligibleAtText", typeof(string));
+            if (!results.Columns.Contains("TimingStatus"))
+                results.Columns.Add("TimingStatus", typeof(string));
+
+            DataTable clockTable = DatabaseHelper.ExecuteQuery(@"
+SELECT AnalysisStartedDate, SYSDATETIME() AS DatabaseNow
+FROM dbo.PRM_Samples
+WHERE SampleID=@SampleID;",
+                new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId } });
+
+            DateTime? analysisStartedAt = null;
+            DateTime databaseNow = DateTime.Now;
+            if (clockTable.Rows.Count > 0)
+            {
+                DataRow clockRow = clockTable.Rows[0];
+                if (clockRow["AnalysisStartedDate"] != DBNull.Value)
+                    analysisStartedAt = Convert.ToDateTime(clockRow["AnalysisStartedDate"], CultureInfo.InvariantCulture);
+                if (clockRow["DatabaseNow"] != DBNull.Value)
+                    databaseNow = Convert.ToDateTime(clockRow["DatabaseNow"], CultureInfo.InvariantCulture);
+            }
+
+            foreach (DataRow row in results.Rows)
+            {
+                if (!row.Table.Columns.Contains("MinimumElapsedHours") || row["MinimumElapsedHours"] == DBNull.Value)
+                {
+                    row["EligibleAtText"] = string.Empty;
+                    row["TimingStatus"] = "Timing Missing";
+                    continue;
+                }
+
+                decimal minimumElapsedHours = Convert.ToDecimal(row["MinimumElapsedHours"], CultureInfo.InvariantCulture);
+                if (!analysisStartedAt.HasValue)
+                {
+                    row["EligibleAtText"] = "Start analysis first";
+                    row["TimingStatus"] = "Not Started";
+                    continue;
+                }
+
+                DateTime eligibleAt = analysisStartedAt.Value.AddHours(Convert.ToDouble(minimumElapsedHours, CultureInfo.InvariantCulture));
+                row["EligibleAtText"] = eligibleAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                row["TimingStatus"] = databaseNow >= eligibleAt ? "Eligible" : "Waiting";
+            }
+
+            results.AcceptChanges();
+        }
+
+        private void DgResults_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            if (e?.Column?.Header == null ||
+                !string.Equals(Convert.ToString(e.Column.Header, CultureInfo.InvariantCulture), "Result", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (e.Row?.Item is not DataRowView rowView ||
+                !rowView.Row.Table.Columns.Contains("TimingStatus"))
+            {
+                return;
+            }
+
+            string timingStatus = Convert.ToString(rowView["TimingStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
+            if (timingStatus.Equals("Eligible", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            e.Cancel = true;
+            string eligibleAt = rowView.Row.Table.Columns.Contains("EligibleAtText")
+                ? Convert.ToString(rowView["EligibleAtText"], CultureInfo.InvariantCulture) ?? string.Empty
+                : string.Empty;
+            TxtStatus.Text = timingStatus.Equals("Waiting", StringComparison.OrdinalIgnoreCase)
+                ? "Result entry is locked until the controlled minimum elapsed time is complete. Eligible at " + eligibleAt + "."
+                : timingStatus.Equals("Not Started", StringComparison.OrdinalIgnoreCase)
+                    ? "Result entry is locked until Analysis Start is recorded."
+                    : "Result entry is locked because controlled timing evidence is incomplete.";
         }
 
         private void BtnReloadTests_Click(object sender, RoutedEventArgs e)
