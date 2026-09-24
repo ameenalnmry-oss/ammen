@@ -69,18 +69,6 @@ jobs:
 
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
-          Write-Host "CONTROLLED_CHANGED_FILE_HASHES_BEGIN"
-          @(
-            ".github/workflows/ci.yml",
-            "PharmaLIMS/ProductionRawMaterialSamples.xaml.cs",
-            "PharmaLIMS/tests/test_v285_deep_review_closure.py",
-            "PharmaLIMS/tests/test_v294_prm_pharmacopoeial_templates.py"
-          ) | ForEach-Object {
-            $hash = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()
-            Write-Host "$hash  $_"
-          }
-          Write-Host "CONTROLLED_CHANGED_FILE_HASHES_END"
-
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
