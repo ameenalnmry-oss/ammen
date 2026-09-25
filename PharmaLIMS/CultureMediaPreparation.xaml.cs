@@ -203,7 +203,6 @@ namespace PharmaLIMS
             SetComboText(CmbReceiptStatus, "Quarantine");
             SetComboText(CmbOverallResult, "Pending");
             SetComboText(CmbTestResult, "Pass");
-            SetComboText(CmbPreparationSterilityReview, "Pending");
 
             // Set default dates
             if (DpReceiptDate != null)
@@ -468,27 +467,6 @@ namespace PharmaLIMS
                 return "Rejected";
 
             return status;
-        }
-
-        private static string NormalizeSterilityReview(string value)
-        {
-            value = (value ?? string.Empty).Trim();
-
-            if (value.Equals("Passed", StringComparison.OrdinalIgnoreCase) ||
-                value.Equals("Released", StringComparison.OrdinalIgnoreCase) ||
-                value.Equals("GPT Passed", StringComparison.OrdinalIgnoreCase))
-                return "Passed";
-
-            if (value.Equals("Failed", StringComparison.OrdinalIgnoreCase) ||
-                value.Equals("Rejected", StringComparison.OrdinalIgnoreCase) ||
-                value.Equals("GPT Failed", StringComparison.OrdinalIgnoreCase))
-                return "Failed";
-
-            if (value.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
-                value.Equals("Under Review", StringComparison.OrdinalIgnoreCase))
-                return "Pending";
-
-            return value;
         }
 
         private static object DbValue(string value)
@@ -1727,6 +1705,10 @@ WHERE MediaQualificationID = @MediaQualificationID
                     return;
                 }
 
+                if (calculatedResult.Equals("Pass", StringComparison.OrdinalIgnoreCase) &&
+                    !HasCompletePassingReleaseTests(tests, _selectedReleaseReportId))
+                    throw new InvalidOperationException("The qualification does not meet its frozen approved test and recovery requirements.");
+
                 if (!ConfirmCultureMediaSignature("Review Media Lot Qualification", RowString(reportRow, "QualificationNo"), _selectedReleaseReportId, out string reviewedBy, out string reason))
                     return;
 
@@ -1836,6 +1818,11 @@ WHERE MediaQualificationID = @MediaQualificationID
                     MessageBox.Show("Final release requires a completed independent review with a Qualified result.", "Final Release Gate", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+
+                DataTable releaseTests = LoadQualificationTests(_selectedReleaseReportId);
+                if (!CalculateQualificationResult(releaseTests).Equals("Pass", StringComparison.OrdinalIgnoreCase) ||
+                    !HasCompletePassingReleaseTests(releaseTests, _selectedReleaseReportId))
+                    throw new InvalidOperationException("Final release requires complete passing tests against the qualification's frozen requirements.");
 
                 if (!ConfirmCultureMediaSignature("Final Release of Media Lot", RowString(reportRow, "QualificationNo"), _selectedReleaseReportId, out string releasedBy, out string reason))
                     return;
@@ -2161,14 +2148,13 @@ WHERE MediaLotID = @MediaLotID
         }
 
         private bool HasCompletePassingReleaseTests()
-            => HasCompletePassingReleaseTests(_currentOrganisms, _selectedLotId);
+            => HasCompletePassingReleaseTests(_currentOrganisms, _selectedReleaseReportId);
 
-        private bool HasCompletePassingReleaseTests(DataTable tests)
-            => HasCompletePassingReleaseTests(tests, _selectedLotId);
-
-        private bool HasCompletePassingReleaseTests(DataTable tests, int mediaLotId)
+        private bool HasCompletePassingReleaseTests(DataTable tests, int qualificationId)
         {
-            DataTable requirements = LoadApplicableQualificationRequirements(mediaLotId);
+            if (qualificationId <= 0)
+                return false;
+            DataTable requirements = LoadQualificationRequirementSnapshots(qualificationId);
             foreach (DataRow requirement in requirements.Rows)
             {
                 string requiredTest = RowString(requirement, "TestName");
@@ -2193,6 +2179,18 @@ WHERE MediaLotID = @MediaLotID
             }
 
             return requirements.Rows.Count > 0;
+        }
+
+        private DataTable LoadQualificationRequirementSnapshots(int qualificationId)
+        {
+            if (qualificationId <= 0)
+                throw new InvalidOperationException("Start or select a controlled qualification before entering results.");
+
+            DataTable requirements = _repository.Load(CultureMediaQuery.LoadQualificationRequirementSnapshots,
+                new SqlParameter("@MediaQualificationID", SqlDbType.Int) { Value = qualificationId });
+            if (requirements.Rows.Count == 0)
+                throw new InvalidOperationException("The selected qualification has no frozen requirement snapshot. Results cannot be evaluated.");
+            return requirements;
         }
 
         private DataTable LoadApplicableQualificationRequirements(int mediaLotId)

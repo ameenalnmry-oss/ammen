@@ -495,6 +495,12 @@ SELECT TestName, MinimumRecoveryPercent, MaximumRecoveryPercent, MinimumIncubati
 FROM Applicable
 WHERE rn = 1
 ORDER BY TestName;",
+            CultureMediaQuery.LoadQualificationRequirementSnapshots => @"
+SELECT TestName, MinimumRecoveryPercent, MaximumRecoveryPercent,
+       MinimumIncubationHoursSnapshot
+FROM dbo.MediaQualificationRequirementSnapshots
+WHERE MediaQualificationID = @MediaQualificationID
+ORDER BY SnapshotID;",
             _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unsupported controlled Culture Media operation.")
         };
 
@@ -515,10 +521,6 @@ FROM dbo.MediaPreparations
 WHERE MediaPreparationID = @MediaPreparationID;",
             CultureMediaScalar.HasVisualCheckSignature => @"
 SELECT CASE WHEN VisualCheckedBy IS NOT NULL OR VisualCheckedAt IS NOT NULL THEN 1 ELSE 0 END
-FROM dbo.MediaPreparations
-WHERE MediaPreparationID = @MediaPreparationID;",
-            CultureMediaScalar.HasSterilityReviewSignature => @"
-SELECT CASE WHEN SterilityReviewedBy IS NOT NULL OR SterilityReviewedAt IS NOT NULL THEN 1 ELSE 0 END
 FROM dbo.MediaPreparations
 WHERE MediaPreparationID = @MediaPreparationID;",
             CultureMediaScalar.PreparationReleaseStatus => @"

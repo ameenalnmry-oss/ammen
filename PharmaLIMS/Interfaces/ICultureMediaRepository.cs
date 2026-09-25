@@ -33,6 +33,7 @@ public enum CultureMediaQuery
     LoadQualificationTests,
     LoadMediaLotQualificationValidation,
     LoadApplicableQualificationRequirements,
+    LoadQualificationRequirementSnapshots,
 }
 
 public enum CultureMediaScalar
@@ -40,7 +41,6 @@ public enum CultureMediaScalar
     PreparationPreparedBy,
     HasSignedPreparationControls,
     HasVisualCheckSignature,
-    HasSterilityReviewSignature,
     PreparationReleaseStatus,
     LoadSopField,
     CultureMediaSopSchemaReady,

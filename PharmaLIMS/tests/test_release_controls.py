@@ -205,7 +205,6 @@ class ReleaseControlsTests(unittest.TestCase):
             "review culture media qualification",
             "release culture media lot",
             "sign prepared-media visual review",
-            "sign prepared-media sterility review",
             "release prepared culture media",
             "reject culture media lot",
             "reject prepared culture media",
@@ -217,7 +216,20 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertGreaterEqual(source.count("WITH (UPDLOCK, HOLDLOCK)"), 5)
         self.assertIn("The qualification performer cannot perform the independent review.", source)
         self.assertIn("The final releaser must be independent of both the qualification performer and reviewer.", source)
-        self.assertIn("The final releaser must be independent of the preparer, visual checker, and sterility reviewer.", source)
+        self.assertIn("The final releaser must be independent of the preparer and visual checker.", source)
+
+    def test_prepared_media_release_requires_visual_signoff_without_sterility_review(self):
+        source = read_source_family("CultureMediaPreparation.xaml.cs")
+        xaml = (ROOT / "CultureMediaPreparation.xaml").read_text(encoding="utf-8-sig")
+        release_gate = source.split("private static void ValidatePreparationReleaseGateInTransaction(", 1)[1].split(
+            "private DataTable LoadPreparationReleaseGateRecord(", 1
+        )[0]
+        release_action = source.split("private void BtnReleasePreparation_Click(", 1)[1]
+        self.assertIn("VisualCheckedBy", release_gate)
+        self.assertIn("VisualConclusion", release_gate)
+        self.assertNotIn("SterilityReview", release_gate)
+        self.assertNotIn("AND SterilityReview = 'Passed'", release_action)
+        self.assertNotIn('Content="Sign Sterility Review"', xaml)
 
     def test_legacy_login_is_one_time_verified_migration_but_signature_never_accepts_legacy(self):
         auth = (ROOT / "Services/AuthService.cs").read_text(encoding="utf-8-sig")
@@ -4604,15 +4616,12 @@ class ReleaseControlsTests(unittest.TestCase):
             "VisualCheckedAt = @CheckedAtUtc",
             "UpdatedAt = @CheckedAtUtc",
             '"CheckedAtUtc", checkedAtUtc.ToString("O", CultureInfo.InvariantCulture)',
-            "SterilityReviewedAt = @ReviewedAtUtc",
-            '"SterilityReviewedAtUtc", reviewedAtUtc.ToString("O", CultureInfo.InvariantCulture)',
             "ReleasedAt = @ReleasedAtUtc",
             '"ReleasedAtUtc", releasedAtUtc.ToString("O", CultureInfo.InvariantCulture)',
         ):
             self.assertIn(marker, source)
         for obsolete in (
             '"CheckedAtUtc", DateTime.UtcNow',
-            '"SterilityReviewedAtUtc", DateTime.UtcNow',
             '"ReleasedAtUtc", DateTime.UtcNow',
         ):
             self.assertNotIn(obsolete, source)
