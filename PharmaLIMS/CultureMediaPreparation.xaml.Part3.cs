@@ -51,7 +51,6 @@ namespace PharmaLIMS
                     int affected = DatabaseHelper.ExecuteNonQueryWithTransaction(@"
 UPDATE dbo.MediaPreparations
 SET ReleaseStatus = 'Rejected',
-    SterilityReview = CASE WHEN SterilityReview = 'Passed' THEN SterilityReview ELSE 'Failed' END,
     RejectedBy = @RejectedBy,
     RejectedAt = SYSUTCDATETIME(),
     Remarks = @Remarks,
@@ -125,13 +124,15 @@ WHERE MediaPreparationID = @MediaPreparationID;",
             }
 
             DateTime? lotExpiry = RowDate(row, "ExpiryDate");
-            if (lotExpiry.HasValue && preparationDate.Date > lotExpiry.Value.Date)
+            DateTime databaseToday = DatabaseHelper.GetAuthoritativeDatabaseTime().Date;
+            if (!lotExpiry.HasValue || lotExpiry.Value.Date < databaseToday ||
+                preparationDate.Date > lotExpiry.Value.Date)
             {
                 MessageBox.Show("The selected dehydrated media lot is expired and cannot be used.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
-            if (lotExpiry.HasValue && preparationExpiry.HasValue && preparationExpiry.Value.Date > lotExpiry.Value.Date)
+            if (preparationExpiry.HasValue && preparationExpiry.Value.Date > lotExpiry.Value.Date)
             {
                 MessageBox.Show(
                     "Prepared media expiry cannot be later than the source dehydrated media lot expiry.",
@@ -279,13 +280,6 @@ WHERE MediaPreparationID = @MediaPreparationID;",
             }
 
             DataRow row = table.Rows[0];
-            if (!NormalizeSterilityReview(RowString(row, "SterilityReview")).Equals("Passed", StringComparison.OrdinalIgnoreCase) ||
-                string.IsNullOrWhiteSpace(RowString(row, "SterilityReviewedBy")) ||
-                !RowDate(row, "SterilityReviewedAt").HasValue)
-            {
-                MessageBox.Show("A signed Sterility Review = Passed is required before final release.", "Release Gate", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
             if (string.IsNullOrWhiteSpace(RowString(row, "VisualCheckedBy")) || !RowDate(row, "VisualCheckedAt").HasValue)
             {
                 MessageBox.Show("A signed SOP A7 visual check is required before final release.", "Release Gate", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -316,9 +310,6 @@ WHERE MediaPreparationID = @MediaPreparationID;",
 SELECT TOP (1)
     p.ReleaseStatus,
     p.ExpiryDate,
-    p.SterilityReview,
-    p.SterilityReviewedBy,
-    p.SterilityReviewedAt,
     p.VisualCheckedBy,
     p.VisualCheckedAt,
     l.ReceiptStatus,
@@ -344,19 +335,14 @@ WHERE p.MediaPreparationID = @MediaPreparationID;", conn, tx);
 
             string releaseStatus = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
             DateTime? preparedExpiry = reader.IsDBNull(1) ? null : reader.GetDateTime(1);
-            string sterilityReview = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
-            string sterilityReviewedBy = reader.IsDBNull(3) ? string.Empty : reader.GetString(3);
-            DateTime? sterilityReviewedAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4);
-            string visualCheckedBy = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
-            DateTime? visualCheckedAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6);
-            string sourceLotStatus = reader.IsDBNull(7) ? string.Empty : reader.GetString(7);
-            DateTime? sourceLotExpiry = reader.IsDBNull(8) ? null : reader.GetDateTime(8);
-            string visualConclusion = reader.IsDBNull(9) ? string.Empty : reader.GetString(9);
-            DateTime databaseDate = reader.GetDateTime(10).Date;
+            string visualCheckedBy = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+            DateTime? visualCheckedAt = reader.IsDBNull(3) ? null : reader.GetDateTime(3);
+            string sourceLotStatus = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
+            DateTime? sourceLotExpiry = reader.IsDBNull(5) ? null : reader.GetDateTime(5);
+            string visualConclusion = reader.IsDBNull(6) ? string.Empty : reader.GetString(6);
+            DateTime databaseDate = reader.GetDateTime(7).Date;
 
             if (!releaseStatus.Equals("Under Release", StringComparison.OrdinalIgnoreCase) ||
-                !sterilityReview.Equals("Passed", StringComparison.OrdinalIgnoreCase) ||
-                string.IsNullOrWhiteSpace(sterilityReviewedBy) || !sterilityReviewedAt.HasValue ||
                 string.IsNullOrWhiteSpace(visualCheckedBy) || !visualCheckedAt.HasValue ||
                 !visualConclusion.Equals("Satisfactory", StringComparison.OrdinalIgnoreCase) ||
                 !preparedExpiry.HasValue || preparedExpiry.Value.Date < databaseDate ||
@@ -364,7 +350,7 @@ WHERE p.MediaPreparationID = @MediaPreparationID;", conn, tx);
                 (sourceLotExpiry.HasValue && sourceLotExpiry.Value.Date < databaseDate))
             {
                 throw new InvalidOperationException(
-                    "The preparation no longer satisfies the signed visual, sterility, expiry, or source-lot release gates.");
+                    "The preparation no longer satisfies the signed visual, expiry, or source-lot release gates.");
             }
         }
 
@@ -392,7 +378,6 @@ WHERE p.MediaPreparationID = @MediaPreparationID;", conn, tx);
                 new SqlParameter("@AutoclaveCycleNo", SqlDbType.NVarChar, 100) { Value = DbValue(TxtAutoclaveCycleNo.Text) },
                 new SqlParameter("@AutoclaveTemperature", SqlDbType.NVarChar, 50) { Value = DbValue(TxtAutoclaveTemperature.Text) },
                 new SqlParameter("@AutoclaveHoldingTime", SqlDbType.NVarChar, 50) { Value = DbValue(TxtAutoclaveHoldingTime.Text) },
-                new SqlParameter("@SterilityReview", SqlDbType.NVarChar, 30) { Value = DbValue(NormalizeSterilityReview(ComboText(CmbPreparationSterilityReview))) },
                 new SqlParameter("@Remarks", SqlDbType.NVarChar) { Value = DbValue(TxtPreparationRemarks.Text) },
                 new SqlParameter("@MediaPreparationID", SqlDbType.Int) { Value = preparationId }
             };
@@ -550,16 +535,17 @@ VALUES
             string preparationNo,
             decimal originalPowderQuantityG,
             decimal newPowderQuantityG,
+            DateTime preparationDate,
+            DateTime preparationExpiry,
             string changeReason)
         {
             decimal quantityDifferenceG = newPowderQuantityG - originalPowderQuantityG;
-            if (quantityDifferenceG == 0m)
-                return;
-
             string receiptStatus;
             decimal currentStockG;
+            DateTime? lotExpiry;
+            DateTime databaseToday;
             using (var command = new SqlCommand(@"
-SELECT ReceiptStatus, CurrentStockG
+SELECT ReceiptStatus, CurrentStockG, ExpiryDate, CAST(SYSDATETIME() AS date)
 FROM dbo.CultureMediaLots WITH (UPDLOCK, HOLDLOCK)
 WHERE MediaLotID = @MediaLotID;", conn, tx))
             {
@@ -572,10 +558,19 @@ WHERE MediaLotID = @MediaLotID;", conn, tx))
                 if (reader.IsDBNull(1))
                     throw new InvalidOperationException("The selected media lot stock has not been reconciled in grams.");
                 currentStockG = reader.GetDecimal(1);
+                lotExpiry = reader.IsDBNull(2) ? null : reader.GetDateTime(2);
+                databaseToday = reader.GetDateTime(3).Date;
             }
 
             if (!NormalizeStatus(receiptStatus).Equals("Released", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Only a Released dehydrated media lot can be issued to preparation.");
+
+            if (!lotExpiry.HasValue || lotExpiry.Value.Date < databaseToday ||
+                preparationDate.Date > lotExpiry.Value.Date || preparationExpiry.Date > lotExpiry.Value.Date)
+                throw new InvalidOperationException("The source dehydrated media lot has no valid expiry for this preparation according to SQL Server time.");
+
+            if (quantityDifferenceG == 0m)
+                return;
 
             if (quantityDifferenceG > 0m && currentStockG < quantityDifferenceG)
             {
@@ -712,8 +707,7 @@ VALUES
             if (action.Contains("Prepared", StringComparison.OrdinalIgnoreCase) ||
                 action.Contains("Preparation", StringComparison.OrdinalIgnoreCase) ||
                 action.Contains("Prepare Culture Media", StringComparison.OrdinalIgnoreCase) ||
-                action.Contains("Visual Check", StringComparison.OrdinalIgnoreCase) ||
-                action.Contains("Sterility Review", StringComparison.OrdinalIgnoreCase))
+                action.Contains("Visual Check", StringComparison.OrdinalIgnoreCase))
                 return "MediaPreparation";
             return "MediaLot";
         }

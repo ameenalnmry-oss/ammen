@@ -726,22 +726,7 @@
                                             <TextBox x:Name="TxtPreparationReleaseStatus" Height="36" IsReadOnly="True" Text="Under Release" />
                                         </StackPanel>
 
-                                        <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,14,12">
-                                            <TextBlock Text="Sterility Review *" Margin="0,0,0,5" />
-                                            <ComboBox x:Name="CmbPreparationSterilityReview" Height="36">
-                                                <ComboBoxItem Content="Pending" IsSelected="True" />
-                                                <ComboBoxItem Content="Passed" />
-                                                <ComboBoxItem Content="Failed" />
-                                            </ComboBox>
-                                            <Button Content="Sign Sterility Review" Margin="0,6,0,0" MinWidth="145" Style="{StaticResource SecondaryButton}" Click="BtnSignPreparationSterilityReview_Click" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,0,14,12">
-                                            <TextBlock Text="Reviewed By" Margin="0,0,0,5" />
-                                            <TextBox x:Name="TxtPreparationReviewedBy" Height="36" IsReadOnly="True" ToolTip="Populated only from the sterility-review electronic signature." />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                                        <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,0,0,12">
                                             <TextBlock Text="Quantity Weighed (g) *" Margin="0,0,0,5" />
                                             <TextBox x:Name="TxtQuantityWeighedG" Height="36" ToolTip="Dry culture-medium powder weighed from the selected manufacturer lot. The quantity is deducted from stock when the preparation is saved." />
                                         </StackPanel>
@@ -902,7 +887,6 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="Sterility Review" Binding="{Binding SterilityReview}" Width="130" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>

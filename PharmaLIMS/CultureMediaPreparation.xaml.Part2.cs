@@ -117,7 +117,7 @@ SELECT
             DataTable tests = _repository.Load(CultureMediaQuery.LoadSelectedReleaseReportTests,
                 new SqlParameter("@MediaQualificationID", SqlDbType.Int) { Value = _selectedReleaseReportId });
 
-            if (!HasCompletePassingReleaseTests(tests, mediaLotId))
+            if (!HasCompletePassingReleaseTests(tests, _selectedReleaseReportId))
                 return false;
 
             qualificationDate = RowDate(reportRow, "QualificationDate");
@@ -232,8 +232,6 @@ SELECT
                 missing.Add("load no.");
             if (string.IsNullOrWhiteSpace(TxtPreparationMpmNo.Text))
                 missing.Add("MPM no.");
-            if (!NormalizeSterilityReview(ComboText(CmbPreparationSterilityReview)).Equals("Passed", StringComparison.OrdinalIgnoreCase))
-                missing.Add("sterility review passed");
             if (!ComboText(CmbPreparationVisualConclusion).Equals("Satisfactory", StringComparison.OrdinalIgnoreCase))
                 missing.Add("A7 visual check satisfactory");
 
@@ -369,6 +367,12 @@ WHEN NOT MATCHED THEN
         private void BtnAddOrganism_Click(object sender, RoutedEventArgs e)
         {
             if (!EnsureCultureMediaEntryAccess()) return;
+            if (_selectedReleaseReportId <= 0)
+            {
+                MessageBox.Show("Start or select an In Progress qualification before adding test results.",
+                    "Qualification Start Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             string testType = ComboText(CmbReleaseTestType).Trim();
             string organism = ComboText(CmbOrganism).Trim();
             if (string.IsNullOrWhiteSpace(organism) && !testType.Equals("Growth Promotion", StringComparison.OrdinalIgnoreCase))
@@ -399,14 +403,22 @@ WHEN NOT MATCHED THEN
             }
 
             string testResult = ComboText(CmbTestResult);
-            decimal minimumRecovery = 50m;
-            decimal maximumRecovery = 200m;
+            decimal minimumRecovery = 0m;
+            decimal maximumRecovery = 0m;
             if (isGrowthPromotion)
             {
-                DataTable rules = LoadApplicableQualificationRequirements(_selectedLotId);
+                DataTable rules = LoadQualificationRequirementSnapshots(_selectedReleaseReportId);
                 DataRow? gptRule = rules.AsEnumerable().FirstOrDefault(r => RowString(r, "TestName").Equals("Growth Promotion", StringComparison.OrdinalIgnoreCase));
-                minimumRecovery = gptRule == null ? 50m : RowNullableDecimal(gptRule, "MinimumRecoveryPercent") ?? 50m;
-                maximumRecovery = gptRule == null ? 200m : RowNullableDecimal(gptRule, "MaximumRecoveryPercent") ?? 200m;
+                decimal? minimum = gptRule == null ? null : RowNullableDecimal(gptRule, "MinimumRecoveryPercent");
+                decimal? maximum = gptRule == null ? null : RowNullableDecimal(gptRule, "MaximumRecoveryPercent");
+                if (!minimum.HasValue || !maximum.HasValue || minimum.Value > maximum.Value)
+                {
+                    MessageBox.Show("The frozen qualification has no valid approved Growth Promotion recovery limits.",
+                        "Qualification Requirements", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                minimumRecovery = minimum.Value;
+                maximumRecovery = maximum.Value;
             }
             if (isGrowthPromotion && decimal.TryParse(recoveryPercent, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal recovery))
             {
@@ -738,9 +750,6 @@ WHEN NOT MATCHED THEN
             TxtAutoclaveCycleNo.Text = RowString(row, "AutoclaveCycleNo");
             TxtAutoclaveTemperature.Text = RowString(row, "AutoclaveTemperature");
             TxtAutoclaveHoldingTime.Text = RowString(row, "AutoclaveHoldingTime");
-            string sterilityReview = NormalizeSterilityReview(RowString(row, "SterilityReview"));
-            SetComboText(CmbPreparationSterilityReview, string.IsNullOrWhiteSpace(sterilityReview) ? "Pending" : sterilityReview);
-            TxtPreparationReviewedBy.Text = LoadSopField("MediaPreparation", RowInt(row, "MediaPreparationID"), "1035-L-0005/A7", "SterilityReviewedBy");
             TxtPreparationRemarks.Text = RowString(row, "Remarks");
             if (TxtPreparationReleaseStatus != null)
                 TxtPreparationReleaseStatus.Text = releaseStatus;
@@ -1491,6 +1500,14 @@ WHEN NOT MATCHED THEN
                     return;
                 }
 
+                DateTime? expiry = RowDate(row, "ExpiryDate");
+                if (!expiry.HasValue || expiry.Value.Date < DatabaseHelper.GetAuthoritativeDatabaseTime().Date)
+                {
+                    MessageBox.Show("The released-media label cannot be printed for a lot with missing or expired manufacturer expiry.",
+                        "Released Label", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 if (!ConfirmCultureMediaSignature("Print Released Media Label", "Media Lot " + lotId, lotId, out string signedBy, out string signatureReason))
                     return;
 
@@ -1643,7 +1660,7 @@ WHEN NOT MATCHED THEN
             AddInfoRow(a6Group, "Autoclave Cycle", RowString(row, "AutoclaveCycleNo"), "Temperature / Holding", RowString(row, "AutoclaveTemperature") + " °C / " + RowString(row, "AutoclaveHoldingTime") + " min");
             blocks.Add(a6);
 
-            blocks.Add(MakeSectionHeading("SOP A7 VISUAL AND STERILITY RELEASE CHECKS"));
+            blocks.Add(MakeSectionHeading("SOP A7 VISUAL RELEASE CHECK"));
             var a7 = new Table { CellSpacing = 0, Margin = new Thickness(0, 4, 0, 10) };
             a7.Columns.Add(new TableColumn { Width = new GridLength(360) });
             a7.Columns.Add(new TableColumn { Width = new GridLength(360) });
@@ -1651,8 +1668,10 @@ WHEN NOT MATCHED THEN
             a7.RowGroups.Add(a7Group);
             AddInfoRow(a7Group, "Visual Equipment", LoadSopField("MediaPreparation", preparationId, "1035-L-0005/A7", "EquipmentCode"), "Visual Conclusion", LoadSopField("MediaPreparation", preparationId, "1035-L-0005/A7", "Conclusion"));
             AddInfoRow(a7Group, "Visual Observations", LoadSopField("MediaPreparation", preparationId, "1035-L-0005/A7", "VisualObservations"), "Visual Checked By", FirstNonEmpty(RowString(row, "VisualCheckedBy"), LoadSopField("MediaPreparation", preparationId, "1035-L-0005/A7", "CheckedBy")));
-            AddInfoRow(a7Group, "Sterility Review", RowString(row, "SterilityReview"), "Sterility Reviewed By", RowString(row, "SterilityReviewedBy"));
             AddInfoRow(a7Group, "Released By", RowString(row, "ReleasedBy"), "Release Date / Time", FormatIsoDateTime(RowDate(row, "ReleasedAt")));
+            if (!string.IsNullOrWhiteSpace(RowString(row, "SterilityReviewedBy")))
+                AddInfoRow(a7Group, "Historical Sterility Review", RowString(row, "SterilityReview"),
+                    "Historical Reviewer", RowString(row, "SterilityReviewedBy"));
             blocks.Add(a7);
 
             blocks.Add(MakeSectionHeading("ATTRIBUTABLE SIGNATURES AND REMARKS"));
@@ -1662,11 +1681,11 @@ WHEN NOT MATCHED THEN
             sign.Columns.Add(new TableColumn { Width = new GridLength(240) });
             var signGroup = new TableRowGroup();
             sign.RowGroups.Add(signGroup);
-            AddTableHeader(signGroup, "Prepared By", "Visual Checked By", "Sterility Reviewed / Released By");
+            AddTableHeader(signGroup, "Prepared By", "Visual Checked By", "Released By");
             var signRow = new TableRow();
             signRow.Cells.Add(MakeReportCell(RowString(row, "PreparedBy"), false));
             signRow.Cells.Add(MakeReportCell(RowString(row, "VisualCheckedBy"), false));
-            signRow.Cells.Add(MakeReportCell(FirstNonEmpty(RowString(row, "SterilityReviewedBy"), "Not reviewed") + " / " + FirstNonEmpty(RowString(row, "ReleasedBy"), "Not released"), false));
+            signRow.Cells.Add(MakeReportCell(FirstNonEmpty(RowString(row, "ReleasedBy"), "Not released"), false));
             signGroup.Rows.Add(signRow);
             blocks.Add(sign);
             blocks.Add(new Paragraph(new Run("Remarks: " + FirstNonEmpty(RowString(row, "Remarks"), "None"))) { Margin = new Thickness(0, 4, 0, 6) });
@@ -1897,8 +1916,6 @@ WHEN NOT MATCHED THEN
             TxtPreparationVisualObservations.Clear();
             SetComboText(CmbPreparationVisualConclusion, "Pending");
             TxtPreparationVisualCheckedBy.Text = string.Empty;
-            SetComboText(CmbPreparationSterilityReview, "Pending");
-            TxtPreparationReviewedBy.Text = string.Empty;
             TxtPreparationRemarks.Clear();
             if (TxtPreparationReleaseStatus != null) TxtPreparationReleaseStatus.Text = "Under Release";
             _selectedPreparationPrintId = 0;
@@ -1940,7 +1957,7 @@ WHEN NOT MATCHED THEN
                 if (!isNew && HasSignedPreparationControls(_selectedPreparationId))
                 {
                     MessageBox.Show(
-                        "This preparation is locked because a visual check or sterility review has already been electronically signed. Reject the record and create a new preparation when a correction is required.",
+                        "This preparation is locked because a review has already been electronically signed. Reject the record and create a new preparation when a correction is required.",
                         "Signed Preparation Locked",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
@@ -1962,16 +1979,18 @@ WHEN NOT MATCHED THEN
                     {
                         const string insertSql = @"
 INSERT INTO dbo.MediaPreparations
-(MediaPreparationNo, MediaID, MediaLotID, PreparationDate, ExpiryDate, QuantityPrepared, PowderQuantityG, PreparedBy, BatchSize, FinalPH, Appearance, AutoclaveCycleNo, AutoclaveTemperature, AutoclaveHoldingTime, SterilityReview, ReleaseStatus, Remarks)
+(MediaPreparationNo, MediaID, MediaLotID, PreparationDate, ExpiryDate, QuantityPrepared, PowderQuantityG, PreparedBy, BatchSize, FinalPH, Appearance, AutoclaveCycleNo, AutoclaveTemperature, AutoclaveHoldingTime, ReleaseStatus, Remarks)
 OUTPUT INSERTED.MediaPreparationID
 VALUES
-(@MediaPreparationNo, @MediaID, @MediaLotID, @PreparationDate, @ExpiryDate, @QuantityPrepared, @PowderQuantityG, @PreparedBy, @BatchSize, @FinalPH, @Appearance, @AutoclaveCycleNo, @AutoclaveTemperature, @AutoclaveHoldingTime, 'Pending', 'Under Release', @Remarks);";
+(@MediaPreparationNo, @MediaID, @MediaLotID, @PreparationDate, @ExpiryDate, @QuantityPrepared, @PowderQuantityG, @PreparedBy, @BatchSize, @FinalPH, @Appearance, @AutoclaveCycleNo, @AutoclaveTemperature, @AutoclaveHoldingTime, 'Under Release', @Remarks);";
 
                         object? id = ExecuteScalarInTransaction(conn, tx, insertSql, BuildPreparationParameters(preparationNo, mediaId, mediaLotId));
                         savedPreparationId = Convert.ToInt32(id ?? throw new InvalidOperationException("The media preparation ID was not returned by the database."), CultureInfo.InvariantCulture);
                         _pendingSignatureEntityId = savedPreparationId;
                         _pendingSignatureRecordNumber = preparationNo;
-                        AdjustCultureMediaStockInTransaction(conn, tx, mediaLotId, savedPreparationId, preparationNo, 0m, powderQuantityG, signatureReason);
+                        AdjustCultureMediaStockInTransaction(conn, tx, mediaLotId, savedPreparationId, preparationNo,
+                            0m, powderQuantityG, DpPreparationDate.SelectedDate!.Value,
+                            DpPreparationExpiry.SelectedDate!.Value, signatureReason);
                     }
                     else
                     {
@@ -2022,7 +2041,9 @@ WHERE MediaPreparationID = @MediaPreparationID
 
                         AdjustCultureMediaStockInTransaction(
                             conn, tx, mediaLotId, savedPreparationId, preparationNo,
-                            originalPowderQuantityG, powderQuantityG, signatureReason);
+                            originalPowderQuantityG, powderQuantityG,
+                            DpPreparationDate.SelectedDate!.Value, DpPreparationExpiry.SelectedDate!.Value,
+                            signatureReason);
                     }
 
                     SavePreparationSopFieldsInTransaction(conn, tx, savedPreparationId);
@@ -2166,118 +2187,6 @@ WHERE MediaPreparationID = @MediaPreparationID
             }
         }
 
-        private void BtnSignPreparationSterilityReview_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                RequireCultureMediaReviewPermission();
-                if (_selectedPreparationId <= 0 || !IsPreparationUnderRelease(_selectedPreparationId))
-                {
-                    MessageBox.Show("Select a saved preparation under release first.", "Sterility Review", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                if (HasSterilityReviewSignature(_selectedPreparationId))
-                {
-                    MessageBox.Show("The sterility review has already been electronically signed and is locked.", "Sterility Review", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-                string reviewResult = NormalizeSterilityReview(ComboText(CmbPreparationSterilityReview));
-                if (!reviewResult.Equals("Passed", StringComparison.OrdinalIgnoreCase) &&
-                    !reviewResult.Equals("Failed", StringComparison.OrdinalIgnoreCase))
-                {
-                    MessageBox.Show("Select Passed or Failed before signing the sterility review.", "Sterility Review", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                if (!ConfirmCultureMediaSignature("Sterility Review Prepared Media", TxtPreparationNo.Text, _selectedPreparationId, out string signedBy, out string reason))
-                    return;
-
-                string preparedBy = GetPreparationPreparedBy(_selectedPreparationId);
-                if (!IsDevelopmentAdminOverride() && string.Equals(preparedBy, signedBy, StringComparison.OrdinalIgnoreCase))
-                {
-                    ClearPendingCultureMediaSignature();
-                    MessageBox.Show("The preparer cannot independently sign the sterility review.", "Segregation of Duties", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                DatabaseHelper.ExecuteInTransaction((conn, tx) =>
-                {
-                    string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
-                        conn,
-                        tx,
-                        signedBy,
-                        "CanReviewResults",
-                        "sign prepared-media sterility review");
-
-                    string lockedPreparedBy;
-                    string lockedReleaseStatus;
-                    string lockedSterilityReviewedBy;
-                    using (SqlCommand workflowCommand = new SqlCommand(@"
-SELECT ISNULL(PreparedBy,N''), ISNULL(ReleaseStatus,N''), ISNULL(SterilityReviewedBy,N'')
-FROM dbo.MediaPreparations WITH (UPDLOCK, HOLDLOCK)
-WHERE MediaPreparationID = @MediaPreparationID;", conn, tx))
-                    {
-                        workflowCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
-                        workflowCommand.Parameters.Add("@MediaPreparationID", SqlDbType.Int).Value = _selectedPreparationId;
-                        using SqlDataReader reader = workflowCommand.ExecuteReader();
-                        if (!reader.Read())
-                            throw new InvalidOperationException("The selected media preparation no longer exists.");
-                        lockedPreparedBy = reader.IsDBNull(0) ? string.Empty : reader.GetString(0).Trim();
-                        lockedReleaseStatus = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
-                        lockedSterilityReviewedBy = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
-                    }
-
-                    if (!lockedReleaseStatus.Equals("Under Release", StringComparison.OrdinalIgnoreCase) ||
-                        !string.IsNullOrWhiteSpace(lockedSterilityReviewedBy))
-                    {
-                        throw new DBConcurrencyException("The preparation is no longer available for sterility-review sign-off.");
-                    }
-
-                    if (!IsDevelopmentAdminOverrideForRole(signerRole) &&
-                        string.Equals(lockedPreparedBy, signedBy.Trim(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new InvalidOperationException("The preparer cannot independently sign the sterility review.");
-                    }
-
-                    DateTime reviewedAtUtc = ReadAuthoritativeUtcInTransaction(conn, tx);
-                    int affected = DatabaseHelper.ExecuteNonQueryWithTransaction(@"
-UPDATE dbo.MediaPreparations
-SET SterilityReview = @SterilityReview,
-    SterilityReviewedBy = @ReviewedBy,
-    SterilityReviewedAt = @ReviewedAtUtc,
-    UpdatedAt = @ReviewedAtUtc
-WHERE MediaPreparationID = @MediaPreparationID
-  AND ReleaseStatus = 'Under Release'
-  AND SterilityReviewedBy IS NULL
-  AND SterilityReviewedAt IS NULL;",
-                        new[]
-                        {
-                            new SqlParameter("@SterilityReview", SqlDbType.NVarChar, 30) { Value = reviewResult },
-                            new SqlParameter("@ReviewedBy", SqlDbType.NVarChar, 100) { Value = signedBy },
-                            new SqlParameter("@ReviewedAtUtc", SqlDbType.DateTime2) { Value = reviewedAtUtc },
-                            new SqlParameter("@MediaPreparationID", SqlDbType.Int) { Value = _selectedPreparationId }
-                        }, conn, tx);
-                    if (affected != 1)
-                        throw new DBConcurrencyException("The preparation is no longer available for sterility-review sign-off.");
-                    SaveSopFieldInTransaction(conn, tx, "MediaPreparation", _selectedPreparationId, "1035-L-0005/A7", "SterilityReview", reviewResult);
-                    SaveSopFieldInTransaction(conn, tx, "MediaPreparation", _selectedPreparationId, "1035-L-0005/A7", "SterilityReviewedBy", signedBy);
-                    SaveSopFieldInTransaction(conn, tx, "MediaPreparation", _selectedPreparationId, "1035-L-0005/A7", "SterilityReviewedAtUtc", reviewedAtUtc.ToString("O", CultureInfo.InvariantCulture));
-                    StorePendingCultureMediaSignatureInTransaction(conn, tx);
-                    AddCultureMediaAuditInTransaction(conn, tx, "MediaPreparations", _selectedPreparationId,
-                        "Prepared Media Sterility Review Signed", "Pending", reviewResult, reason, signedBy,
-                        TxtPreparationNo.Text);
-                });
-                ClearPendingCultureMediaSignature();
-                TxtPreparationReviewedBy.Text = signedBy;
-                UpdatePreparationNextAction();
-                ShowToast("Sterility review signed", "✅");
-            }
-            catch (Exception ex)
-            {
-                ClearPendingCultureMediaSignature();
-                ShowError("Error signing sterility review", ex);
-            }
-        }
-
         private string GetPreparationPreparedBy(int preparationId)
         {
             object? value = _repository.ReadScalar(
@@ -2296,13 +2205,6 @@ WHERE MediaPreparationID = @MediaPreparationID
         private bool HasVisualCheckSignature(int preparationId)
         {
             object? value = _repository.ReadScalar(CultureMediaScalar.HasVisualCheckSignature,
-                new SqlParameter("@MediaPreparationID", SqlDbType.Int) { Value = preparationId });
-            return value != null && value != DBNull.Value && Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
-        }
-
-        private bool HasSterilityReviewSignature(int preparationId)
-        {
-            object? value = _repository.ReadScalar(CultureMediaScalar.HasSterilityReviewSignature,
                 new SqlParameter("@MediaPreparationID", SqlDbType.Int) { Value = preparationId });
             return value != null && value != DBNull.Value && Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
         }
@@ -2330,14 +2232,12 @@ WHERE MediaPreparationID = @MediaPreparationID
                 DataRow gateRow = gate.Rows[0];
                 string preparedBy = RowString(gateRow, "PreparedBy");
                 string visualCheckedBy = RowString(gateRow, "VisualCheckedBy");
-                string sterilityReviewedBy = RowString(gateRow, "SterilityReviewedBy");
                 if (!IsDevelopmentAdminOverride() &&
                     (string.Equals(preparedBy, signedBy, StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(visualCheckedBy, signedBy, StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(sterilityReviewedBy, signedBy, StringComparison.OrdinalIgnoreCase)))
+                     string.Equals(visualCheckedBy, signedBy, StringComparison.OrdinalIgnoreCase)))
                 {
                     ClearPendingCultureMediaSignature();
-                    MessageBox.Show("The final releaser must be independent of the preparer, visual checker, and sterility reviewer.", "Segregation of Duties", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("The final releaser must be independent of the preparer and visual checker.", "Segregation of Duties", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -2352,12 +2252,10 @@ WHERE MediaPreparationID = @MediaPreparationID
 
                     string lockedPreparedBy;
                     string lockedVisualCheckedBy;
-                    string lockedSterilityReviewedBy;
                     string lockedReleaseStatus;
                     using (SqlCommand workflowCommand = new SqlCommand(@"
 SELECT ISNULL(PreparedBy,N''),
        ISNULL(VisualCheckedBy,N''),
-       ISNULL(SterilityReviewedBy,N''),
        ISNULL(ReleaseStatus,N'')
 FROM dbo.MediaPreparations WITH (UPDLOCK, HOLDLOCK)
 WHERE MediaPreparationID = @MediaPreparationID;", conn, tx))
@@ -2369,8 +2267,7 @@ WHERE MediaPreparationID = @MediaPreparationID;", conn, tx))
                             throw new InvalidOperationException("The selected media preparation no longer exists.");
                         lockedPreparedBy = reader.IsDBNull(0) ? string.Empty : reader.GetString(0).Trim();
                         lockedVisualCheckedBy = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
-                        lockedSterilityReviewedBy = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
-                        lockedReleaseStatus = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).Trim();
+                        lockedReleaseStatus = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
                     }
 
                     if (!lockedReleaseStatus.Equals("Under Release", StringComparison.OrdinalIgnoreCase))
@@ -2378,11 +2275,10 @@ WHERE MediaPreparationID = @MediaPreparationID;", conn, tx))
 
                     if (!IsDevelopmentAdminOverrideForRole(signerRole) &&
                         (string.Equals(lockedPreparedBy, signedBy.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(lockedVisualCheckedBy, signedBy.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(lockedSterilityReviewedBy, signedBy.Trim(), StringComparison.OrdinalIgnoreCase)))
+                         string.Equals(lockedVisualCheckedBy, signedBy.Trim(), StringComparison.OrdinalIgnoreCase)))
                     {
                         throw new InvalidOperationException(
-                            "The final releaser must be independent of the preparer, visual checker, and sterility reviewer.");
+                            "The final releaser must be independent of the preparer and visual checker.");
                     }
 
                     ValidatePreparationReleaseGateInTransaction(conn, tx, releasedPreparationId);
@@ -2392,12 +2288,10 @@ UPDATE dbo.MediaPreparations
 SET ReleaseStatus = 'Released',
     ReleasedBy = @ReleasedBy,
     ReleasedAt = @ReleasedAtUtc,
-    Remarks = CONCAT(ISNULL(Remarks, ''), CHAR(13) + CHAR(10), 'Preparation released after signed visual and sterility review.'),
+    Remarks = CONCAT(ISNULL(Remarks, ''), CHAR(13) + CHAR(10), 'Preparation released after signed visual review.'),
     UpdatedAt = @ReleasedAtUtc
 WHERE MediaPreparationID = @MediaPreparationID
   AND ReleaseStatus = 'Under Release'
-  AND SterilityReview = 'Passed'
-  AND SterilityReviewedBy IS NOT NULL
   AND VisualCheckedBy IS NOT NULL
   AND ExpiryDate IS NOT NULL
   AND ExpiryDate >= CAST(GETDATE() AS date);",
