@@ -1583,7 +1583,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("NormalizeWaterProfile", reports)
         self.assertIn('return "PTW";', reports)
         self.assertIn('return "PW";', reports)
-        self.assertIn("BuildWaterProfileTrendChartModel", reports)
+        self.assertIn("BuildSnapshotTrendModel", reports)
         self.assertIn("PW/PTW separated scales", reports)
         self.assertIn("if (hasSpecificationSnapshot)", reports)
         self.assertIn("A stored specification snapshot is immutable historical evidence", reports)
@@ -3412,7 +3412,7 @@ class ReleaseControlsTests(unittest.TestCase):
         for source in (db, reports, results, details, certificate):
             self.assertIn("LEFT JOIN Tests t", source.replace("dbo.Tests", "Tests"))
         self.assertIn("CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END", db)
-        self.assertIn("effectiveActionExpression = \"CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END\"", reports)
+        self.assertIn("st.ActionLimitSnapshot AS _SnapshotAction", reports)
         self.assertIn("CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END", details)
         self.assertIn("CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END AS ActionLimit", certificate)
         self.assertNotIn("INNER JOIN dbo.Tests t ON t.TestID=st.TestID\nWHERE st.SampleID=@SampleID", results)
@@ -4021,10 +4021,10 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("ExactCount", service)
         self.assertIn("CensoredCount", service)
         self.assertIn("EvaluateQualifiedSignal", service)
-        self.assertIn("qualified/censored boundary", reports)
-        self.assertIn("qualifiedPointsByEntity", reports)
-        self.assertIn('row.Table.Columns.Contains("ResultQualifier")', reports)
-        self.assertIn("excluded from exact statistics", reports)
+        self.assertIn("Qualified boundary (not exact)", reports)
+        self.assertIn("boundaries.Points.Add", reports)
+        self.assertIn('TrendReportData.Text(item.Row, "ResultQualifier")', reports)
+        self.assertIn("TryGetTrendNumericValue(value", reports)
 
     def test_v208_internal_em_trend_never_pools_incompatible_units_and_has_real_chart(self):
         xaml = (ROOT / "EMTrendReport.xaml").read_text(encoding="utf-8-sig")
@@ -4050,8 +4050,11 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("NOT ASSESSED", code)
         self.assertIn("pendingSeries", code)
         self.assertIn("notAssessedSeries", code)
-        self.assertIn("@summaryTestId", code)
-        self.assertIn("@selectedTest", code)
+        summary = code.split("private DataTable LoadSummaryData", 1)[1].split("Builds the Status Summary chart model", 1)[0]
+        self.assertIn("LoadReportData()", summary)
+        self.assertIn("currentDataTable.Copy()", summary)
+        self.assertIn("st.TestID = @testId", code)
+        self.assertIn("@testName", code)
 
 
     def test_v209_trend_build_blockers_are_closed(self):

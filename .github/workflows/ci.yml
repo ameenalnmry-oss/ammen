@@ -107,6 +107,21 @@ jobs:
               throw "PharmaLIMS release validation did not complete successfully."
           }
 
+      - name: Trend report WPF and complete PDF fixture smoke
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet run --project tests/PharmaLIMS.TrendReportSmoke/PharmaLIMS.TrendReportSmoke.csproj --configuration Release -- artifacts/trend-report-preview
+          if ($LASTEXITCODE -ne 0) { throw "Trend WPF/PDF fixture smoke failed." }
+
+      - name: Save synthetic trend report previews for visual review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trend-report-fixture-preview
+          path: PharmaLIMS/artifacts/trend-report-preview/*.pdf
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Reject vulnerable NuGet packages
         working-directory: PharmaLIMS
         run: |

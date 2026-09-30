@@ -21,3 +21,14 @@
 ## Production release gate
 
 Source CI success does not itself approve a Production artifact. The exact Production package remains subject to the controlled main-branch workflow dispatch path: production configuration validation, self-contained win-x64 publish, Authenticode signing, exact signed-binary smoke, publish hash manifest verification, resolved CycloneDX SBOM generation, provenance attestation and controlled artifact upload.
+
+## Trend report source correction — 2026-09-30
+
+- Use one frozen in-memory query result for native chart, summary, counters and export, including pending rows and identical PRM sampling-date/status interpretation.
+- Preserve qualified results in all result tables; exclude them from exact statistics and show boundary markers on plots.
+- Separate numeric statistics and report panels by controlled population, test, method, unit and point; plot each observation's historical limits with gaps where evidence is missing.
+- Keep incomplete pH ranges and absent numeric specifications Not Assessed instead of inventing PASS.
+- Invalidate stale data on failed reload.
+- Export complete paginated Medica review drafts with all curve panels, repeated table headings, wrapped individual results, narrative and signature fields. Internal EM also includes historical integrity evidence and full PDF export.
+- Add executable shared calculation regressions and an isolated WPF/PDF fixture smoke without accessing live laboratory data.
+- Historical migrations, specifications, records and QA approvals are unchanged. The retained 295 source identity is not a new Production approval.

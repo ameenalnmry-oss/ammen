@@ -141,6 +141,8 @@ ORDER BY AreaCode,P.Method,e.EventDate,P.SequenceNo,P.PlateCode;";
             }
             catch (Exception ex)
             {
+                _details = new DataTable(); _summary = new DataTable();
+                gridDetails.ItemsSource = null; gridSummary.ItemsSource = null; TrendChart.Model = null; txtNarrative.Text = string.Empty;
                 ApplicationLogger.Error("Unable to load the six-month EM trend.", ex);
                 MessageBox.Show("Unable to load the EM trend: " + UserFacingError.SafeMessage(ex), "EM Trend", MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -195,7 +197,7 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
                 BuildTrendChart(selected.Row);
         }
 
-        private void BuildTrendChart(DataRow selectedSummary)
+        private PlotModel BuildTrendChart(DataRow selectedSummary)
         {
             string areaCode = Convert.ToString(selectedSummary["AreaCode"], CultureInfo.InvariantCulture) ?? string.Empty;
             string method = Convert.ToString(selectedSummary["Method"], CultureInfo.InvariantCulture) ?? string.Empty;
@@ -204,34 +206,47 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
                 .Where(row => string.Equals(Convert.ToString(row["AreaCode"], CultureInfo.InvariantCulture), areaCode, StringComparison.OrdinalIgnoreCase))
                 .Where(row => string.Equals(Convert.ToString(row["Method"], CultureInfo.InvariantCulture), method, StringComparison.OrdinalIgnoreCase))
                 .Where(row => string.Equals(Convert.ToString(row["Unit"], CultureInfo.InvariantCulture), unit, StringComparison.OrdinalIgnoreCase))
-                .Where(row => row["Result"] != DBNull.Value)
+                .Where(row => string.Equals(Convert.ToString(row["Grade"], CultureInfo.InvariantCulture), Convert.ToString(selectedSummary["Grade"], CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
+                .Where(row => string.Equals(Convert.ToString(row["AreaName"], CultureInfo.InvariantCulture), Convert.ToString(selectedSummary["AreaName"], CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
                 .OrderBy(row => Convert.ToDateTime(row["EventDate"], CultureInfo.InvariantCulture))
                 .ToList();
 
-            var model = new PlotModel { Title = $"{areaCode} — {method} ({unit})", Background = OxyColors.White };
+            var model = new PlotModel { Title = $"{areaCode} - {selectedSummary["AreaName"]} / {selectedSummary["Grade"]} - {method} ({unit})", Background = OxyColors.White };
             model.Axes.Add(new DateTimeAxis { Position = AxisPosition.Bottom, Title = "Monitoring date", StringFormat = "dd-MMM-yyyy" });
             model.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = unit, MinimumPadding = 0.08, MaximumPadding = 0.15 });
             var total = new LineSeries { Title = "Total count", MarkerType = MarkerType.Circle, StrokeThickness = 2 };
-            var fungal = new LineSeries { Title = "Fungal count", MarkerType = MarkerType.Square, StrokeThickness = 1.5 };
-            var alert = new LineSeries { Title = "Alert limit (historical)", LineStyle = LineStyle.Dash, StrokeThickness = 1.4 };
-            var action = new LineSeries { Title = "Action limit (historical)", LineStyle = LineStyle.Dot, StrokeThickness = 1.4 };
+            model.Axes.Add(new LinearAxis { Key = "fungal", Position = AxisPosition.Right, Title = "Fungal count (as recorded)", MinimumPadding = .08 });
+            var fungal = new LineSeries { YAxisKey = "fungal", Title = "Fungal count (as recorded)", MarkerType = MarkerType.Square, StrokeThickness = 1.5 };
+            var alert = new StairStepSeries { Color = OxyColors.DarkOrange, Title = "Alert limit (historical)", LineStyle = LineStyle.Dash, StrokeThickness = 1.4 };
+            var action = new StairStepSeries { Color = OxyColors.Red, Title = "Action limit (historical)", LineStyle = LineStyle.Dot, StrokeThickness = 1.4 };
             foreach (DataRow row in rows)
             {
                 DateTime date = Convert.ToDateTime(row["EventDate"], CultureInfo.InvariantCulture);
                 double x = DateTimeAxis.ToDouble(date);
-                total.Points.Add(new DataPoint(x, Convert.ToDouble(row["Result"], CultureInfo.InvariantCulture)));
+                total.Points.Add(new DataPoint(x, row["Result"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["Result"], CultureInfo.InvariantCulture)));
                 if (row["FungalCount"] != DBNull.Value)
                     fungal.Points.Add(new DataPoint(x, Convert.ToDouble(row["FungalCount"], CultureInfo.InvariantCulture)));
-                if (row["AlertLimit"] != DBNull.Value)
-                    alert.Points.Add(new DataPoint(x, Convert.ToDouble(row["AlertLimit"], CultureInfo.InvariantCulture)));
-                if (row["ActionLimit"] != DBNull.Value)
-                    action.Points.Add(new DataPoint(x, Convert.ToDouble(row["ActionLimit"], CultureInfo.InvariantCulture)));
+                alert.Points.Add(new DataPoint(x, row["AlertLimit"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["AlertLimit"], CultureInfo.InvariantCulture)));
+                action.Points.Add(new DataPoint(x, row["ActionLimit"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["ActionLimit"], CultureInfo.InvariantCulture)));
+            }
+            if (rows.Count == 1)
+            {
+                DateTime date = Convert.ToDateTime(rows[0]["EventDate"], CultureInfo.InvariantCulture);
+                foreach (var limits in new[] { alert, action })
+                {
+                    double value = limits.Points[0].Y;
+                    limits.Points.Clear();
+                    limits.Points.Add(new DataPoint(DateTimeAxis.ToDouble(date.AddHours(-12)), value));
+                    limits.Points.Add(new DataPoint(DateTimeAxis.ToDouble(date.AddHours(12)), value));
+                }
             }
             model.Series.Add(total);
             if (fungal.Points.Count > 0) model.Series.Add(fungal);
             if (alert.Points.Count > 0) model.Series.Add(alert);
             if (action.Points.Count > 0) model.Series.Add(action);
+            model.Legends.Add(new OxyPlot.Legends.Legend { LegendPosition = OxyPlot.Legends.LegendPosition.BottomCenter, LegendPlacement = OxyPlot.Legends.LegendPlacement.Outside });
             TrendChart.Model = model;
+            return model;
         }
 
         private static bool IsAssessment(DataRow row, string expected) =>
@@ -250,7 +265,7 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
                 ("Alerts", typeof(int)), ("Actions", typeof(int)), ("NotAssessed", typeof(int)), ("HistoricalContext", typeof(string))
             }) summary.Columns.Add(col.Name, col.Type);
 
-            var groups = details.Rows.Cast<DataRow>().GroupBy(r => string.Join("|", r["AreaCode"], r["Method"], r["Unit"]), StringComparer.OrdinalIgnoreCase);
+            var groups = details.Rows.Cast<DataRow>().GroupBy(r => string.Join("|", r["AreaCode"], r["AreaName"], r["Grade"], r["Method"], r["Unit"]), StringComparer.OrdinalIgnoreCase);
             foreach (var group in groups)
             {
                 List<DataRow> rows = group.ToList();
@@ -287,12 +302,12 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
 
             static IEnumerable<IGrouping<string, DataRow>> MethodUnitGroups(DataTable table) => table.Rows.Cast<DataRow>()
                 .Where(r => r["Result"] != DBNull.Value)
-                .GroupBy(r => $"{Convert.ToString(r["Method"], CultureInfo.InvariantCulture)}|{Convert.ToString(r["Unit"], CultureInfo.InvariantCulture)}", StringComparer.OrdinalIgnoreCase);
+                .GroupBy(r => $"{Convert.ToString(r["Method"], CultureInfo.InvariantCulture)}|{Convert.ToString(r["Unit"], CultureInfo.InvariantCulture)}|{Convert.ToString(r["Grade"], CultureInfo.InvariantCulture)}", StringComparer.OrdinalIgnoreCase);
 
             static string MethodUnitLabel(IGrouping<string, DataRow> group)
             {
                 DataRow first = group.First();
-                return $"{Convert.ToString(first["Method"], CultureInfo.InvariantCulture)} ({Convert.ToString(first["Unit"], CultureInfo.InvariantCulture)})";
+                return $"{Convert.ToString(first["Grade"], CultureInfo.InvariantCulture)} / {Convert.ToString(first["Method"], CultureInfo.InvariantCulture)} ({Convert.ToString(first["Unit"], CultureInfo.InvariantCulture)})";
             }
 
             string overview = !MethodUnitGroups(details).Any()
@@ -359,6 +374,7 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
 
         private void Print_Click(object sender, RoutedEventArgs e)
         {
+            if (_isLoadingTrend) { MessageBox.Show("Wait for trend loading to complete.", "EM Trend"); return; }
             if (!DatabaseHelper.CanAccessReports(Login.CurrentUser))
             {
                 MessageBox.Show("Reports permission is required to print the Environmental Monitoring trend.", "EM Trend", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -397,6 +413,28 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
             foreach (DataRow row in _summary.Rows) { TableRow tr = new(); foreach (string column in printColumns) tr.Cells.Add(Cell(row[column] == DBNull.Value ? "NR" : Convert.ToString(row[column], CultureInfo.InvariantCulture) ?? "", false)); group.Rows.Add(tr); }
             document.Blocks.Add(table);
 
+            foreach (DataRow summaryRow in _summary.Rows)
+            {
+                var previousModel = TrendChart.Model;
+                var model = BuildTrendChart(summaryRow);
+                using var stream = new System.IO.MemoryStream();
+                new OxyPlot.Wpf.PngExporter { Width = 1600, Height = 700 }.Export(model, stream);
+                var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                bitmap.BeginInit(); bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = new System.IO.MemoryStream(stream.ToArray()); bitmap.EndInit(); bitmap.Freeze();
+                document.Blocks.Add(new Paragraph(new Run(model.Title)) { FontWeight = System.Windows.FontWeights.Bold });
+                document.Blocks.Add(new BlockUIContainer(new Image { Source = bitmap, Width = Math.Max(200, dialog.PrintableAreaWidth - 60), Stretch = Stretch.Uniform }));
+                TrendChart.Model = previousModel;
+            }
+            document.Blocks.Add(new Paragraph(new Run("ALL INDIVIDUAL OBSERVATIONS")) { FontWeight = System.Windows.FontWeights.Bold });
+            string[] detailColumns = { "EventNo", "EventDate", "AreaCode", "Method", "PlateCode", "Result", "FungalCount", "Unit", "AlertLimit", "ActionLimit", "Assessment" };
+            Table observations = new() { CellSpacing = 0 };
+            foreach (string _ in detailColumns) observations.Columns.Add(new TableColumn());
+            TableRowGroup observationGroup = new(); observations.RowGroups.Add(observationGroup);
+            TableRow observationHeader = new(); foreach (string column in detailColumns) observationHeader.Cells.Add(Cell(column, true)); observationGroup.Rows.Add(observationHeader);
+            foreach (DataRow row in _details.Rows) { TableRow output = new(); foreach (string column in detailColumns) output.Cells.Add(Cell(Convert.ToString(row[column], CultureInfo.InvariantCulture) ?? "NR", false)); observationGroup.Rows.Add(output); }
+            document.Blocks.Add(observations);
+
             document.Blocks.Add(new Paragraph(new Run("TREND REVIEW NARRATIVE")) { FontWeight = System.Windows.FontWeights.Bold, FontSize = 10.5, Margin = new Thickness(0, 9, 0, 4) });
             foreach (string block in (txtNarrative.Text ?? string.Empty).Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries))
                 document.Blocks.Add(new Paragraph(new Run(block.Trim())) { FontSize = 8, Margin = new Thickness(0, 2, 0, 4) });
@@ -406,6 +444,39 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
             dialog.PrintDocument(((IDocumentPaginatorSource)document).DocumentPaginator, "EM Trend Review");
             string user = string.IsNullOrWhiteSpace(Login.CurrentUser) ? "Unknown" : Login.CurrentUser.Trim();
             DatabaseHelper.AddAuditTrailAdvanced("EM_Trend", 0, "EM Trend Review Printed", "", "Printed", lblStatus.Text, user);
+        }
+
+        private void ExportPdf_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingTrend || _details.Rows.Count == 0) { MessageBox.Show("Load completed trend data before PDF export.", "EM Trend"); return; }
+            if (!DatabaseHelper.CanAccessReports(Login.CurrentUser)) { MessageBox.Show("Reports permission is required.", "EM Trend"); return; }
+            Microsoft.Win32.SaveFileDialog dialog = new() { Filter = "PDF report|*.pdf", FileName = "MEDICA_EM_Trend_Full_Review_Draft.pdf" };
+            if (dialog.ShowDialog(this) != true) return;
+            var previousModel = TrendChart.Model;
+            try
+            {
+                DateTime generated = DatabaseHelper.GetAuthoritativeDatabaseTime();
+                var charts = new List<TrendReportChart>();
+                foreach (DataRow summaryRow in _summary.Rows)
+                {
+                    var model = BuildTrendChart(summaryRow);
+                    using var stream = new System.IO.MemoryStream();
+                    new OxyPlot.Wpf.PngExporter { Width = 1600, Height = 700 }.Export(model, stream);
+                    charts.Add(new TrendReportChart(model.Title ?? "EM trend", stream.ToArray()));
+                }
+                string[] summaryColumns = { "AreaCode", "AreaName", "Grade", "Method", "Unit", "NumericObservations", "Mean", "Maximum", "Alerts", "Actions", "Pending", "NotAssessed", "LimitState" };
+                string[] detailColumns = { "EventNo", "EventDate", "AreaCode", "Method", "PlateCode", "Result", "FungalCount", "Unit", "AlertLimit", "ActionLimit", "Assessment" };
+                string[] evidenceColumns = { "EventNo", "PlateCode", "StoredResult", "RecalculatedResult", "EvidenceSource", "ReconciliationID", "ValueIntegrity" };
+                string state = _approvedOnly ? "Approved source events only" : "DRAFT - INCLUDES NON-APPROVED EVENTS";
+                TrendPdfReportWriter.Write(dialog.FileName, "ENVIRONMENTAL MONITORING TREND REVIEW", "EM-TREND-" + generated.ToString("yyyyMMdd-HHmmss"),
+                    $"{_periodStart:yyyy-MM-dd} to {_periodEndExclusive.AddDays(-1):yyyy-MM-dd} | {state}", Login.CurrentUser, generated,
+                    System.IO.Path.Combine(AppContext.BaseDirectory, "medica-logo.png"), new[] { lblStatus.Text, "Procedure Ref: MQC-G-0009 | Historical evidence and result assessment" }, charts,
+                    new[] { new TrendReportTable("Summary by area / method / unit", _summary, summaryColumns), new TrendReportTable("All individual observations", _details, detailColumns), new TrendReportTable("Historical evidence integrity", _details, evidenceColumns) }, txtNarrative.Text);
+                DatabaseHelper.AddAuditTrailAdvanced("EM_Trend", 0, "EM Trend PDF Review Draft Export", "", "Exported", lblStatus.Text, Login.CurrentUser);
+                MessageBox.Show("Full Medica EM review draft exported with all curves, results and evidence.", "EM Trend");
+            }
+            catch (Exception ex) { ApplicationLogger.Error("EM trend PDF export failed", ex); MessageBox.Show(UserFacingError.SafeMessage(ex), "EM Trend"); }
+            finally { TrendChart.Model = previousModel; }
         }
 
         private static TableCell Cell(string text, bool header) => new(new Paragraph(new Run(text)))
