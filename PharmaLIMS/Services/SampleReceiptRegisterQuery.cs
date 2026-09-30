@@ -35,22 +35,23 @@ WITH RegisterRows AS (
  ELSE ISNULL(ps.ProductCode,N'')+N' | '+ISNULL(ps.ProductName,N'') END + N' | '+ISNULL(ps.Department,N'')+N' | '+ISNULL(ps.SampleSource,N''),
  CASE WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.ManufacturerLotNo,N'') ELSE ISNULL(ps.BatchNo,N'') END,
  COALESCE(CONVERT(nvarchar(60),ps.SampleQuantity),N'')+N' '+ISNULL(ps.Unit,N''),
- ps.SampleDateTime,CAST(NULL AS datetime2),ps.CreatedDate,ps.SampledBy,CAST(NULL AS nvarchar(100)),ps.CreatedBy,
- CAST(NULL AS nvarchar(50)),ps.SampleStatus,
+ ps.SampleDateTime,pr.ReceivedDateTime,ps.CreatedDate,ps.SampledBy,pr.ReceivedBy,ps.CreatedBy,
+ pr.ReceiptDecision,ps.SampleStatus,
  STUFF((SELECT N'; '+ISNULL(pt.TestName,N'Unrecorded test') FROM dbo.PRM_SampleTests pt WHERE pt.SampleID=ps.SampleID
  ORDER BY pt.SampleTestID FOR XML PATH(''),TYPE).value('.','nvarchar(max)'),1,2,N'')
- FROM dbo.PRM_Samples ps
+ FROM dbo.PRM_Samples ps LEFT JOIN dbo.LaboratoryReceipts pr ON pr.PrmSampleID=ps.SampleID
  UNION ALL
  SELECT 'EM',e.Id,e.EventNo,N'Environmental Monitoring',
  COALESCE(NULLIF(e.AreaCodeSnapshot,N''),a.AreaCode,N'')+N' | '+COALESCE(NULLIF(e.AreaNameSnapshot,N''),a.AreaName,N'')+
  N' | Grade: '+COALESCE(NULLIF(e.GradeSnapshot,N''),a.Grade,N'Not recorded'),
  ISNULL(e.BatchNo,N''),CONVERT(nvarchar(60),(SELECT COUNT(*) FROM dbo.EM_EventPlates p WHERE p.EventId=e.Id))+N' plate(s)',
- CAST(e.EventDate AS datetime2),CAST(NULL AS datetime2),e.CreatedAt,CAST(NULL AS nvarchar(100)),CAST(NULL AS nvarchar(100)),
+ CAST(e.EventDate AS datetime2),er.ReceivedDateTime,e.CreatedAt,CAST(NULL AS nvarchar(100)),er.ReceivedBy,
  (SELECT TOP 1 es.SignedBy FROM dbo.EM_EventSignatures es WHERE es.EventID=e.Id AND es.ActionType=N'EM Registration' ORDER BY es.SignedAt,es.SignatureID),
- CAST(NULL AS nvarchar(50)),ISNULL(NULLIF(e.WorkflowStatus,N''),N'Registered'),
+ er.ReceiptDecision,ISNULL(NULLIF(e.WorkflowStatus,N''),N'Registered'),
  STUFF((SELECT N'; '+p.Method+N' ['+p.PlateCode+N']' FROM dbo.EM_EventPlates p WHERE p.EventId=e.Id
  ORDER BY p.Id FOR XML PATH(''),TYPE).value('.','nvarchar(max)'),1,2,N'')
  FROM dbo.EM_Events e LEFT JOIN dbo.EM_Areas a ON a.Id=e.AreaId
+ LEFT JOIN dbo.LaboratoryReceipts er ON er.EmEventID=e.Id
 )
 SELECT * FROM RegisterRows
 WHERE (@Type=N'' OR SampleType=@Type) AND

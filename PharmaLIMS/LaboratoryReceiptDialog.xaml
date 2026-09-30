@@ -1,0 +1,16 @@
+<Window x:Class="PharmaLIMS.LaboratoryReceiptDialog"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Record Accepted Laboratory Receipt" Width="610" Height="560" MinWidth="520" MinHeight="500" WindowStartupLocation="CenterOwner" Background="#F4F6F8">
+ <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="24">
+  <TextBlock Text="LABORATORY RECEIPT" FontSize="23" FontWeight="Bold" Foreground="#143752"/>
+  <TextBlock x:Name="Identity" Margin="0,12" TextWrapping="Wrap"/>
+  <TextBlock Text="Use this action only for a sample you personally received and accepted for laboratory testing. Follow the approved procedure for unsuitable samples." TextWrapping="Wrap"/>
+  <TextBlock Text="Actual laboratory receipt date and time (24-hour, server local time)" Margin="0,18,0,6"/>
+  <WrapPanel><DatePicker x:Name="ReceiptDate" Width="170"/><TextBox x:Name="ReceiptTime" Width="90" Margin="12,0" MaxLength="5" ToolTip="HH:mm"/></WrapPanel>
+  <TextBlock x:Name="Receiver" Margin="0,16,0,8"/>
+  <TextBlock Text="Receipt decision: Accepted for laboratory testing" FontWeight="SemiBold"/>
+  <CheckBox x:Name="Confirmed" Margin="0,18" Content="I confirm the identity and condition were checked against the approved procedure."/>
+  <TextBlock Text="A password-confirmed electronic signature and specific reason are required. The signed receipt is permanent. Historical dates must be supported by the original receipt record." TextWrapping="Wrap" Foreground="#526371"/>
+  <Button x:Name="SaveButton" Content="Sign and Record Receipt" Click="Save_Click" Padding="18,10" Margin="0,20,0,0" HorizontalAlignment="Right"/>
+ </StackPanel></ScrollViewer>
+</Window>

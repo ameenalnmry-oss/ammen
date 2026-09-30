@@ -17,6 +17,7 @@ DECLARE @Protected TABLE
 
 INSERT INTO @Protected(TableName, TriggerName, BodyToken)
 VALUES
+    (N'LaboratoryReceipts', N'TRG_LaboratoryReceipts_AppendOnly', N'Laboratory receipt evidence is append-only and cannot be updated or deleted'),
     (N'AuditTrail', N'TRG_AuditTrail_AppendOnly', N'append-only and cannot be updated or deleted'),
     (N'CertificateDocumentSnapshots', N'TRG_CertificateDocumentSnapshots_AppendOnly', N'append-only and cannot be updated or deleted'),
     (N'CertificateLifecycleAudit', N'TRG_CertificateLifecycleAudit_AppendOnly', N'append-only and cannot be updated or deleted'),

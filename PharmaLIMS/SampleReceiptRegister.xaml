@@ -14,6 +14,7 @@
     <StackPanel Margin="0,0,12,8"><TextBlock Text="From"/><DatePicker x:Name="DateFrom" Width="145" Height="30" SelectedDateChanged="FilterChanged"/></StackPanel>
     <StackPanel Margin="0,0,12,8"><TextBlock Text="To (inclusive)"/><DatePicker x:Name="DateTo" Width="145" Height="30" SelectedDateChanged="FilterChanged"/></StackPanel>
     <Button x:Name="LoadButton" Content="Load Register" Click="Load_Click" Padding="14,6" Margin="0,14,10,8"/>
+    <Button x:Name="ReceiptButton" Content="Record Accepted Receipt" Click="Receipt_Click" Padding="14,6" Margin="0,14,10,8"/>
     <Button x:Name="ExportButton" Content="Export / Print PDF" Click="Export_Click" IsEnabled="False" Padding="14,6" Margin="0,14,10,8"/>
    </WrapPanel>
    <TextBlock Text="Missing lab receipt dates remain 'Not recorded'. Registration date is not substituted for lab receipt. Cancelled and rejected records remain visible with their status." TextWrapping="Wrap" Foreground="#526371"/>
