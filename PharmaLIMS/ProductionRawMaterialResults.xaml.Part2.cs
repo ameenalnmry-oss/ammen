@@ -875,30 +875,30 @@ SELECT CAST(SCOPE_IDENTITY() AS int);",
                 // underlying signature was recorded successfully.
                 signatureSnapshot = LoadPrmElectronicSignatureSnapshotInTransaction(conn, tx);
 
-                if (controlledHistoricalLegacyReissue)
+                bool hasResultEntry = false;
+                bool hasReview = false;
+                bool hasApproval = false;
+                bool hasIssueSignature = false;
+                foreach (DataRow signatureRow in signatureSnapshot.Rows)
                 {
-                    bool hasResultEntry = false;
-                    bool hasReview = false;
-                    bool hasApproval = false;
-                    bool hasReissueSignature = false;
-                    foreach (DataRow signatureRow in signatureSnapshot.Rows)
-                    {
-                        string actionType = Convert.ToString(signatureRow["ActionType"], CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
-                        if (actionType.Equals("Result Entry", StringComparison.OrdinalIgnoreCase))
-                            hasResultEntry = true;
-                        else if (actionType.Equals("Review", StringComparison.OrdinalIgnoreCase))
-                            hasReview = true;
-                        else if (actionType.Equals("Approval", StringComparison.OrdinalIgnoreCase))
-                            hasApproval = true;
-                        else if (actionType.Equals("Certificate Reissue", StringComparison.OrdinalIgnoreCase))
-                            hasReissueSignature = true;
-                    }
+                    string actionType = Convert.ToString(signatureRow["ActionType"], CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
+                    if (actionType.Equals("Result Entry", StringComparison.OrdinalIgnoreCase))
+                        hasResultEntry = true;
+                    else if (actionType.Equals("Review", StringComparison.OrdinalIgnoreCase))
+                        hasReview = true;
+                    else if (actionType.Equals("Approval", StringComparison.OrdinalIgnoreCase))
+                        hasApproval = true;
+                    else if (actionType.Equals(issueAction, StringComparison.OrdinalIgnoreCase))
+                        hasIssueSignature = true;
+                }
 
-                    if (!hasResultEntry || !hasReview || !hasApproval || !hasReissueSignature)
-                    {
-                        throw new InvalidOperationException(
-                            "Controlled legacy reissue is blocked because the replacement certificate would not contain a complete Result Entry / Review / Approval / Certificate Reissue electronic-signature chain. No retrospective signatures will be fabricated.");
-                    }
+                if (!hasResultEntry || !hasReview || !hasApproval || !hasIssueSignature)
+                {
+                    string requiredChain = "Result Entry / Review / Approval / " + issueAction;
+                    throw new InvalidOperationException(
+                        controlledHistoricalLegacyReissue
+                            ? "Controlled legacy reissue is blocked because the replacement certificate would not contain a complete " + requiredChain + " electronic-signature chain. No retrospective signatures will be fabricated."
+                            : "Certificate / report issuance is blocked because the persisted electronic-signature chain is incomplete. Required: " + requiredChain + ".");
                 }
 
                 DataRow certificateSnapshotRow = BuildPrmCertificateSnapshotRow(
