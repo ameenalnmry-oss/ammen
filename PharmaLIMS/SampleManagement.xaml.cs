@@ -149,6 +149,11 @@ namespace PharmaLIMS
         {
             try
             {
+                samplesTable = null;
+                dgSamples.ItemsSource = null;
+                UpdateCounters();
+                if (dpDateFrom.SelectedDate.HasValue && dpDateTo.SelectedDate.HasValue)
+                    Services.SampleReceiptRegisterQuery.ValidateDates(dpDateFrom.SelectedDate.Value, dpDateTo.SelectedDate.Value);
                 SetStatus("Loading samples...", true);
 
                 if (btnSearch != null)
@@ -167,8 +172,10 @@ namespace PharmaLIMS
                 string sampleType = GetComboTag(cboSampleType);
                 if (!string.IsNullOrWhiteSpace(sampleType))
                 {
-                    outerWhere.Add("SampleType LIKE @sampleType");
-                    parameters.Add(new SqlParameter("@sampleType", "%" + sampleType + "%"));
+                    string normalizedType = Services.SampleReceiptRegisterQuery.NormalizeType(sampleType);
+                    outerWhere.Add("SampleType IN (@sampleType, @sampleAlias)");
+                    parameters.Add(new SqlParameter("@sampleType", normalizedType));
+                    parameters.Add(new SqlParameter("@sampleAlias", normalizedType == "Purified Water" ? "PW" : normalizedType == "Potable Water" ? "PTW" : normalizedType));
                 }
 
                 string pointCode = GetComboTag(cboSamplingPoint);
@@ -227,14 +234,15 @@ namespace PharmaLIMS
                                   AND ISNULL(c.IsCancelled,0)=0
                                   AND ISNULL(NULLIF(c.CertificateStatus,N''),ISNULL(c.Status,N'Active')) IN (N'Active',N'Issued')
                             ) THEN 'Active' ELSE 'Not Issued' END AS COAStatus,
-                            ISNULL(s.SampledBy, '') AS CreatedBy,
-                            s.SamplingDateTime AS CreatedDate,
-                            FORMAT(s.SamplingDateTime, 'yyyy-MM-dd HH:mm') AS CreatedDateText
+                            ISNULL((SELECT TOP 1 es.SignedBy FROM dbo.ElectronicSignatures es
+                                WHERE es.SampleID=s.SampleID AND es.ActionType=N'Water Sample Registration'
+                                ORDER BY es.SignedAt,es.SignatureID), '') AS CreatedBy,
+                            s.CreatedDate,
+                            FORMAT(s.CreatedDate, 'yyyy-MM-dd HH:mm') AS CreatedDateText
                         FROM Samples s
                         LEFT JOIN WaterSamplingPoints wp ON s.PointID = wp.Id
                         LEFT JOIN SamplingPoints sp ON s.PointID = sp.PointID
                         LEFT JOIN SampleTests st ON s.SampleID = st.SampleID
-                        WHERE ISNULL(s.SampleNumber, '') NOT LIKE '%TEST%'
                         GROUP BY
                             s.SampleID,
                             s.SampleNumber,
@@ -247,6 +255,7 @@ namespace PharmaLIMS
                             s.PointLocationSnapshot,
                             s.SamplingDateTime,
                             s.SampledBy,
+                            s.CreatedDate,
                             s.Status
                     ),
                     EMRows AS
@@ -410,6 +419,9 @@ namespace PharmaLIMS
             }
             catch (Exception ex)
             {
+                samplesTable = null;
+                dgSamples.ItemsSource = null;
+                UpdateCounters();
                 SetStatus("Error loading samples.", false);
                 ShowError("Error loading samples:\n\n" + Infrastructure.UserFacingError.SafeMessage(ex));
             }
@@ -1077,6 +1089,11 @@ namespace PharmaLIMS
 
             object value = row[columnName];
             return value == null || value == DBNull.Value ? "" : value.ToString();
+        }
+
+        private void BtnSampleRegister_Click(object sender, RoutedEventArgs e)
+        {
+            new SampleReceiptRegister { Owner = this }.Show();
         }
 
         private void BtnPrintSummary_Click(object sender, RoutedEventArgs e)

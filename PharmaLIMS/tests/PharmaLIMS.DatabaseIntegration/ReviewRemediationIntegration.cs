@@ -16,6 +16,7 @@ internal static class ReviewRemediationIntegration
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
         TrendReportDataRegression.Verify();
+        await SampleRegisterIntegration.VerifyAsync(connection);
         await VerifyAuthenticationAsync(connection);
         await Merge262Integration.VerifyAsync(connectionString);
         await VerifyEvidenceAndVersionsAsync(connection);

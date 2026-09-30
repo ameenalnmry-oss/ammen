@@ -32,3 +32,10 @@ Source CI success does not itself approve a Production artifact. The exact Produ
 - Export complete paginated Medica review drafts with all curve panels, repeated table headings, wrapped individual results, narrative and signature fields. Internal EM also includes historical integrity evidence and full PDF export.
 - Add executable shared calculation regressions and an isolated WPF/PDF fixture smoke without accessing live laboratory data.
 - Historical migrations, specifications, records and QA approvals are unchanged. The retained 295 source identity is not a new Production approval.
+
+## Laboratory sample register correction — 2026-09-30
+
+- Sample Management now opens a Laboratory Sample Register with all seven sample categories, inclusive period filters, registration/recorded laboratory-receipt date basis, full source rows and a paginated Medica PDF for preview/printing. One water/PRM sample or EM event is one register entry; EM plates remain listed in the entry. No record is excluded by a TEST substring or a rejected/cancelled status.
+- Missing PRM/EM laboratory-receipt evidence remains explicitly Not recorded; raw-material GRN receipt and registration dates are never substituted for laboratory receipt. Historical records and migration hashes are unchanged.
+- Corrected water Created Date/Created By display to stored registration time and registration signer, PW/PTW alias filters, reversed-date validation and stale exports after failed loads. Added save-handler re-entry protection and rejection of nonpositive PRM quantities/quantity without a unit. Blank historical quantity is retained as missing evidence.
+- Disposable SQL tests cover real migrated schema, row grain, aliases and receipt/registration filtering; the Windows PDF smoke covers seven categories, 105 synthetic rows and missing evidence. Existing trend PDF regressions remain active. These are source corrections and register exports, not a Production release or QA approval.

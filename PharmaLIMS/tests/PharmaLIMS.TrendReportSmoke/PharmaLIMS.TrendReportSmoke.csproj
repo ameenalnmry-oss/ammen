@@ -9,6 +9,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../PharmaLIMS.csproj" />
+    <Compile Include="../../Services/SampleReceiptRegisterQuery.cs" Link="Shared/SampleReceiptRegisterQuery.cs" />
+    <Compile Include="../../Services/SampleReceiptRegisterData.cs" Link="Shared/SampleReceiptRegisterData.cs" />
     <Compile Include="../../Services/TrendReportData.cs" Link="Shared/TrendReportData.cs" />
     <Compile Include="../../Services/TrendPdfReportWriter.cs" Link="Shared/TrendPdfReportWriter.cs" />
     <Compile Include="../PharmaLIMS.DatabaseIntegration/TrendReportDataRegression.cs" Link="Shared/TrendReportDataRegression.cs" />

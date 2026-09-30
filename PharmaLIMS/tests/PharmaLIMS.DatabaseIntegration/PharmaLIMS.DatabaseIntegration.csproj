@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../Services/SampleReceiptRegisterQuery.cs" Link="Shared/SampleReceiptRegisterQuery.cs" />
     <Compile Include="../../Services/TrendReportData.cs" Link="Shared/TrendReportData.cs" />
     <Compile Include="../../Services/PrmNumericSpecificationEvaluator.cs" Link="Shared/PrmNumericSpecificationEvaluator.cs" />
     <Compile Include="../../Services/PrmResultInterpretationEvaluator.cs" Link="Shared/PrmResultInterpretationEvaluator.cs" />

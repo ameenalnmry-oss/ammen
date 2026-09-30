@@ -1451,6 +1451,7 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
 
         private async void BtnSave_Click(object sender, RoutedEventArgs e)
         {
+            if (!btnSave.IsEnabled) return;
             try
             {
                 ClearFormMessage();
