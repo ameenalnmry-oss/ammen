@@ -54,9 +54,25 @@ public partial class SampleReceiptRegister : Window
         }
         finally {busy=false; SetBusy(false);}
     }
+    private void Receipt_Click(object sender,RoutedEventArgs e)
+    {
+        if(busy) return;
+        try
+        {
+            if(!Login.CanRegisterSamples) throw new InvalidOperationException("Sample registration permission is required.");
+            if(RegisterGrid.SelectedItem is not DataRowView row) throw new InvalidOperationException("Select one PRM sample or EM event from the loaded register.");
+            if(!row.Row.IsNull("ReceivedDateTime")) throw new InvalidOperationException("This record already has laboratory receipt evidence.");
+            string kind=Convert.ToString(row["RecordKind"],CultureInfo.InvariantCulture) ?? "";
+            if(kind is not ("PRM" or "EM")) throw new InvalidOperationException("Water receipt is captured during water registration.");
+            var dialog=new LaboratoryReceiptDialog(kind,Convert.ToInt32(row["SampleID"],CultureInfo.InvariantCulture),
+                Convert.ToString(row["SampleNumber"],CultureInfo.InvariantCulture) ?? ""){Owner=this};
+            if(dialog.ShowDialog()==true) Load_Click(sender,e);
+        }
+        catch(Exception ex) {MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex),"Laboratory Receipt",MessageBoxButton.OK,MessageBoxImage.Warning);}
+    }
     private void SetBusy(bool value)
     {
-        LoadButton.IsEnabled=!value; TypeFilter.IsEnabled=!value; DateBasis.IsEnabled=!value;
+        ReceiptButton.IsEnabled=!value && Login.CanRegisterSamples; LoadButton.IsEnabled=!value; TypeFilter.IsEnabled=!value; DateBasis.IsEnabled=!value;
         DateFrom.IsEnabled=!value; DateTo.IsEnabled=!value;
     }
     private void Export_Click(object sender,RoutedEventArgs e)
