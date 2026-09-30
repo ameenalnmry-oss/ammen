@@ -18,6 +18,7 @@ internal static class ReviewRemediationIntegration
         await VerifyAuthenticationAsync(connection);
         await Merge262Integration.VerifyAsync(connectionString);
         await VerifyEvidenceAndVersionsAsync(connection);
+        await EmPreparedMediaEligibilityIntegration.VerifyAsync(connection, projectRoot);
         await VerifyLegacyUpgradeAsync(projectRoot, masterConnectionString);
         Console.WriteLine("Review remediation SQL contracts PASS (WPF multi-session acceptance remains separate).");
     }
