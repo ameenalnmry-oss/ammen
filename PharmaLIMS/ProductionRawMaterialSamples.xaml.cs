@@ -1432,6 +1432,11 @@ ORDER BY SampleID DESC;";
                 throw new InvalidOperationException("Sample Date is required.");
 
             _ = GetRequiredSampleDateTime();
+            decimal? quantity = TryParseDecimal(TxtSampleQty.Text);
+            if (quantity.HasValue && quantity.Value <= 0)
+                throw new InvalidOperationException("Sample Quantity must be greater than zero when entered.");
+            if (quantity.HasValue && string.IsNullOrWhiteSpace(GetComboText(CmbUnit)))
+                throw new InvalidOperationException("Unit is required when Sample Quantity is entered.");
 
             if (string.IsNullOrWhiteSpace(TxtSampledBy.Text))
                 throw new InvalidOperationException("Sampled By is required.");

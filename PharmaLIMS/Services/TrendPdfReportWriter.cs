@@ -21,27 +21,28 @@ internal sealed class TrendPdfReportWriter : IDisposable
     private readonly XBrush navy = new XSolidBrush(XColor.FromArgb(20, 55, 82));
     private readonly string title, number, period, user, logo;
     private readonly DateTime generated;
+    private readonly bool sampleRegister;
     private double y;
     private const double Left = 32, Width = 778, Bottom = 537;
 
-    internal TrendPdfReportWriter(string title, string number, string period, string user, DateTime generated, string logo)
+    internal TrendPdfReportWriter(string title, string number, string period, string user, DateTime generated, string logo, bool sampleRegister = false)
     {
-        this.title = title; this.number = number; this.period = period; this.user = user; this.generated = generated; this.logo = logo;
+        this.sampleRegister = sampleRegister; this.title = title; this.number = number; this.period = period; this.user = user; this.generated = generated; this.logo = logo;
         if (GlobalFontSettings.FontResolver == null) GlobalFontSettings.FontResolver = new WindowsFontResolver();
         regular = new XFont("Arial", 8, XFontStyleEx.Regular);
         bold = new XFont("Arial", 8, XFontStyleEx.Bold);
         small = new XFont("Arial", 7, XFontStyleEx.Regular);
         document.Info.Title = title; document.Info.Author = user;
-        document.Info.Subject = "Medica system-generated trend review draft; requires documented review and QA approval.";
+        document.Info.Subject = sampleRegister ? "Medica sample registration register; source-record export." : "Medica system-generated trend review draft; requires documented review and QA approval.";
         document.Info.CreationDate = generated;
     }
 
     internal static void Write(string path, string title, string number, string period, string user, DateTime generated,
         string logo, IReadOnlyList<string> summary, IReadOnlyList<TrendReportChart> charts, IReadOnlyList<TrendReportTable> tables,
-        string narrative = "")
+        string narrative = "", bool sampleRegister = false)
     {
-        using var writer = new TrendPdfReportWriter(title, number, period, user, generated, logo);
-        writer.NewPage("Results overview");
+        using var writer = new TrendPdfReportWriter(title, number, period, user, generated, logo, sampleRegister);
+        writer.NewPage(sampleRegister ? "Register overview" : "Results overview");
         foreach (string line in summary) writer.Paragraph(line);
         foreach (TrendReportChart chart in charts)
         {
@@ -63,16 +64,16 @@ internal sealed class TrendPdfReportWriter : IDisposable
         }
         writer.EnsureSpace(90, "Review and approval");
         writer.Paragraph("Prepared by (Microbiology): __________________    Checked by (Head of Microbiology): __________________", true);
-        writer.Paragraph("Approved by (Quality Assurance): __________________    Date: __________________", true);
-        writer.Paragraph("SYSTEM-GENERATED REVIEW DRAFT. This report requires documented review and QA approval under the applicable approved procedure. Source records, historical specifications and audit evidence remain unchanged.");
+        if (!sampleRegister) writer.Paragraph("Approved by (Quality Assurance): __________________    Date: __________________", true);
+        writer.Paragraph(sampleRegister ? "SYSTEM-GENERATED REGISTER EXPORT. Dates and names are shown as recorded. Not recorded means the source has no documented value. This register is not a certificate of analysis or a release decision." : "SYSTEM-GENERATED REVIEW DRAFT. This report requires documented review and QA approval under the applicable approved procedure. Source records, historical specifications and audit evidence remain unchanged.");
         writer.graphics?.Dispose(); writer.graphics = null;
         for (int i = 0; i < writer.document.PageCount; i++)
         {
             using XGraphics footer = XGraphics.FromPdfPage(writer.document.Pages[i], XGraphicsPdfPageOptions.Append);
             footer.DrawLine(XPens.LightGray, Left, 548, Left + Width, 548);
-            footer.DrawString($"MEDICA | MQC-R-TREND-001 | REVIEW DRAFT | {number}", writer.small, XBrushes.Gray, new XRect(Left, 554, Width - 130, 12), XStringFormats.TopLeft);
+            footer.DrawString(sampleRegister ? $"MEDICA | SAMPLE REGISTER | SYSTEM EXPORT | {number}" : $"MEDICA | MQC-R-TREND-001 | REVIEW DRAFT | {number}", writer.small, XBrushes.Gray, new XRect(Left, 554, Width - 130, 12), XStringFormats.TopLeft);
             footer.DrawString($"Page {i + 1} of {writer.document.PageCount}", writer.small, XBrushes.Gray, new XRect(Left, 554, Width, 12), XStringFormats.TopRight);
-            footer.DrawString("Generated " + generated.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " | Uncontrolled when printed until reviewed and approved", writer.small, XBrushes.Gray, new XRect(Left, 568, Width, 12), XStringFormats.TopLeft);
+            footer.DrawString("Generated " + generated.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + (sampleRegister ? " | Source record export; uncontrolled copy when printed" : " | Uncontrolled when printed until reviewed and approved"), writer.small, XBrushes.Gray, new XRect(Left, 568, Width, 12), XStringFormats.TopLeft);
         }
         writer.document.Save(path);
     }
@@ -92,9 +93,9 @@ internal sealed class TrendPdfReportWriter : IDisposable
         }
         else graphics.DrawString("MEDICA", new XFont("Arial", 17, XFontStyleEx.Bold), XBrushes.White, new XRect(Left + 12, 34, 105, 24), XStringFormats.TopLeft);
         graphics.DrawString("MEDICA PHARMACEUTICAL INDUSTRY", new XFont("Arial", 15, XFontStyleEx.Bold), XBrushes.White, new XRect(Left + 126, 29, Width - 145, 20), XStringFormats.TopLeft);
-        graphics.DrawString("Microbiology Department | Reports and Trends", regular, XBrushes.White, new XRect(Left + 126, 50, Width - 145, 12), XStringFormats.TopLeft);
+        graphics.DrawString(sampleRegister ? "Microbiology Department | Sample Registration Register" : "Microbiology Department | Reports and Trends", regular, XBrushes.White, new XRect(Left + 126, 50, Width - 145, 12), XStringFormats.TopLeft);
         y = 79; Paragraph(title, true); Paragraph("Period / scope: " + period);
-        Paragraph("Report: " + number + " | Generated by: " + user + " | SYSTEM-GENERATED REVIEW DRAFT");
+        Paragraph("Report: " + number + " | Generated by: " + user + (sampleRegister ? " | SYSTEM-GENERATED REGISTER EXPORT" : " | SYSTEM-GENERATED REVIEW DRAFT"));
         graphics.DrawRectangle(new XSolidBrush(XColor.FromArgb(230, 239, 246)), Left, y, Width, 23);
         graphics.DrawString(section, bold, navy, new XRect(Left + 8, y + 6, Width - 16, 14), XStringFormats.TopLeft); y += 32;
     }
@@ -131,7 +132,7 @@ internal sealed class TrendPdfReportWriter : IDisposable
         foreach (string line in Wrap(text, font, Width - 12))
         {
             // NewPage calls Paragraph only for bounded metadata before y reaches the content area.
-            EnsureSpace(13, "Trend assessment");
+            EnsureSpace(13, sampleRegister ? "Register notes" : "Trend assessment");
             graphics!.DrawString(line, font, heading ? navy : XBrushes.Black, new XRect(Left + 6, y, Width - 12, 12), XStringFormats.TopLeft); y += 12;
         }
         y += 6;
@@ -143,6 +144,7 @@ internal sealed class TrendPdfReportWriter : IDisposable
         if (columns.Length == 0) return;
         NewPage(table.Title);
         double[] weights = columns.Select(c => c is "Location" or "AreaName" or "TestName" or "ValueIntegrity" or "EvidenceSource" ? 2d : c.Contains("Date") || c == "SampleNumber" || c == "EventNo" ? 1.6d : 1d).ToArray();
+        if (sampleRegister) weights = columns.Select(c => c switch { "No" => .35d, "Description" or "Dates" => 1.8d, "Tests" => 1.5d, "SampleNumber" => 1.6d, "Quantity" => .8d, "SampledBy" or "ReceivedBy" or "RegisteredBy" => .9d, "Status" => 1.1d, _ => 1d }).ToArray();
         double[] widths = weights.Select(w => Width * w / weights.Sum()).ToArray();
         void DrawCells(List<string>[] cells, int fromLine, int lineCount, bool header, bool alternate, string status)
         {
