@@ -1,6 +1,7 @@
 ﻿#nullable disable
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
+using PharmaLIMS.Services;
 using System.Data;
 using System.Globalization;
 using System.Reflection;
@@ -129,6 +130,8 @@ namespace PharmaLIMS
                     return;
                 }
 
+                dgAuditTrail.ItemsSource = null;
+                dgSignatures.ItemsSource = null;
                 LoadSampleHeader();
                 LoadTestsAndResults();
                 LoadTimeline();
@@ -145,6 +148,7 @@ namespace PharmaLIMS
             }
             catch (Exception ex)
             {
+                ApplicationLogger.Error("Sample Details load failed for SampleId=" + _sampleId.ToString(CultureInfo.InvariantCulture), ex);
                 SetBusy(false, "Error loading sample details.");
                 ShowError("Error loading sample details:\n\n" + Infrastructure.UserFacingError.SafeMessage(ex));
             }
@@ -175,23 +179,7 @@ namespace PharmaLIMS
 
         private void LoadSampleHeader()
         {
-            string query = @"
-                SELECT TOP 1
-                    s.SampleID,
-                    ISNULL(s.SampleNumber, '') AS SampleNumber,
-                    ISNULL(s.SampleType, '') AS SampleType,
-                    COALESCE(NULLIF(s.PointCodeSnapshot,N''),wp.PointCode, sp.PointCode, '') AS PointCode,
-                    COALESCE(NULLIF(s.PointLocationSnapshot,N''),wp.Location, sp.Location, '') AS Location,
-                    s.SamplingDateTime,
-                    ISNULL(s.SampledBy, '') AS SampledBy,
-                    ISNULL(s.Status, '') AS CurrentStatus,
-                    s.CreatedDate,
-                    ISNULL(s.Activity, '') AS Activity,
-                    ISNULL(s.RejectionReason, '') AS RejectionReason
-                FROM Samples s
-                LEFT JOIN WaterSamplingPoints wp ON s.PointID = wp.Id
-                LEFT JOIN SamplingPoints sp ON s.PointID = sp.PointID
-                WHERE s.SampleID = @sampleId";
+            string query = SampleDetailsEvidenceQuery.Header;
 
             SqlParameter[] pars =
             {
@@ -376,66 +364,24 @@ namespace PharmaLIMS
 
         private void LoadAuditTrail()
         {
+            dgAuditTrail.ItemsSource = null;
             if (!TableExists("AuditTrail"))
-            {
-                dgAuditTrail.ItemsSource = EmptyTable("ActionType", "FieldName", "OldValue", "NewValue", "Reason", "PerformedBy", "PerformedAt", "ComputerName").DefaultView;
-                return;
-            }
+                throw new InvalidOperationException("The sample audit trail is unavailable. Required AuditTrail table is missing.");
 
-            string query = @"
-                SELECT
-                    ISNULL(ActionType, ISNULL(Action, '')) AS ActionType,
-                    ISNULL(FieldName, '') AS FieldName,
-                    ISNULL(OldValue, '') AS OldValue,
-                    ISNULL(NewValue, '') AS NewValue,
-                    ISNULL(Reason, ISNULL(Comments, '')) AS Reason,
-                    ISNULL(PerformedBy, ISNULL(UserName, '')) AS PerformedBy,
-                    COALESCE(PerformedAt, ActionDate, CreatedDate) AS PerformedAt,
-                    ISNULL(ComputerName, ISNULL(WorkstationName, '')) AS ComputerName
-                FROM AuditTrail
-                WHERE SampleID = @sampleId
-                   OR RecordID = @sampleId
-                   OR ISNULL(RecordKey, '') = @sampleNumber
-                ORDER BY COALESCE(PerformedAt, ActionDate, CreatedDate) DESC";
-
-            SqlParameter[] pars =
-            {
-                new SqlParameter("@sampleId", _sampleId),
-                new SqlParameter("@sampleNumber", _sampleNumber ?? "")
-            };
-
-            dgAuditTrail.ItemsSource = SafeQuery(query, pars).DefaultView;
+            dgAuditTrail.ItemsSource = DatabaseHelper.ExecuteQuery(
+                SampleDetailsEvidenceQuery.AuditTrail,
+                SampleDetailsEvidenceQuery.Parameters(_sampleId, _sampleNumber)).DefaultView;
         }
 
         private void LoadSignatures()
         {
+            dgSignatures.ItemsSource = null;
             if (!TableExists("ElectronicSignatures"))
-            {
-                dgSignatures.ItemsSource = EmptyTable("ActionType", "MeaningOfSignature", "SignedBy", "UserRole", "SignedAt", "ActionReason").DefaultView;
-                return;
-            }
+                throw new InvalidOperationException("Sample signature evidence is unavailable. Required ElectronicSignatures table is missing.");
 
-            string query = @"
-                SELECT
-                    ISNULL(ActionType, '') AS ActionType,
-                    ISNULL(MeaningOfSignature, '') AS MeaningOfSignature,
-                    ISNULL(SignedBy, '') AS SignedBy,
-                    ISNULL(UserRole, '') AS UserRole,
-                    SignedAt,
-                    ISNULL(ActionReason, ISNULL(Reason, '')) AS ActionReason
-                FROM ElectronicSignatures
-                WHERE SampleID = @sampleId
-                   OR RecordID = @sampleId
-                   OR ISNULL(RecordKey, '') = @sampleNumber
-                ORDER BY SignedAt DESC";
-
-            SqlParameter[] pars =
-            {
-                new SqlParameter("@sampleId", _sampleId),
-                new SqlParameter("@sampleNumber", _sampleNumber ?? "")
-            };
-
-            dgSignatures.ItemsSource = SafeQuery(query, pars).DefaultView;
+            dgSignatures.ItemsSource = DatabaseHelper.ExecuteQuery(
+                SampleDetailsEvidenceQuery.Signatures,
+                new[] { new SqlParameter("@sampleId", SqlDbType.Int) { Value = _sampleId } }).DefaultView;
         }
 
         public static SampleSituation EvaluateSampleSituation(int sampleId)

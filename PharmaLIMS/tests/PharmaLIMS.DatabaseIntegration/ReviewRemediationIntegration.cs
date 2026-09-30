@@ -17,6 +17,7 @@ internal static class ReviewRemediationIntegration
         await connection.OpenAsync();
         TrendReportDataRegression.Verify();
         await SampleRegisterIntegration.VerifyAsync(connection);
+        await SampleEvidenceDashboardIntegration.VerifyAsync(connection);
         await VerifyAuthenticationAsync(connection);
         await Merge262Integration.VerifyAsync(connectionString);
         await VerifyEvidenceAndVersionsAsync(connection);
