@@ -1,4 +1,4 @@
-﻿<Window x:Class="PharmaLIMS.ReportsTrends"
+<Window x:Class="PharmaLIMS.ReportsTrends"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:oxy="http://oxyplot.org/wpf"
@@ -205,6 +205,9 @@
                     <ComboBoxItem Content="Column Chart"/>
                     <ComboBoxItem Content="Pie Chart"/>
                 </ComboBox>
+
+                <TextBlock Text="Curve / report panel:" Grid.Row="2" Grid.Column="4" VerticalAlignment="Center"/>
+                <ComboBox x:Name="cboReportCurve" Grid.Row="2" Grid.Column="5" Grid.ColumnSpan="3" Height="30" SelectionChanged="ReportCurve_SelectionChanged"/>
 
                 <CheckBox x:Name="chkShowLimits"
                           Grid.Row="2"

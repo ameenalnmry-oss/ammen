@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <OutputType>Exe</OutputType>
@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../Services/TrendReportData.cs" Link="Shared/TrendReportData.cs" />
     <Compile Include="../../Services/PrmNumericSpecificationEvaluator.cs" Link="Shared/PrmNumericSpecificationEvaluator.cs" />
     <Compile Include="../../Services/PrmResultInterpretationEvaluator.cs" Link="Shared/PrmResultInterpretationEvaluator.cs" />
     <Compile Include="../../Services/PrmResultPersistenceContract.cs" Link="Shared/PrmResultPersistenceContract.cs" />

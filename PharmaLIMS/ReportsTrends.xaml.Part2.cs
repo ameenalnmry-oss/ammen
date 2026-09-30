@@ -320,18 +320,7 @@ namespace PharmaLIMS
                 : "";
 
             if (columnName.Equals("ResultValue", StringComparison.OrdinalIgnoreCase))
-            {
-                if (rawValue == null || rawValue == DBNull.Value || string.IsNullOrWhiteSpace(rawValue.ToString()))
-                    return "-";
-
-                if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
-                    return "-";
-
-                if (TryGetDouble(rawValue, out double numericResult))
-                    return numericResult.ToString("0.00", CultureInfo.InvariantCulture);
-
-                return rawValue.ToString() ?? "";
-            }
+                return TrendReportData.ResultText(row);
 
             if (columnName.Equals("AlertLimit", StringComparison.OrdinalIgnoreCase) ||
                 columnName.Equals("ActionLimit", StringComparison.OrdinalIgnoreCase))
@@ -406,72 +395,7 @@ namespace PharmaLIMS
             return "Interpretation: Results are available, but no PASS/ALERT/FAIL status could be determined.";
         }
 
-        private IReadOnlyList<string> BuildStatisticsLines()
-        {
-            if (currentDataTable == null || currentDataTable.Rows.Count == 0)
-                return new[] { "Statistics: No data available." };
-
-            List<string> profiles = currentDataTable.Columns.Contains("WaterProfile")
-                ? currentDataTable.Rows.Cast<DataRow>()
-                    .Select(row => Convert.ToString(row["WaterProfile"], CultureInfo.InvariantCulture) ?? string.Empty)
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
-                    .ToList()
-                : new List<string>();
-
-            IEnumerable<(string Label, IEnumerable<DataRow> Rows)> groups = profiles.Count > 1
-                ? profiles.Select(profile => (profile, currentDataTable.Rows.Cast<DataRow>().Where(row => string.Equals(Convert.ToString(row["WaterProfile"], CultureInfo.InvariantCulture), profile, StringComparison.OrdinalIgnoreCase))))
-                : new[] { (string.Empty, currentDataTable.Rows.Cast<DataRow>().AsEnumerable()) };
-
-            List<string> lines = new();
-            foreach ((string label, IEnumerable<DataRow> rows) in groups)
-            {
-                List<double> values = new();
-                foreach (DataRow row in rows)
-                {
-                    string status = row.Table.Columns.Contains("Status") && row["Status"] != DBNull.Value
-                        ? (row["Status"]?.ToString() ?? string.Empty).Trim()
-                        : string.Empty;
-                    if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    string qualifier = row.Table.Columns.Contains("ResultQualifier")
-                        ? (Convert.ToString(row["ResultQualifier"], CultureInfo.InvariantCulture) ?? string.Empty).Trim()
-                        : string.Empty;
-                    if (!string.IsNullOrWhiteSpace(qualifier))
-                        continue;
-                    if (row.Table.Columns.Contains("ResultValue") &&
-                        TryGetTrendNumericValue(row["ResultValue"], out double value, out _))
-                        values.Add(value);
-                }
-
-                if (values.Count == 0)
-                {
-                    lines.Add((string.IsNullOrWhiteSpace(label) ? string.Empty : label + ": ") + "No completed numeric results available; pending results are excluded.");
-                    continue;
-                }
-
-                double average = values.Average();
-                double minimum = values.Min();
-                double maximum = values.Max();
-                double stdDev = 0;
-                if (values.Count > 1)
-                {
-                    double variance = values.Sum(value => Math.Pow(value - average, 2)) / (values.Count - 1);
-                    stdDev = Math.Sqrt(variance);
-                }
-
-                string prefix = string.IsNullOrWhiteSpace(label) ? "Statistics" : $"{label} statistics";
-                lines.Add(prefix + " (completed numeric results only): " +
-                          "Count " + values.Count.ToString(CultureInfo.InvariantCulture) + " | " +
-                          "Average " + average.ToString("0.00", CultureInfo.InvariantCulture) + " | " +
-                          "Min " + minimum.ToString("0.00", CultureInfo.InvariantCulture) + " | " +
-                          "Max " + maximum.ToString("0.00", CultureInfo.InvariantCulture) + " | " +
-                          "Std Dev " + stdDev.ToString("0.00", CultureInfo.InvariantCulture));
-            }
-
-            return lines;
-        }
+        private IReadOnlyList<string> BuildStatisticsLines() => TrendReportData.Statistics(currentDataTable);
 
         private string BuildStatisticsText() => string.Join("  ||  ", BuildStatisticsLines());
 
