@@ -271,6 +271,9 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('production_config_path = ROOT / "appsettings.Production.json"', validator)
         self.assertIn('"appsettings.Production.json",', validator)
         self.assertIn('"appsettings.Production.json",', manifest_generator)
+        self.assertIn('"packages.lock.json",', manifest_generator)
+        self.assertIn("path.name not in EXCLUDED_GENERATED_FILES", manifest_generator)
+        self.assertIn('"packages.lock.json",', validator)
         self.assertIn("Application:SiteName must be a real validated site name", validator)
         self.assertIn("Database:Server must be a real controlled SQL Server target", validator)
 

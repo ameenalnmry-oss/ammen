@@ -14,6 +14,9 @@ EXCLUDED_LOCAL_SETTINGS = {
     "appsettings.Development.json",
     "appsettings.Local.json",
 }
+EXCLUDED_GENERATED_FILES = {
+    "packages.lock.json",
+}
 
 
 def controlled_files() -> list[Path]:
@@ -23,6 +26,7 @@ def controlled_files() -> list[Path]:
         if path.is_file()
         and path != MANIFEST
         and path.name not in EXCLUDED_LOCAL_SETTINGS
+        and path.name not in EXCLUDED_GENERATED_FILES
         and not any(part in EXCLUDED_PARTS for part in path.relative_to(ROOT).parts)
         and path.suffix.lower() not in EXCLUDED_SUFFIXES
     )

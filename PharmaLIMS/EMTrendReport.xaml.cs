@@ -212,13 +212,31 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
                 .ToList();
 
             var model = new PlotModel { Title = $"{areaCode} - {selectedSummary["AreaName"]} / {selectedSummary["Grade"]} - {method} ({unit})", Background = OxyColors.White };
-            model.Axes.Add(new DateTimeAxis { Position = AxisPosition.Bottom, Title = "Monitoring date", StringFormat = "dd-MMM-yyyy" });
+            var dateAxis = new DateTimeAxis { Position = AxisPosition.Bottom, Title = "Monitoring date", StringFormat = "dd-MMM-yyyy" };
+            model.Axes.Add(dateAxis);
             model.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = unit, MinimumPadding = 0.08, MaximumPadding = 0.15 });
             var total = new LineSeries { Title = "Total count", MarkerType = MarkerType.Circle, StrokeThickness = 2 };
             model.Axes.Add(new LinearAxis { Key = "fungal", Position = AxisPosition.Right, Title = "Fungal count (as recorded)", MinimumPadding = .08 });
             var fungal = new LineSeries { YAxisKey = "fungal", Title = "Fungal count (as recorded)", MarkerType = MarkerType.Square, StrokeThickness = 1.5 };
             var alert = new StairStepSeries { Color = OxyColors.DarkOrange, Title = "Alert limit (historical)", LineStyle = LineStyle.Dash, StrokeThickness = 1.4 };
             var action = new StairStepSeries { Color = OxyColors.Red, Title = "Action limit (historical)", LineStyle = LineStyle.Dot, StrokeThickness = 1.4 };
+            if (rows.Count > 0)
+            {
+                DateTime firstDate = Convert.ToDateTime(rows[0]["EventDate"], CultureInfo.InvariantCulture);
+                DateTime lastDate = Convert.ToDateTime(rows[^1]["EventDate"], CultureInfo.InvariantCulture);
+                double spanDays = (lastDate - firstDate).TotalDays;
+                if (spanDays < 1)
+                {
+                    dateAxis.StringFormat = "dd-MMM HH:mm";
+                    dateAxis.IntervalType = DateTimeIntervalType.Hours;
+                    dateAxis.MajorStep = 6;
+                }
+                else if (spanDays <= 14)
+                {
+                    dateAxis.IntervalType = DateTimeIntervalType.Days;
+                    dateAxis.MajorStep = 1;
+                }
+            }
             foreach (DataRow row in rows)
             {
                 DateTime date = Convert.ToDateTime(row["EventDate"], CultureInfo.InvariantCulture);

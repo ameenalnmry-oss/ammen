@@ -155,10 +155,12 @@ internal sealed class TrendPdfReportWriter : IDisposable
                 if (!header && columns[i] is "Status" or "Assessment") background = status.ToUpperInvariant() switch
                 { "FAIL" or "ACTION" or "OOS" => new XSolidBrush(XColor.FromArgb(255, 225, 225)), "ALERT" => new XSolidBrush(XColor.FromArgb(255, 239, 209)), "PASS" => new XSolidBrush(XColor.FromArgb(224, 244, 231)), _ => background };
                 graphics!.DrawRectangle(new XPen(XColors.LightGray, .4), background, x, y, widths[i], height);
-                if (fromLine > 0 && columns[i] is "SampleNumber" or "EventNo" or "PlateCode")
-                    graphics.DrawString(cells[i][0], regular, XBrushes.Gray, new XRect(x + 4, y + 4, widths[i] - 8, 11), XStringFormats.TopLeft);
-                for (int l = 0; l < lineCount && fromLine + l < cells[i].Count; l++)
-                    graphics.DrawString(cells[i][fromLine + l], header ? bold : regular, header ? XBrushes.White : XBrushes.Black, new XRect(x + 4, y + 4 + l * 11, widths[i] - 8, 11), XStringFormats.TopLeft);
+
+                bool hasRemainingLines = fromLine < cells[i].Count;
+                int cellOffset = !header && fromLine > 0 && !hasRemainingLines ? 0 : fromLine;
+                XBrush foreground = !header && fromLine > 0 && !hasRemainingLines ? XBrushes.Gray : header ? XBrushes.White : XBrushes.Black;
+                for (int l = 0; l < lineCount && cellOffset + l < cells[i].Count; l++)
+                    graphics.DrawString(cells[i][cellOffset + l], header ? bold : regular, foreground, new XRect(x + 4, y + 4 + l * 11, widths[i] - 8, 11), XStringFormats.TopLeft);
                 x += widths[i];
             }
             y += height;
@@ -179,8 +181,13 @@ internal sealed class TrendPdfReportWriter : IDisposable
             {
                 int available = (int)((Bottom - y - 9) / 11);
                 if (available < 1 || (offset == 0 && total <= 25 && available < total)) { NewPage(table.Title + " - continued"); Header(); available = (int)((Bottom - y - 9) / 11); }
-                int take = Math.Min(available, total - offset);
-                DrawCells(cells, offset, take, false, rowNumber % 2 == 1, status); offset += take;
+                int consume = Math.Min(available, total - offset);
+                int repeatedContextLines = offset > 0
+                    ? cells.Where(cell => cell.Count <= offset).Select(cell => cell.Count).DefaultIfEmpty(1).Max()
+                    : 1;
+                int drawLines = Math.Min(available, Math.Max(consume, repeatedContextLines));
+                DrawCells(cells, offset, drawLines, false, rowNumber % 2 == 1, status);
+                offset += consume;
             }
             rowNumber++;
         }
