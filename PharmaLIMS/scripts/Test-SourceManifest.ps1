@@ -1,7 +1,10 @@
 [CmdletBinding()]
-param([string]$ManifestFile = (Join-Path $PSScriptRoot '..\SOURCE_MANIFEST_SHA256.txt'))
+param([string]$ManifestFile)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ManifestFile)) {
+    $ManifestFile = Join-Path $PSScriptRoot '..\SOURCE_MANIFEST_SHA256.txt'
+}
 $manifestPath = (Resolve-Path -LiteralPath $ManifestFile).Path
 $root = Split-Path -Parent $manifestPath
 $failures = @()

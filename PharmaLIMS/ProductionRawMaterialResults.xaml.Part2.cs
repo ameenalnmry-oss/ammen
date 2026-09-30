@@ -892,7 +892,8 @@ SELECT CAST(SCOPE_IDENTITY() AS int);",
                         hasIssueSignature = true;
                 }
 
-                if (!hasResultEntry || !hasReview || !hasApproval || !hasIssueSignature)
+                if (!hasResultEntry || !hasReview || !hasApproval || !hasIssueSignature ||
+                    !PrmCertificateSignatureChain.IsCompleteForLatestResultCycle(signatureSnapshot, _selectedSampleId, issueAction))
                 {
                     string requiredChain = "Result Entry / Review / Approval / " + issueAction;
                     throw new InvalidOperationException(

@@ -135,7 +135,9 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         self.assertIn('actionType.Equals("Result Entry"', issue)
         self.assertIn('actionType.Equals("Review"', issue)
         self.assertIn('actionType.Equals("Approval"', issue)
-        self.assertIn('actionType.Equals("Certificate Reissue"', issue)
+        self.assertIn('string issueAction = isReissue ? "Certificate Reissue" : "Certificate Issuance"', issue)
+        self.assertIn('actionType.Equals(issueAction', issue)
+        self.assertIn("!hasResultEntry || !hasReview || !hasApproval || !hasIssueSignature", issue)
 
     def test_prm_document_access_requires_reports_permission(self):
         code = source("ProductionRawMaterialResults.xaml.cs")

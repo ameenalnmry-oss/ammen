@@ -17,6 +17,7 @@
     <Compile Include="../../Services/PrmNumericSpecificationEvaluator.cs" Link="Shared/PrmNumericSpecificationEvaluator.cs" />
     <Compile Include="../../Services/PrmResultInterpretationEvaluator.cs" Link="Shared/PrmResultInterpretationEvaluator.cs" />
     <Compile Include="../../Services/PrmResultPersistenceContract.cs" Link="Shared/PrmResultPersistenceContract.cs" />
+    <Compile Include="../../Services/PrmCertificateSignatureChain.cs" Link="Shared/PrmCertificateSignatureChain.cs" />
     <Compile Include="../../Services/PrmSampleResultStateService.cs" Link="Shared/PrmSampleResultStateService.cs" />
     <Compile Include="../../Infrastructure/DatabaseLifecycleCoordinationContract.cs" Link="Shared/DatabaseLifecycleCoordinationContract.cs" />
     <Compile Include="../../Infrastructure/ComplianceRecordProtectionContract.cs" Link="Shared/ComplianceRecordProtectionContract.cs" />

@@ -13,5 +13,6 @@
     <Compile Include="../../Services/EmResultCalculator.cs" Link="Production/EmResultCalculator.cs" />
     <Compile Include="../../Services/EmTrendAssessmentService.cs" Link="Production/EmTrendAssessmentService.cs" />
     <Compile Include="../../Services/WaterResultValueContract.cs" Link="Production/WaterResultValueContract.cs" />
+    <Compile Include="../../Services/PrmCertificateSignatureChain.cs" Link="Production/PrmCertificateSignatureChain.cs" />
   </ItemGroup>
 </Project>

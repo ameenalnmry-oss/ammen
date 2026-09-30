@@ -72,6 +72,7 @@ internal static class Program
             await VerifyUserAdministrationSignatureEvidenceSchemaAsync(databaseConnectionString);
             await VerifyComplianceProtectionTamperDetectionAsync(databaseConnectionString);
             await VerifyPrmIssuedCertificateEvidenceProtectionAsync(databaseConnectionString);
+            await PrmSignatureChainIntegration.VerifyAsync(databaseConnectionString);
             VerifyPrmNumericInterpretationEngine();
             await VerifyPrmResultOptimisticConcurrencyAsync(databaseConnectionString);
             await VerifyPrmSampleWideStateConcurrencyAsync(databaseConnectionString);
