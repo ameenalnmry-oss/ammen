@@ -2344,8 +2344,8 @@ SELECT TOP (1)
     p.MediaPreparationID,
     p.MediaPreparationNo,
     p.ReleaseStatus,
-    p.SterilityReview,
-    p.ExpiryDate
+    p.ExpiryDate,
+    CAST(SYSDATETIME() AS date) AS DatabaseDate
 FROM dbo.MediaPreparations p
 WHERE UPPER(LTRIM(RTRIM(p.MediaPreparationNo))) = UPPER(LTRIM(RTRIM(@MediaPreparationNo)))
 ORDER BY p.MediaPreparationID DESC;",
@@ -2366,22 +2366,19 @@ ORDER BY p.MediaPreparationID DESC;",
             string releaseStatus = row["ReleaseStatus"] == DBNull.Value
                 ? "Not set"
                 : row["ReleaseStatus"].ToString()?.Trim() ?? "Not set";
-            string sterilityReview = row["SterilityReview"] == DBNull.Value
-                ? "Not set"
-                : row["SterilityReview"].ToString()?.Trim() ?? "Not set";
             DateTime? expiryDate = row["ExpiryDate"] == DBNull.Value
                 ? null
                 : Convert.ToDateTime(row["ExpiryDate"], CultureInfo.InvariantCulture).Date;
 
+            DateTime databaseToday = Convert.ToDateTime(row["DatabaseDate"], CultureInfo.InvariantCulture).Date;
             if (!releaseStatus.Equals("Released", StringComparison.OrdinalIgnoreCase) ||
-                !sterilityReview.Equals("Passed", StringComparison.OrdinalIgnoreCase) ||
-                !expiryDate.HasValue || expiryDate.Value < DateTime.Today)
+                !expiryDate.HasValue || expiryDate.Value < databaseToday)
             {
                 gateMessage =
                     $"Media Release Gate: preparation {preparationNo} has Release Status = {releaseStatus}, " +
-                    $"Sterility Review = {sterilityReview}, and Use-Before Date = " +
+                    "and Use-Before Date = " +
                     (expiryDate.HasValue ? expiryDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "Not set") + ". " +
-                    "Only a released, sterility-approved, unexpired prepared-media batch can be used for EM.";
+                    "Only a released, unexpired prepared-media batch can be used for EM.";
                 return false;
             }
 

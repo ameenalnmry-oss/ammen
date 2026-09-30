@@ -955,7 +955,6 @@ WHERE UPPER(LTRIM(RTRIM(p.MediaPreparationNo)))=UPPER(LTRIM(RTRIM(@Reference)))
        OR UPPER(LTRIM(RTRIM(m.MediaName)))=UPPER(LTRIM(RTRIM(@Media)))
        OR (UPPER(LTRIM(RTRIM(@Media))) IN (N'TSA',N'TRYPTIC SOY AGAR') AND (UPPER(LTRIM(RTRIM(m.MediaCode))) IN (N'TSA',N'TRYPTIC SOY AGAR') OR UPPER(LTRIM(RTRIM(m.MediaName))) IN (N'TSA',N'TRYPTIC SOY AGAR'))))
   AND UPPER(LTRIM(RTRIM(ISNULL(p.ReleaseStatus,N''))))=N'RELEASED'
-  AND UPPER(LTRIM(RTRIM(ISNULL(p.SterilityReview,N'')))) IN (N'PASSED',N'RELEASED',N'GPT PASSED')
   AND p.ExpiryDate IS NOT NULL AND p.ExpiryDate>=CAST(GETDATE() AS DATE)
 ORDER BY p.MediaPreparationID DESC;",
                 new[]
@@ -964,7 +963,7 @@ ORDER BY p.MediaPreparationID DESC;",
                     new SqlParameter("@Media", mediaText)
                 });
             if (table.Rows.Count == 0)
-                throw new InvalidOperationException("The selected media reference is not a released, sterility-approved, unexpired prepared-media batch. Select a valid released Media Preparation No.");
+                throw new InvalidOperationException("The selected media reference is not a released, unexpired prepared-media batch. Select a valid released Media Preparation No.");
             return Convert.ToInt32(table.Rows[0]["MediaPreparationID"], CultureInfo.InvariantCulture);
         }
 
@@ -1085,7 +1084,6 @@ SELECT TOP(1)
     s.MediaPreparationID,
     ISNULL(p.MediaPreparationNo,N'') AS MediaPreparationNo,
     ISNULL(p.ReleaseStatus,N'') AS ReleaseStatus,
-    ISNULL(p.SterilityReview,N'') AS SterilityReview,
     p.ExpiryDate,
     CAST(SYSDATETIME() AS date) AS DatabaseDate
 FROM dbo.EM_PlanSamples s WITH(UPDLOCK,HOLDLOCK)
@@ -1097,7 +1095,6 @@ WHERE s.PlanID=@PlanID
       s.MediaPreparationID IS NULL
       OR p.MediaPreparationID IS NULL
       OR UPPER(LTRIM(RTRIM(ISNULL(p.ReleaseStatus,N''))))<>N'RELEASED'
-      OR UPPER(LTRIM(RTRIM(ISNULL(p.SterilityReview,N'')))) NOT IN (N'PASSED',N'RELEASED',N'GPT PASSED')
       OR p.ExpiryDate IS NULL
       OR p.ExpiryDate<CAST(SYSDATETIME() AS date)
   )
@@ -1119,9 +1116,6 @@ ORDER BY s.PlanSampleID;", connection, transaction)
                         string releaseStatus = mediaReader["ReleaseStatus"] == DBNull.Value
                             ? string.Empty
                             : Convert.ToString(mediaReader["ReleaseStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
-                        string sterilityReview = mediaReader["SterilityReview"] == DBNull.Value
-                            ? string.Empty
-                            : Convert.ToString(mediaReader["SterilityReview"], CultureInfo.InvariantCulture) ?? string.Empty;
                         string expiry = mediaReader["ExpiryDate"] == DBNull.Value
                             ? "Not set"
                             : Convert.ToDateTime(mediaReader["ExpiryDate"], CultureInfo.InvariantCulture)
@@ -1132,9 +1126,8 @@ ORDER BY s.PlanSampleID;", connection, transaction)
                             "Sample=" + sampleCode +
                             ", Media Preparation=" + (string.IsNullOrWhiteSpace(preparationNo) ? "Missing" : preparationNo) +
                             ", Release Status=" + (string.IsNullOrWhiteSpace(releaseStatus) ? "Missing" : releaseStatus) +
-                            ", Sterility Review=" + (string.IsNullOrWhiteSpace(sterilityReview) ? "Missing" : sterilityReview) +
                             ", Use-Before=" + expiry +
-                            ". Replace/reconcile the plan with a currently released, sterility-approved, unexpired prepared-media batch before collection.");
+                            ". Replace/reconcile the plan with a currently released, unexpired prepared-media batch before collection.");
                     }
                 }
 

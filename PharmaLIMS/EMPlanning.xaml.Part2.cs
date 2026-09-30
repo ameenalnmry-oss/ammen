@@ -47,7 +47,7 @@ WHERE IsActive=1
   AND NULLIF(LTRIM(RTRIM(MediaUsed)),N'') IS NOT NULL
   AND NULLIF(LTRIM(RTRIM(MediaLotNo)),N'') IS NOT NULL
   AND MediaPreparationID IS NOT NULL
-  AND EXISTS(SELECT 1 FROM dbo.MediaPreparations p WHERE p.MediaPreparationID=dbo.EM_Schedules.MediaPreparationID AND UPPER(LTRIM(RTRIM(ISNULL(p.ReleaseStatus,N''))))=N'RELEASED' AND UPPER(LTRIM(RTRIM(ISNULL(p.SterilityReview,N'')))) IN(N'PASSED',N'RELEASED',N'GPT PASSED') AND p.ExpiryDate IS NOT NULL AND p.ExpiryDate>=CAST(GETDATE() AS DATE))
+  AND EXISTS(SELECT 1 FROM dbo.MediaPreparations p WHERE p.MediaPreparationID=dbo.EM_Schedules.MediaPreparationID AND UPPER(LTRIM(RTRIM(ISNULL(p.ReleaseStatus,N''))))=N'RELEASED' AND p.ExpiryDate IS NOT NULL AND p.ExpiryDate>=CAST(GETDATE() AS DATE))
   AND NextDueDate<=DATEADD(DAY,ISNULL(DaysAhead,0),CAST(GETDATE() AS DATE))
 ORDER BY NextDueDate,ScheduleID;", connection, transaction);
                 var configs = new List<ScheduleConfig>();
