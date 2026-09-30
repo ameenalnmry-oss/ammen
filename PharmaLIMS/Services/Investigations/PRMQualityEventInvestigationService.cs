@@ -270,6 +270,10 @@ WHERE SampleNumber = @SampleNumber;",
         {
             string text = (categoryText ?? "").Trim().ToLowerInvariant();
 
+            // Primary packaging uses the controlled PRM General checklist until a packaging-specific checklist is approved.
+            if (text.Contains("primary packaging") || text.StartsWith("pp-"))
+                return "PRM General";
+
             // Priority matters:
             // FP and Finished Product must be resolved before "material",
             // otherwise text that includes MaterialName may be wrongly classified as Raw Material.

@@ -333,7 +333,7 @@ END;";
                 if (_controlledLegacyReissueRoute)
                     ApplyControlledLegacyReissueUiState();
                 else
-                    TxtStatus.Text = "Select Production, Raw Material, or Stability results workflow.";
+                    TxtStatus.Text = "Select Production, Raw Material, Primary Packaging, or Stability results workflow.";
             }
             catch (Exception ex)
             {
@@ -358,7 +358,7 @@ END;";
                 _runtimeQualityEventButton.Visibility = Visibility.Collapsed;
             if (_floatingQualityEventButton != null)
                 _floatingQualityEventButton.Visibility = Visibility.Collapsed;
-            TxtStatus.Text = "Choose the results module: Production, Raw Material, or Stability.";
+            TxtStatus.Text = "Choose the results module: Production, Raw Material, Primary Packaging, or Stability.";
         }
 
         private void ShowResultsView()
@@ -371,6 +371,8 @@ END;";
                 TxtSamplesTitle.Text = "Production Samples";
             else if (_selectedResultGroup == "RM")
                 TxtSamplesTitle.Text = "Raw Material Samples";
+            else if (_selectedResultGroup == "PP")
+                TxtSamplesTitle.Text = "Primary Packaging Samples";
             else if (_selectedResultGroup == "ST")
                 TxtSamplesTitle.Text = "Stability Samples";
             else
@@ -723,7 +725,7 @@ END;";
 
             if (!IsControlledNonReleaseReportCategory(category))
             {
-                blockReason = "Certificate of Analysis issuance blocked: Raw Material and Finished Product COAs require a final Conforms interpretation.";
+                blockReason = "Certificate of Analysis issuance blocked: Raw Material, Primary Packaging and Finished Product COAs require a final Conforms interpretation.";
                 return false;
             }
 
@@ -807,8 +809,8 @@ SELECT TOP 500
     SampleID,
     SampleNumber,
     SampleCategory,
-    CASE WHEN SampleCategory = N'Raw Material' THEN ISNULL(MaterialName, N'') ELSE ISNULL(ProductName, N'') END AS ItemName,
-    CASE WHEN SampleCategory = N'Raw Material' THEN COALESCE(NULLIF(ManufacturerLotNo, N''), SupplierLotNo, N'') ELSE ISNULL(BatchNo, N'') END AS LotOrBatch,
+    CASE WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(MaterialName, N'') ELSE ISNULL(ProductName, N'') END AS ItemName,
+    CASE WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN COALESCE(NULLIF(ManufacturerLotNo, N''), SupplierLotNo, N'') ELSE ISNULL(BatchNo, N'') END AS LotOrBatch,
     SampleStatus,
     ResultInterpretation,
     ReportStatus
@@ -818,6 +820,7 @@ WHERE
         @group = N''
         OR (@group = N'PR' AND SampleCategory IN (N'Production / In-Process', N'Finished Product'))
         OR (@group = N'RM' AND SampleCategory = N'Raw Material')
+        OR (@group = N'PP' AND SampleCategory = N'Primary Packaging')
         OR (@group = N'ST' AND SampleCategory = N'Stability')
     )
     AND
@@ -879,8 +882,8 @@ SELECT TOP 500
     SampleID,
     SampleNumber,
     SampleCategory,
-    CASE WHEN SampleCategory = N'Raw Material' THEN ISNULL(MaterialName, N'') ELSE ISNULL(ProductName, N'') END AS ItemName,
-    CASE WHEN SampleCategory = N'Raw Material' THEN COALESCE(NULLIF(ManufacturerLotNo, N''), SupplierLotNo, N'') ELSE ISNULL(BatchNo, N'') END AS LotOrBatch,
+    CASE WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(MaterialName, N'') ELSE ISNULL(ProductName, N'') END AS ItemName,
+    CASE WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN COALESCE(NULLIF(ManufacturerLotNo, N''), SupplierLotNo, N'') ELSE ISNULL(BatchNo, N'') END AS LotOrBatch,
     SampleStatus,
     ResultInterpretation,
     ReportStatus
@@ -890,6 +893,7 @@ WHERE
         @group = N''
         OR (@group = N'PR' AND SampleCategory IN (N'Production / In-Process', N'Finished Product'))
         OR (@group = N'RM' AND SampleCategory = N'Raw Material')
+        OR (@group = N'PP' AND SampleCategory = N'Primary Packaging')
         OR (@group = N'ST' AND SampleCategory = N'Stability')
     )
     AND
@@ -907,20 +911,6 @@ ORDER BY SampleID DESC;";
                 new SqlParameter("@search", SqlDbType.NVarChar, 200) { Value = search },
                 new SqlParameter("@group", SqlDbType.NVarChar, 10) { Value = group }
             }, commandTimeoutSeconds: 10);
-        }
-
-        private string GetResultGroupForSampleId(int sampleId)
-        {
-            object categoryObj = DatabaseHelper.ExecuteScalar(
-                "SELECT SampleCategory FROM dbo.PRM_Samples WHERE SampleID = @SampleID",
-                new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = sampleId } });
-
-            string category = categoryObj == null || categoryObj == DBNull.Value ? string.Empty : Convert.ToString(categoryObj, CultureInfo.InvariantCulture);
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
-                return "RM";
-            if (category.Equals("Stability", StringComparison.OrdinalIgnoreCase))
-                return "ST";
-            return "PR";
         }
 
         private void SelectSampleById(int sampleId)
@@ -992,13 +982,13 @@ WHERE S.SampleID=@SampleID;",
         private static string GetItemName(DataRow row)
         {
             string category = S(row, "SampleCategory");
-            return category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) ? S(row, "MaterialName") : S(row, "ProductName");
+            return (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)) ? S(row, "MaterialName") : S(row, "ProductName");
         }
 
         private static string GetLotOrBatch(DataRow row)
         {
             string category = S(row, "SampleCategory");
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 string manufacturerLot = S(row, "ManufacturerLotNo");
                 return string.IsNullOrWhiteSpace(manufacturerLot) ? S(row, "SupplierLotNo") : manufacturerLot;

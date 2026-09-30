@@ -55,6 +55,7 @@ internal static class Program
             window.Close();
             Console.WriteLine($"PASS Trend WPF grouping / frozen limits / qualifiers / complete PDF smoke; {data.Rows.Count} fixture rows, {charts.Length} charts. PDF={directory}");
             SampleRegisterSmoke.Verify(directory);
+            PrimaryPackagingSmoke.Verify();
             return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

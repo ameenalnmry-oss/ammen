@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
-        Title="Production, Raw Material &amp; Stability Samples"
+        Title="Production, Raw Material, Packaging &amp; Stability Samples"
         Height="860"
         Width="1280"
         MinHeight="700"
@@ -93,7 +93,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Production, Raw Material &amp; Stability Samples" FontSize="30" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Production, Raw Material, Packaging &amp; Stability Samples" FontSize="30" FontWeight="Bold" Foreground="White"/>
                     <TextBlock Text="Laboratory report workflow only - no material or batch release/reject disposition" FontSize="13" Foreground="#CBD5E1" Margin="0,8,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
@@ -112,7 +112,7 @@
                         <TextBlock Text="Choose Sample Type" FontSize="26" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center"/>
                         <TextBlock Text="Start by selecting one workflow. Details will appear after selection." FontSize="13" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,6,0,24"/>
 
-                        <UniformGrid Columns="3" HorizontalAlignment="Center">
+                        <UniformGrid Columns="2" HorizontalAlignment="Center">
                             <Button x:Name="BtnChooseProduction" Style="{StaticResource OptionCard}" Click="BtnChooseProduction_Click">
                                 <StackPanel>
                                     <Border Background="#2563EB" CornerRadius="12" Padding="10" Width="58" Height="58" HorizontalAlignment="Left">
@@ -130,6 +130,16 @@
                                     </Border>
                                     <TextBlock Text="Raw Material Samples" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,16,0,4"/>
                                     <TextBlock Text="New material, retest, vendor qualification, additional test, or complaint/investigation." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnChoosePackaging" Style="{StaticResource OptionCard}" Click="BtnChoosePackaging_Click">
+                                <StackPanel>
+                                    <Border Background="#B45309" CornerRadius="12" Padding="10" Width="58" Height="58" HorizontalAlignment="Left">
+                                        <TextBlock Text="PP" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Primary Packaging" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,16,0,4"/>
+                                    <TextBlock Text="Product-contact bottles, caps, films and foils with independent specifications." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Button>
 
@@ -315,7 +325,7 @@
                                         <ComboBox x:Name="CmbMaterialType" Style="{StaticResource ComboStyle}" IsEditable="True">
                                             <ComboBoxItem Content="API"/>
                                             <ComboBoxItem Content="Excipient"/>
-                                            <ComboBoxItem Content="Packaging Material"/>
+                                            <ComboBoxItem Content="Packaging Material"/><ComboBoxItem Content="Bottle"/><ComboBoxItem Content="Cap / Closure"/><ComboBoxItem Content="PVC Film"/><ComboBoxItem Content="Aluminium Foil"/>
                                             <ComboBoxItem Content="Other"/>
                                         </ComboBox>
                                     </StackPanel>
@@ -587,7 +597,7 @@
                             <StackPanel Grid.Column="1" Margin="0,0,14,0">
                                 <TextBlock Text="Sample Category *" Style="{StaticResource LabelStyle}"/>
                                 <ComboBox x:Name="CmbMasterCategory" Style="{StaticResource ComboStyle}">
-                                    <ComboBoxItem Content="Raw Material"/><ComboBoxItem Content="Production / In-Process"/><ComboBoxItem Content="Finished Product"/><ComboBoxItem Content="Stability"/>
+                                    <ComboBoxItem Content="Raw Material"/><ComboBoxItem Content="Primary Packaging"/><ComboBoxItem Content="Production / In-Process"/><ComboBoxItem Content="Finished Product"/><ComboBoxItem Content="Stability"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="0,0,14,0">

@@ -112,7 +112,7 @@
                     <ComboBoxItem Content="Physical"/>
                     <ComboBoxItem Content="Chemical"/>
                     <ComboBoxItem Content="Microbiological"/>
-                    <ComboBoxItem Content="Raw Material"/>
+                    <ComboBoxItem Content="Raw Material"/><ComboBoxItem Content="Primary Packaging"/>
                     <ComboBoxItem Content="Production / In-Process"/>
                     <ComboBoxItem Content="Finished Product"/>
                     <ComboBoxItem Content="Stability"/>

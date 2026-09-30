@@ -70,6 +70,7 @@ namespace PharmaLIMS
             cboSampleType.Items.Add(new ComboBoxItem { Content = "PTW", Tag = "PTW" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Environmental Monitoring", Tag = "Environmental Monitoring" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Raw Material", Tag = "Raw Material" });
+            cboSampleType.Items.Add(new ComboBoxItem { Content = "Primary Packaging", Tag = "Primary Packaging" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Production / In-Process", Tag = "Production / In-Process" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Finished Product", Tag = "Finished Product" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Stability", Tag = "Stability" });
@@ -334,11 +335,11 @@ namespace PharmaLIMS
                             ISNULL(ps.SampleNumber, '') AS SampleNumber,
                             ISNULL(ps.SampleCategory, '') AS SampleType,
                             CASE
-                                WHEN ps.SampleCategory = N'Raw Material' THEN ISNULL(ps.MaterialCode, '')
+                                WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.MaterialCode, '')
                                 ELSE ISNULL(ps.ProductCode, '')
                             END AS PointCode,
                             CASE
-                                WHEN ps.SampleCategory = N'Raw Material' THEN ISNULL(ps.MaterialName, '')
+                                WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.MaterialName, '')
                                 ELSE ISNULL(ps.ProductName, '')
                             END AS Location,
                             ISNULL(CAST(ps.SampleDateTime AS datetime), CAST(ps.CreatedDate AS datetime)) AS SamplingDateTime,

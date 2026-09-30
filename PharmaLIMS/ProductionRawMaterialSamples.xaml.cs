@@ -241,6 +241,14 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
             string normalized = (category ?? string.Empty).Trim();
             _specificationTests.Clear();
 
+            if (normalized.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
+            {
+                // Packaging limits and method timing must come from its approved specification.
+                TxtMasterReference.Text = string.Empty;
+                _specificationTests.Add(new SpecificationTestDraft { ResultType = "Text", RequiredTest = true, SortOrder = 1, MinimumElapsedHours = 0m });
+                return;
+            }
+
             if (normalized.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
             {
                 TxtMasterReference.Text =
@@ -941,6 +949,11 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             SelectWorkflow("Raw Material");
         }
 
+        private void BtnChoosePackaging_Click(object sender, RoutedEventArgs e)
+        {
+            SelectWorkflow("Primary Packaging");
+        }
+
         private void BtnChooseStability_Click(object sender, RoutedEventArgs e)
         {
             SelectWorkflow("Stability");
@@ -989,23 +1002,24 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
         {
             string category = GetSelectedCategory();
 
-            bool isRaw = category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase);
+            bool isRaw = (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase));
             bool isProduction = category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase);
             bool isFinished = category.Equals("Finished Product", StringComparison.OrdinalIgnoreCase);
             bool isStability = category.Equals("Stability", StringComparison.OrdinalIgnoreCase);
 
             if (TxtSelectedWorkflowTitle != null)
-                TxtSelectedWorkflowTitle.Text = isRaw ? "Raw Material Sample Registration" :
+                TxtSelectedWorkflowTitle.Text = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) ? "Primary Packaging Sample Registration" : isRaw ? "Raw Material Sample Registration" :
                                                 isStability ? "Stability Sample Registration" :
                                                 isFinished ? "Finished Product Sample Registration" :
                                                 "Production / In-Process Sample Registration";
 
             if (TxtSelectedWorkflowNote != null)
-                TxtSelectedWorkflowNote.Text = isRaw ? "Register new material, retest, vendor qualification, additional test, or complaint/investigation samples." :
+                TxtSelectedWorkflowNote.Text = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) ? "Register product-contact packaging materials using an independently approved material specification." : isRaw ? "Register new material, retest, vendor qualification, additional test, or complaint/investigation samples." :
                                                isStability ? "Register stability study pull point samples for testing and reporting." :
                                                isFinished ? "Register finished product samples after packaging." :
                                                "Register in-process samples after mixing, compression, or coating.";
 
+            GrpRawMaterial.Header = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) ? "Primary Packaging Material Sample" : "Raw Material Sample";
             SetVisibilitySafe(GrpRawMaterial, isRaw);
             SetVisibilitySafe(GrpProduction, isProduction || isFinished);
             SetVisibilitySafe(GrpStability, isStability);
@@ -1068,7 +1082,7 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             TxtMasterItemCode.Text = itemCode;
             SetComboText(CmbMasterProductionStage, productionStage);
             ApplyPharmacopoeialMicrobiologyTemplate(category);
-            TxtMasterState.Text = "New Draft — current sample scope copied and the pharmacopoeial microbiology template loaded. Verify the approved product/material specification before Review -> Approve.";
+            TxtMasterState.Text = "New Draft — current sample scope copied. Define the material-specific tests, limits, method reference and timing before approval. Verify the approved product/material specification before Review -> Approve.";
             TxtMasterSpecificationNo.Focus();
         }
 
@@ -1208,7 +1222,7 @@ ORDER BY SpecificationNo;",
 
         private string GetSelectedItemCode(string category)
         {
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
                 return (TxtMaterialCode.Text ?? string.Empty).Trim();
             if (category.Equals("Stability", StringComparison.OrdinalIgnoreCase))
                 return (TxtStbProductCode.Text ?? string.Empty).Trim();
@@ -1352,17 +1366,17 @@ SELECT TOP 300
     SampleNumber,
     SampleCategory,
     CASE
-        WHEN SampleCategory = N'Raw Material' THEN ISNULL(SamplePurpose, N'')
+        WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(SamplePurpose, N'')
         WHEN SampleCategory = N'Production / In-Process' THEN ISNULL(ProductionStage, N'')
         WHEN SampleCategory = N'Finished Product' THEN ISNULL(SampleSource, N'After Packaging')
         ELSE N''
     END AS PurposeOrStage,
     CASE
-        WHEN SampleCategory = N'Raw Material' THEN ISNULL(MaterialName, N'')
+        WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(MaterialName, N'')
         ELSE ISNULL(ProductName, N'')
     END AS ItemName,
     CASE
-        WHEN SampleCategory = N'Raw Material' THEN ISNULL(ManufacturerLotNo, N'')
+        WHEN SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ManufacturerLotNo, N'')
         ELSE ISNULL(BatchNo, N'')
     END AS LotOrBatch,
     CONVERT(NVARCHAR(20), SampleDateTime, 120) AS SampleDateTimeText,
@@ -1482,7 +1496,7 @@ WHERE configured.SpecificationNo=@SpecificationNo
             if (Convert.ToInt32(approvedSpecification, CultureInfo.InvariantCulture) == 0)
                 throw new InvalidOperationException("No approved standard or item-specific inspection profile is available for this sample scope.");
 
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 if (string.IsNullOrWhiteSpace(TxtMaterialCode.Text))
                     throw new InvalidOperationException("Material Code is required.");
@@ -1664,7 +1678,7 @@ SELECT
     LTRIM(RTRIM(ISNULL(SpecificationNo, N''))) AS SpecificationNo,
     LTRIM(RTRIM(ISNULL(SampleCategory, N''))) AS SampleCategory,
     LTRIM(RTRIM(ISNULL(SampleStatus, N''))) AS SampleStatus,
-    CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(SampleCategory,N'')))) IN(N'RAW MATERIAL',N'RAW MATERIALS',N'RM')
+    CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(SampleCategory,N'')))) IN(N'RAW MATERIAL',N'RAW MATERIALS',N'RM',N'PRIMARY PACKAGING')
          THEN LTRIM(RTRIM(ISNULL(MaterialCode,N'')))
          ELSE LTRIM(RTRIM(ISNULL(ProductCode,N''))) END AS ItemCode,
     LTRIM(RTRIM(ISNULL(ProductionStage,N''))) AS ProductionStage,
@@ -1812,7 +1826,7 @@ WHERE SampleID = @SampleID
         private SqlParameter[] BuildParameters(string sampleNumber, DateTime sampleDateTime, int specificationVersion)
         {
             string category = GetSelectedCategory();
-            bool isRaw = category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase);
+            bool isRaw = (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase));
             bool isProduction = category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase);
             bool isFinished = category.Equals("Finished Product", StringComparison.OrdinalIgnoreCase);
             bool isStability = category.Equals("Stability", StringComparison.OrdinalIgnoreCase);
@@ -2042,7 +2056,9 @@ WHERE SampleID=@SampleID;", connection, transaction);
         {
             string sequenceName;
 
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
+                sequenceName = "PP_SAMPLE";
+            else if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
                 sequenceName = "RM_SAMPLE";
             else if (category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase))
                 sequenceName = "IP_SAMPLE";
@@ -2299,7 +2315,7 @@ SELECT @prefix + N'-' + CAST(@year AS NVARCHAR(4)) + N'-' + RIGHT(N'0000' + CAST
             sb.AppendLine("<div class='section'>Sample Information</div><table>");
             AddRow(sb, "Sample No.", S(r, "SampleNumber"), "Sample Category", category);
 
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 AddRow(sb, "Sample Purpose", S(r, "SamplePurpose"), "Material Type", S(r, "MaterialType"));
                 AddRow(sb, "Material Code", S(r, "MaterialCode"), "Material Name", S(r, "MaterialName"));
@@ -2349,6 +2365,9 @@ SELECT @prefix + N'-' + CAST(@year AS NVARCHAR(4)) + N'-' + RIGHT(N'0000' + CAST
         private string GetReportTitle(DataRow r)
         {
             string category = S(r, "SampleCategory");
+
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
+                return "Primary Packaging Analytical Report";
 
             if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
             {
