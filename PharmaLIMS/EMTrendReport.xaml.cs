@@ -208,34 +208,32 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
                 .Where(row => string.Equals(Convert.ToString(row["Unit"], CultureInfo.InvariantCulture), unit, StringComparison.OrdinalIgnoreCase))
                 .Where(row => string.Equals(Convert.ToString(row["Grade"], CultureInfo.InvariantCulture), Convert.ToString(selectedSummary["Grade"], CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
                 .Where(row => string.Equals(Convert.ToString(row["AreaName"], CultureInfo.InvariantCulture), Convert.ToString(selectedSummary["AreaName"], CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
-                .Where(row => row["Result"] != DBNull.Value)
                 .OrderBy(row => Convert.ToDateTime(row["EventDate"], CultureInfo.InvariantCulture))
                 .ToList();
 
-            var model = new PlotModel { Title = $"{areaCode} — {method} ({unit})", Background = OxyColors.White };
+            var model = new PlotModel { Title = $"{areaCode} - {selectedSummary["AreaName"]} / {selectedSummary["Grade"]} - {method} ({unit})", Background = OxyColors.White };
             model.Axes.Add(new DateTimeAxis { Position = AxisPosition.Bottom, Title = "Monitoring date", StringFormat = "dd-MMM-yyyy" });
             model.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = unit, MinimumPadding = 0.08, MaximumPadding = 0.15 });
             var total = new LineSeries { Title = "Total count", MarkerType = MarkerType.Circle, StrokeThickness = 2 };
             model.Axes.Add(new LinearAxis { Key = "fungal", Position = AxisPosition.Right, Title = "Fungal count (as recorded)", MinimumPadding = .08 });
             var fungal = new LineSeries { YAxisKey = "fungal", Title = "Fungal count (as recorded)", MarkerType = MarkerType.Square, StrokeThickness = 1.5 };
-            var alert = new LineSeries { Title = "Alert limit (historical)", LineStyle = LineStyle.Dash, StrokeThickness = 1.4 };
-            var action = new LineSeries { Title = "Action limit (historical)", LineStyle = LineStyle.Dot, StrokeThickness = 1.4 };
+            var alert = new StairStepSeries { Color = OxyColors.DarkOrange, Title = "Alert limit (historical)", LineStyle = LineStyle.Dash, StrokeThickness = 1.4 };
+            var action = new StairStepSeries { Color = OxyColors.Red, Title = "Action limit (historical)", LineStyle = LineStyle.Dot, StrokeThickness = 1.4 };
             foreach (DataRow row in rows)
             {
                 DateTime date = Convert.ToDateTime(row["EventDate"], CultureInfo.InvariantCulture);
                 double x = DateTimeAxis.ToDouble(date);
-                total.Points.Add(new DataPoint(x, Convert.ToDouble(row["Result"], CultureInfo.InvariantCulture)));
+                total.Points.Add(new DataPoint(x, row["Result"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["Result"], CultureInfo.InvariantCulture)));
                 if (row["FungalCount"] != DBNull.Value)
                     fungal.Points.Add(new DataPoint(x, Convert.ToDouble(row["FungalCount"], CultureInfo.InvariantCulture)));
-                if (row["AlertLimit"] != DBNull.Value)
-                    alert.Points.Add(new DataPoint(x, Convert.ToDouble(row["AlertLimit"], CultureInfo.InvariantCulture)));
-                if (row["ActionLimit"] != DBNull.Value)
-                    action.Points.Add(new DataPoint(x, Convert.ToDouble(row["ActionLimit"], CultureInfo.InvariantCulture)));
+                alert.Points.Add(new DataPoint(x, row["AlertLimit"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["AlertLimit"], CultureInfo.InvariantCulture)));
+                action.Points.Add(new DataPoint(x, row["ActionLimit"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["ActionLimit"], CultureInfo.InvariantCulture)));
             }
             model.Series.Add(total);
             if (fungal.Points.Count > 0) model.Series.Add(fungal);
             if (alert.Points.Count > 0) model.Series.Add(alert);
             if (action.Points.Count > 0) model.Series.Add(action);
+            model.Legends.Add(new OxyPlot.Legends.Legend { LegendPosition = OxyPlot.Legends.LegendPosition.BottomCenter, LegendPlacement = OxyPlot.Legends.LegendPlacement.Outside });
             TrendChart.Model = model;
             return model;
         }
@@ -365,6 +363,7 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
 
         private void Print_Click(object sender, RoutedEventArgs e)
         {
+            if (_isLoadingTrend) { MessageBox.Show("Wait for trend loading to complete.", "EM Trend"); return; }
             if (!DatabaseHelper.CanAccessReports(Login.CurrentUser))
             {
                 MessageBox.Show("Reports permission is required to print the Environmental Monitoring trend.", "EM Trend", MessageBoxButton.OK, MessageBoxImage.Warning);

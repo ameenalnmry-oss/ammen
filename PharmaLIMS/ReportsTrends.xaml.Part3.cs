@@ -92,6 +92,16 @@ public partial class ReportsTrends
             actions.Points.Add(new DataPoint(x, action ?? double.NaN));
         }
         model.Series.Add(results); if (boundaries.Points.Count > 0) model.Series.Add(boundaries);
+        if (dated.Length == 1)
+        {
+            foreach (var limit in new[] { alerts, actions })
+            {
+                double value = limit.Points[0].Y;
+                limit.Points.Clear();
+                limit.Points.Add(new DataPoint(DateTimeAxis.ToDouble(dated[0].Date.AddHours(-12)), value));
+                limit.Points.Add(new DataPoint(DateTimeAxis.ToDouble(dated[0].Date.AddHours(12)), value));
+            }
+        }
         if (chkShowLimits?.IsChecked == true) { model.Series.Add(alerts); model.Series.Add(actions); }
         if (!results.Points.Any(point => double.IsFinite(point.Y))) model.Subtitle = "No exact numeric observations; see qualified boundaries and individual results.";
         if (dated.Length > 0 && dated[0].Date == dated[^1].Date)

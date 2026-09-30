@@ -45,9 +45,10 @@ internal sealed class TrendPdfReportWriter : IDisposable
         foreach (string line in summary) writer.Paragraph(line);
         foreach (TrendReportChart chart in charts)
         {
-            writer.NewPage("Trend curves"); writer.Paragraph(chart.Title, true);
+            if (writer.y + 305 > Bottom) writer.NewPage("Trend curves");
+            writer.Paragraph(chart.Title, true);
             using XImage image = XImage.FromStream(new MemoryStream(chart.Image));
-            double scale = Math.Min(Width / image.PixelWidth, 310d / image.PixelHeight);
+            double scale = Math.Min(Width / image.PixelWidth, 260d / image.PixelHeight);
             writer.graphics!.DrawImage(image, Left + (Width - image.PixelWidth * scale) / 2, writer.y + 8,
                 image.PixelWidth * scale, image.PixelHeight * scale);
             writer.y += image.PixelHeight * scale + 24;
@@ -56,7 +57,8 @@ internal sealed class TrendPdfReportWriter : IDisposable
         foreach (TrendReportTable table in tables) writer.Table(table);
         if (!string.IsNullOrWhiteSpace(narrative))
         {
-            writer.NewPage("Trend assessment");
+            writer.EnsureSpace(80, "Trend assessment");
+            writer.Paragraph("Trend assessment", true);
             foreach (string block in narrative.Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries)) writer.Paragraph(block);
         }
         writer.EnsureSpace(90, "Review and approval");
@@ -151,6 +153,8 @@ internal sealed class TrendPdfReportWriter : IDisposable
                 if (!header && columns[i] is "Status" or "Assessment") background = status.ToUpperInvariant() switch
                 { "FAIL" or "ACTION" or "OOS" => new XSolidBrush(XColor.FromArgb(255, 225, 225)), "ALERT" => new XSolidBrush(XColor.FromArgb(255, 239, 209)), "PASS" => new XSolidBrush(XColor.FromArgb(224, 244, 231)), _ => background };
                 graphics!.DrawRectangle(new XPen(XColors.LightGray, .4), background, x, y, widths[i], height);
+                if (fromLine > 0 && columns[i] is "SampleNumber" or "EventNo" or "PlateCode")
+                    graphics.DrawString(cells[i][0], regular, XBrushes.Gray, new XRect(x + 4, y + 4, widths[i] - 8, 11), XStringFormats.TopLeft);
                 for (int l = 0; l < lineCount && fromLine + l < cells[i].Count; l++)
                     graphics.DrawString(cells[i][fromLine + l], header ? bold : regular, header ? XBrushes.White : XBrushes.Black, new XRect(x + 4, y + 4 + l * 11, widths[i] - 8, 11), XStringFormats.TopLeft);
                 x += widths[i];

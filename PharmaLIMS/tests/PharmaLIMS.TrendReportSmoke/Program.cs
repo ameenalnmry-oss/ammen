@@ -51,6 +51,7 @@ internal static class Program
             TrendPdfReportWriter.Write(Path.Combine(directory, "MEDICA_Trend_Regression_Preview.pdf"), "REPORTS AND TRENDS ANALYSIS - VALIDATION FIXTURE", "TREND-TEST-001", "2026-09-01 to 2026-09-06", "Validation fixture", new DateTime(2026, 9, 30, 12, 0, 0),
                 Path.Combine(AppContext.BaseDirectory, "medica-logo.png"), TrendReportData.Statistics(data), charts,
                 new[] { new TrendReportTable("Full individual results", data, new[] { "SampleNumber", "PointCode", "WaterProfile", "SamplingDate", "TestName", "MethodName", "ResultValue", "Unit", "AlertLimit", "ActionLimit", "Status", "Location" }) }, "Validation fixture only. All source rows and curve panels must appear. This report contains no live laboratory records.");
+            VerifyEmReport(directory);
             window.Close();
             Console.WriteLine($"PASS Trend WPF grouping / frozen limits / qualifiers / complete PDF smoke; {data.Rows.Count} fixture rows, {charts.Length} charts. PDF={directory}");
             return 0;
@@ -59,4 +60,33 @@ internal static class Program
     }
 
     private static void Require(bool ok, string message) { if (!ok) throw new InvalidOperationException("Trend report smoke: " + message); }
+
+    private static void VerifyEmReport(string directory)
+    {
+        DataTable details = new();
+        foreach (string c in new[] { "AreaCode", "AreaName", "Grade", "Method", "Unit", "AreaContextSource", "Assessment", "EventNo", "PlateCode" }) details.Columns.Add(c);
+        details.Columns.Add("EventDate", typeof(DateTime));
+        foreach (string c in new[] { "Result", "FungalCount", "AlertLimit", "ActionLimit" }) details.Columns.Add(c, typeof(decimal));
+        details.Rows.Add("ROOM-01", "Granulation I", "ISO 8", "Settle", "CFU/plate", "Native", "Pass", "EM-001", "SP-01", new DateTime(2026,9,1), 5m, 0m, 10m, 20m);
+        details.Rows.Add("ROOM-01", "Granulation I", "ISO 8", "Settle", "CFU/plate", "Native", "Alert", "EM-002", "SP-02", new DateTime(2026,9,2), 15m, 2m, 10m, 20m);
+        details.Rows.Add("ROOM-01", "Granulation I", "ISO 8", "Settle", "CFU/plate", "Native", "Not Assessed", "EM-003", "SP-03", new DateTime(2026,9,3), DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value);
+        details.Rows.Add("ROOM-01", "Historical store", "Unclassified", "Settle", "CFU/plate", "Legacy", "Pass", "EM-004", "SP-04", new DateTime(2026,9,1), 25m, 1m, 50m, 100m);
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        DataTable summary = (DataTable)typeof(EMTrendReport).GetMethod("BuildSummary", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, new object[] { details })!;
+        Require(summary.Rows.Count == 2, "EM historical identities/classifications cannot share a group");
+        // Bypass constructor: EM constructor intentionally reads the controlled database clock.
+        var em = (EMTrendReport)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(EMTrendReport));
+        typeof(EMTrendReport).GetField("_details", flags)!.SetValue(em, details);
+        typeof(EMTrendReport).GetField("TrendChart", flags)!.SetValue(em, new PlotView());
+        var charts = new List<TrendReportChart>();
+        foreach (DataRow row in summary.Rows)
+        {
+            var model = (PlotModel)typeof(EMTrendReport).GetMethod("BuildTrendChart", flags)!.Invoke(em, new object[] { row })!;
+            using var stream = new MemoryStream(); new PngExporter { Width = 1600, Height = 700 }.Export(model, stream);
+            charts.Add(new TrendReportChart(model.Title, stream.ToArray()));
+        }
+        TrendPdfReportWriter.Write(Path.Combine(directory, "MEDICA_EM_Regression_Preview.pdf"), "ENVIRONMENTAL MONITORING TREND - VALIDATION FIXTURE", "EM-TREND-TEST-001", "2026-09-01 to 2026-09-03 | Procedure MQC-G-0009", "Validation fixture", new DateTime(2026,9,30,12,0,0), Path.Combine(AppContext.BaseDirectory,"medica-logo.png"), new[] { "Validation fixture: separate controlled populations; pending/unassessed rows remain visible." }, charts,
+            new[] { new TrendReportTable("Summary by historical area / method", summary, new[] { "AreaCode", "AreaName", "Grade", "Method", "Unit", "NumericObservations", "Mean", "Maximum", "Alerts", "Actions", "NotAssessed", "LimitState" }), new TrendReportTable("All individual observations", details, new[] { "EventNo", "EventDate", "AreaCode", "Method", "PlateCode", "Result", "FungalCount", "Unit", "AlertLimit", "ActionLimit", "Assessment" }) }, "Fixture only. No live laboratory data were accessed. Results with incomplete evidence remain Not Assessed and cannot establish a state-of-control conclusion.");
+        Console.WriteLine("PASS Internal EM historical grouping, curves and full individual-observation PDF fixture.");
+    }
 }
