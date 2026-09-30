@@ -82,6 +82,8 @@ internal static class Program
         foreach (DataRow row in summary.Rows)
         {
             var model = (PlotModel)typeof(EMTrendReport).GetMethod("BuildTrendChart", flags)!.Invoke(em, new object[] { row })!;
+            if (Convert.ToString(row["Grade"]) == "Unclassified")
+                Require(model.Series.OfType<StairStepSeries>().All(series => series.Points.Count == 2), "single-observation EM historical limits remain visible");
             using var stream = new MemoryStream(); new PngExporter { Width = 1600, Height = 700 }.Export(model, stream);
             charts.Add(new TrendReportChart(model.Title, stream.ToArray()));
         }

@@ -229,6 +229,17 @@ THEN 1 ELSE 0 END AS IsReady;", commandTimeoutSeconds: 5));
                 alert.Points.Add(new DataPoint(x, row["AlertLimit"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["AlertLimit"], CultureInfo.InvariantCulture)));
                 action.Points.Add(new DataPoint(x, row["ActionLimit"] == DBNull.Value ? double.NaN : Convert.ToDouble(row["ActionLimit"], CultureInfo.InvariantCulture)));
             }
+            if (rows.Count == 1)
+            {
+                DateTime date = Convert.ToDateTime(rows[0]["EventDate"], CultureInfo.InvariantCulture);
+                foreach (var limits in new[] { alert, action })
+                {
+                    double value = limits.Points[0].Y;
+                    limits.Points.Clear();
+                    limits.Points.Add(new DataPoint(DateTimeAxis.ToDouble(date.AddHours(-12)), value));
+                    limits.Points.Add(new DataPoint(DateTimeAxis.ToDouble(date.AddHours(12)), value));
+                }
+            }
             model.Series.Add(total);
             if (fungal.Points.Count > 0) model.Series.Add(fungal);
             if (alert.Points.Count > 0) model.Series.Add(alert);
