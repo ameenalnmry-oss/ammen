@@ -61,7 +61,8 @@ public partial class ReportsTrends
     {
         var model = new PlotModel { Title = title, TitleFontSize = 13, Background = OxyColors.White };
         string unit = TrendReportData.Text(data.Rows[0], "Unit");
-        model.Axes.Add(new DateTimeAxis { Position = AxisPosition.Bottom, Title = "Sampling date", StringFormat = "dd-MMM-yyyy", MajorGridlineStyle = LineStyle.Solid, MajorGridlineColor = OxyColors.LightGray });
+        var dateAxis = new DateTimeAxis { Position = AxisPosition.Bottom, Title = "Sampling date", StringFormat = "dd-MMM-yyyy", MajorGridlineStyle = LineStyle.Solid, MajorGridlineColor = OxyColors.LightGray };
+        model.Axes.Add(dateAxis);
         model.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = unit, MinimumPadding = .08, MaximumPadding = .15, MajorGridlineStyle = LineStyle.Solid, MajorGridlineColor = OxyColors.LightGray });
         var results = new LineSeries { Title = "Exact result", MarkerType = MarkerType.Circle, MarkerSize = 4, Color = OxyColors.SteelBlue };
         var boundaries = new ScatterSeries { Title = "Qualified boundary (not exact)", MarkerType = MarkerType.Diamond, MarkerFill = OxyColors.Purple, TrackerFormatString = "{0}\nDate: {2:yyyy-MM-dd}\nBoundary: {4}\nQualifier: {Tag}" };
@@ -69,6 +70,21 @@ public partial class ReportsTrends
         var alerts = new StairStepSeries { Title = ph ? "Lower specification (historical)" : "Alert (historical)", Color = OxyColors.DarkOrange, LineStyle = LineStyle.Dash };
         var actions = new StairStepSeries { Title = ph ? "Upper specification (historical)" : "Action / specification (historical)", Color = OxyColors.Red, LineStyle = LineStyle.Dash };
         var dated = data.Rows.Cast<DataRow>().Select(row => (Row: row, Valid: TryReportDate(row, out DateTime date), Date: date)).Where(item => item.Valid).OrderBy(item => item.Date).ToArray();
+        if (dated.Length > 0)
+        {
+            double spanDays = (dated[^1].Date - dated[0].Date).TotalDays;
+            if (spanDays < 1)
+            {
+                dateAxis.StringFormat = "dd-MMM HH:mm";
+                dateAxis.IntervalType = DateTimeIntervalType.Hours;
+                dateAxis.MajorStep = 6;
+            }
+            else if (spanDays <= 14)
+            {
+                dateAxis.IntervalType = DateTimeIntervalType.Days;
+                dateAxis.MajorStep = 1;
+            }
+        }
         foreach (var item in dated)
         {
             double x = DateTimeAxis.ToDouble(item.Date);
