@@ -1498,6 +1498,9 @@ WHERE configured.SpecificationNo=@SpecificationNo
 
             if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
+                if (string.IsNullOrWhiteSpace(GetComboText(CmbRawPurpose)))
+                    throw new InvalidOperationException("Sample Purpose is required.");
+
                 if (string.IsNullOrWhiteSpace(TxtMaterialCode.Text))
                     throw new InvalidOperationException("Material Code is required.");
 

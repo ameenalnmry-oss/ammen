@@ -198,6 +198,7 @@ internal static partial class Program
             EmTrendAssessmentService.Apply(t);Equal("Pending",t.Rows[0]["Assessment"]);
         });
         RunMergedRegressionCases();
+        RunPrmSignatureChainCases();
         Console.WriteLine($"Review regression: {passed} passed, {failed} failed.");
         return failed==0 ? 0 : 1;
     }

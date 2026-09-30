@@ -442,6 +442,13 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('"H:mm", "HH:mm"', source)
         self.assertNotIn("DateTime.Now.TimeOfDay", source)
         self.assertIn('TxtSampleTime.Text = storedSampleDateTime.HasValue', source)
+        self.assertIn('<TextBlock Text="Sample Purpose *"', xaml)
+
+        validation = source.split("private void ValidateForm()", 1)[1].split("private void InsertSample()", 1)[0]
+        self.assertIn('category.Equals("Raw Material"', validation)
+        self.assertIn('category.Equals("Primary Packaging"', validation)
+        self.assertIn('string.IsNullOrWhiteSpace(GetComboText(CmbRawPurpose))', validation)
+        self.assertIn('"Sample Purpose is required."', validation)
 
         save = source.split("private void BtnSave_Click", 1)[1].split("private void ValidateForm", 1)[0]
         self.assertIn("DatabaseHelper.CanRegisterSamples(actor)", save)
@@ -533,6 +540,11 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("DatabaseHelper.AddAuditTrailAdvanced", issue)
         self.assertIn('"PRM_Samples", _selectedSampleId, issueAction', issue)
         self.assertIn('AddPrmElectronicSignatureInTransaction(conn, tx, issueAction, signature, signerRole)', issue)
+        self.assertIn('actionType.Equals("Result Entry"', issue)
+        self.assertIn('actionType.Equals("Review"', issue)
+        self.assertIn('actionType.Equals("Approval"', issue)
+        self.assertIn('actionType.Equals(issueAction', issue)
+        self.assertIn("persisted electronic-signature chain is incomplete", issue)
 
         cancel = source.split("private void CancelCertificate(", 1)[1].split("private int CancelCertificateInTransaction", 1)[0]
         self.assertIn("EnsureUserPermissionInTransaction", cancel)
