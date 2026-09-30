@@ -202,13 +202,7 @@ BEGIN
 END
 SELECT @Result;"),
 
-                OverdueSamples = GetDashboardCount("Overdue Samples", @"
-DECLARE @Result INT = 0;
-IF OBJECT_ID(N'dbo.Samples', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Samples', N'RegistrationDate') IS NOT NULL AND COL_LENGTH(N'dbo.Samples', N'Status') IS NOT NULL
-    EXEC sys.sp_executesql N'SELECT @Value = COUNT(1) FROM dbo.Samples WHERE RegistrationDate < DATEADD(DAY, -7, GETDATE()) AND ISNULL(Status, '''') NOT IN (''Approved'', ''COA Issued'', ''Certificate Issued'', ''Cancelled'', ''Rejected'');', N'@Value INT OUTPUT', @Value = @Result OUTPUT;
-IF OBJECT_ID(N'dbo.PRM_Samples', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.PRM_Samples', N'CreatedDate') IS NOT NULL AND COL_LENGTH(N'dbo.PRM_Samples', N'SampleStatus') IS NOT NULL
-BEGIN DECLARE @Prm INT = 0; EXEC sys.sp_executesql N'SELECT @Value = COUNT(1) FROM dbo.PRM_Samples WHERE CreatedDate < DATEADD(DAY, -7, GETDATE()) AND ISNULL(SampleStatus, '''') NOT IN (''Approved'', ''COA Issued'', ''Certificate Issued'', ''Cancelled'', ''Rejected'');', N'@Value INT OUTPUT', @Value = @Prm OUTPUT; SET @Result += @Prm; END
-SELECT @Result;")
+                OverdueSamples = GetDashboardCount("Overdue Samples", DashboardSampleQuery.Overdue)
             };
         }
 
