@@ -412,7 +412,7 @@ THEN 1 ELSE 0 END;", connection, transaction);
 ;WITH SampleContext AS
 (
     SELECT
-        CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(SampleCategory,N'')))) IN(N'RAW MATERIAL',N'RAW MATERIALS',N'RM')
+        CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(SampleCategory,N'')))) IN(N'RAW MATERIAL',N'RAW MATERIALS',N'RM',N'PRIMARY PACKAGING')
              THEN LTRIM(RTRIM(ISNULL(MaterialCode,N'')))
              ELSE LTRIM(RTRIM(ISNULL(ProductCode,N''))) END AS ItemCode,
         LTRIM(RTRIM(ISNULL(ProductionStage,N''))) AS ProductionStage,
@@ -805,8 +805,8 @@ ORDER BY source.SampleID DESC;", connection, transaction);
             string sourceMaterialCode,
             string sourceMaterialName)
         {
-            bool rawMaterial = GetCategoryGroup(targetCategory)
-                .Equals("RAW MATERIAL", StringComparison.OrdinalIgnoreCase);
+            bool rawMaterial = GetCategoryGroup(targetCategory).Equals("RAW MATERIAL", StringComparison.OrdinalIgnoreCase)
+                || GetCategoryGroup(targetCategory).Equals("PRIMARYPACKAGING", StringComparison.OrdinalIgnoreCase);
 
             string targetCode = NormalizeCategoryKey(rawMaterial ? targetMaterialCode : targetProductCode);
             string sourceCode = NormalizeCategoryKey(rawMaterial ? sourceMaterialCode : sourceProductCode);

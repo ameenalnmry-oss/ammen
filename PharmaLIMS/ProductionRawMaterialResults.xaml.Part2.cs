@@ -23,6 +23,31 @@ namespace PharmaLIMS
 {
     public partial class ProductionRawMaterialResults
     {
+        private async void BtnChoosePackagingResults_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedResultGroup = "PP";
+            ShowResultsView();
+            ClearSampleInfo();
+            await LoadSamplesAsync();
+            TxtStatus.Text = "Primary Packaging results workflow loaded.";
+        }
+
+        private string GetResultGroupForSampleId(int sampleId)
+        {
+            object categoryObj = DatabaseHelper.ExecuteScalar(
+                "SELECT SampleCategory FROM dbo.PRM_Samples WHERE SampleID = @SampleID",
+                new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = sampleId } });
+
+            string category = categoryObj == null || categoryObj == DBNull.Value ? string.Empty : Convert.ToString(categoryObj, CultureInfo.InvariantCulture);
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
+                return "PP";
+            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+                return "RM";
+            if (category.Equals("Stability", StringComparison.OrdinalIgnoreCase))
+                return "ST";
+            return "PR";
+        }
+
         private bool HasAnyPrmQualityEventMinimalInTransaction(SqlConnection connection, SqlTransaction transaction)
         {
             object ready = ExecuteScalarInTransaction(connection, transaction, @"
@@ -321,7 +346,7 @@ ORDER BY S.SignatureID;",
 
             if (!IsControlledNonReleaseReportCategory(category))
                 throw new InvalidOperationException(
-                    "Raw Material and Finished Product Certificates of Analysis can be issued only when the final interpretation is Conforms.");
+                    "Raw Material, Primary Packaging and Finished Product Certificates of Analysis can be issued only when the final interpretation is Conforms.");
 
             if (!hasAnyQualityEvent)
                 throw new InvalidOperationException(
@@ -369,7 +394,7 @@ ORDER BY S.SignatureID;",
 
             if (!IsControlledNonReleaseReportCategory(category))
                 throw new InvalidOperationException(
-                    "Raw Material and Finished Product Certificates of Analysis can be issued only when the final interpretation is Conforms.");
+                    "Raw Material, Primary Packaging and Finished Product Certificates of Analysis can be issued only when the final interpretation is Conforms.");
 
             if (!hasAnyQualityEvent)
                 throw new InvalidOperationException(
@@ -1445,6 +1470,7 @@ SELECT STRING_AGG(ObjectName, N', ') FROM @Missing;");
 
         private static string GetCertificatePrefix(string category)
         {
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)) return "COA-PP";
             if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase)) return "COA-RM";
             if (category.Equals("Finished Product", StringComparison.OrdinalIgnoreCase)) return "COA-FP";
             if (category.Equals("Stability", StringComparison.OrdinalIgnoreCase)) return "RPT-ST";
@@ -1453,6 +1479,7 @@ SELECT STRING_AGG(ObjectName, N', ') FROM @Missing;");
 
         private static string GetReportTitle(string category)
         {
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)) return "Primary Packaging Microbiological Certificate of Analysis";
             if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase)) return "Raw Material Microbiological Certificate of Analysis";
             if (category.Equals("Finished Product", StringComparison.OrdinalIgnoreCase)) return "Finished Product Microbiological Certificate of Analysis";
             if (category.Equals("Stability", StringComparison.OrdinalIgnoreCase)) return "Stability Microbiological Test Report";

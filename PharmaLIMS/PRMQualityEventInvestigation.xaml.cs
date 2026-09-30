@@ -1721,7 +1721,7 @@ SELECT COUNT(1) FROM @Inserted;",
             title.Margin = new Thickness(0, 12, 0, 2);
             document.Blocks.Add(title);
 
-            Paragraph subtitle = new Paragraph(new Run("Raw Material / Stability / Production / Finished Product Investigation"));
+            Paragraph subtitle = new Paragraph(new Run("Raw Material / Primary Packaging / Stability / Production / Finished Product Investigation"));
             subtitle.TextAlignment = TextAlignment.Center;
             subtitle.FontSize = 11;
             subtitle.Foreground = Brushes.DimGray;

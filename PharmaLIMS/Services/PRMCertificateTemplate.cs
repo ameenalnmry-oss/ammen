@@ -333,7 +333,7 @@ namespace PharmaLIMS
 
         private static void AppendCategoryTraceabilityRows(StringBuilder sb, DataRow sample, string category)
         {
-            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase))
+            if (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
             {
                 AddRow(sb, "Material Code", S(sample, "MaterialCode"), "Manufacturer", S(sample, "Manufacturer"));
                 AddRow(sb, "Supplier / GRN", JoinValues(S(sample, "Supplier"), S(sample, "GRNNo")),
@@ -395,9 +395,7 @@ namespace PharmaLIMS
 
         private static string GetMainDocumentTitle(string category)
         {
-            if (category.Equals(
-                "Raw Material",
-                StringComparison.OrdinalIgnoreCase))
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 return "CERTIFICATE OF ANALYSIS";
             }
@@ -421,9 +419,8 @@ namespace PharmaLIMS
 
         private static string GetDocumentSubTitle(string category)
         {
-            if (category.Equals(
-                "Raw Material",
-                StringComparison.OrdinalIgnoreCase))
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)) return "PRIMARY PACKAGING";
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 return "RAW MATERIAL";
             }
@@ -462,9 +459,7 @@ namespace PharmaLIMS
 
         private static bool IsCertificateCategory(string category)
         {
-            return category.Equals(
-                       "Raw Material",
-                       StringComparison.OrdinalIgnoreCase)
+            return (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
                    ||
                    category.Equals(
                        "Finished Product",
@@ -518,9 +513,7 @@ namespace PharmaLIMS
         {
             string category = S(row, "SampleCategory");
 
-            return category.Equals(
-                "Raw Material",
-                StringComparison.OrdinalIgnoreCase)
+            return (category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
                 ? S(row, "MaterialName")
                 : S(row, "ProductName");
         }
@@ -529,9 +522,7 @@ namespace PharmaLIMS
         {
             string category = S(row, "SampleCategory");
 
-            if (category.Equals(
-                "Raw Material",
-                StringComparison.OrdinalIgnoreCase))
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 string manufacturerLot =
                     S(row, "ManufacturerLotNo");
@@ -546,9 +537,8 @@ namespace PharmaLIMS
 
         private static string GetReportTitle(string category)
         {
-            if (category.Equals(
-                "Raw Material",
-                StringComparison.OrdinalIgnoreCase))
+            if (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)) return "Primary Packaging Microbiological Certificate of Analysis";
+            if ((category.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) || category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)))
             {
                 return "Raw Material Microbiological Certificate of Analysis";
             }

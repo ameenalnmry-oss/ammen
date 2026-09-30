@@ -72,7 +72,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Production / Raw Material / Finished Product / Stability Results Entry"
+                    <TextBlock Text="Production / Raw Material / Primary Packaging / Stability Results"
                                Foreground="White" FontSize="23" FontWeight="Bold"/>
                     <TextBlock Text="LIMS workflow: Start Analysis → Save Results → Submit Review → Review → Approve → Issue Certificate / Report."
                                Foreground="#CBD5E1" FontSize="12" Margin="0,6,0,0"/>
@@ -87,13 +87,14 @@
 
         <Grid Grid.Row="1">
             <Grid x:Name="ChoiceView" Visibility="Visible">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="18" Padding="28">
                     <StackPanel VerticalAlignment="Top">
                         <TextBlock Text="Choose Sample Type" FontSize="30" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center"/>
                         <TextBlock Text="Select the results workflow. Finished Product is included under Production Samples."
                                    FontSize="14" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,8,0,38"/>
 
-                        <UniformGrid Columns="3" HorizontalAlignment="Stretch">
+                        <UniformGrid Columns="2" HorizontalAlignment="Stretch">
                             <Button x:Name="BtnChooseProductionResults" Click="BtnChooseProductionResults_Click" Background="White" BorderBrush="#CBD5E1" BorderThickness="1.5" Cursor="Hand" MinHeight="180" Margin="12">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -132,6 +133,25 @@
                                 </Grid>
                             </Button>
 
+                            <Button x:Name="BtnChoosePackagingResults" Click="BtnChoosePackagingResults_Click" Background="White" BorderBrush="#CBD5E1" BorderThickness="1.5" Cursor="Hand" MinHeight="180" Margin="12">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="18" Padding="22">
+                                            <ContentPresenter/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <Grid>
+                                    <StackPanel>
+                                        <Border Background="#B45309" Width="70" Height="70" CornerRadius="14" HorizontalAlignment="Left">
+                                            <TextBlock Text="PP" Foreground="White" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Primary Packaging" FontSize="24" FontWeight="Bold" Foreground="#0F172A" Margin="0,24,0,6"/>
+                                        <TextBlock Text="Packaging material results and certificate" TextWrapping="Wrap" FontSize="13" Foreground="#475569"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
                             <Button x:Name="BtnChooseStabilityResults" Click="BtnChooseStabilityResults_Click" Background="White" BorderBrush="#CBD5E1" BorderThickness="1.5" Cursor="Hand" MinHeight="180" Margin="12">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -153,6 +173,7 @@
                         </UniformGrid>
                     </StackPanel>
                 </Border>
+                </ScrollViewer>
             </Grid>
 
             <Grid x:Name="ResultsView" Visibility="Collapsed">

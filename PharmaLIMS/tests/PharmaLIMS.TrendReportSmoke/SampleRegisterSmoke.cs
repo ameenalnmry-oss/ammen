@@ -28,14 +28,14 @@ internal static class SampleRegisterSmoke
             source.Rows.Add(row);
         }
         var tables=SampleReceiptRegisterData.Tables(source);
-        Require(tables.Count==7 && tables.Sum(t=>t.Data.Rows.Count)==105,"all seven types and complete row counts");
+        Require(tables.Count==8 && tables.Sum(t=>t.Data.Rows.Count)==120,"all eight types and complete row counts");
         Require(tables.Any(t=>t.Data.Rows.Cast<DataRow>().Any(r=>r["Dates"].ToString()!.Contains("R: Not recorded"))),"missing lab receipt remains explicit");
         Require(tables.All(t=>t.Data.Rows[0]["No"].ToString()=="1"),"per-type numbering");
-        Require(tables.SelectMany(t=>t.Data.Rows.Cast<DataRow>()).Count(r=>r["Status"].ToString()=="Rejected")==7,"rejected records retained");
+        Require(tables.SelectMany(t=>t.Data.Rows.Cast<DataRow>()).Count(r=>r["Status"].ToString()=="Rejected")==8,"rejected records retained");
         var window=new SampleReceiptRegister(); // No Loaded query: constructor must remain read-only.
         window.Close();
         TrendPdfReportWriter.Write(Path.Combine(directory,"MEDICA_Sample_Register_Fixture_Preview.pdf"),"LABORATORY SAMPLE REGISTER","REGISTER-FIXTURE-ONLY","All types | September 2026 | Registration date","Fixture user",new DateTime(2026,9,30),
-            Path.Combine(AppContext.BaseDirectory,"medica-logo.png"),new[] {"SYNTHETIC TEST DATA ONLY. 105 source records across seven types. Not laboratory results.","Dates legend: S = Sampled; R = Laboratory received; G = Registered."},Array.Empty<TrendReportChart>(),tables,sampleRegister:true);
-        Console.WriteLine("PASS Sample register: seven types, all 105 rows, receipt evidence, date filter, per-type numbering and full PDF.");
+            Path.Combine(AppContext.BaseDirectory,"medica-logo.png"),new[] {"SYNTHETIC TEST DATA ONLY. 120 source records across eight types. Not laboratory results.","Dates legend: S = Sampled; R = Laboratory received; G = Registered."},Array.Empty<TrendReportChart>(),tables,sampleRegister:true);
+        Console.WriteLine("PASS Sample register: eight types, all 120 rows, receipt evidence, date filter, per-type numbering and full PDF.");
     }
 }

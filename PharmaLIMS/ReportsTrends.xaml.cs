@@ -681,7 +681,7 @@ namespace PharmaLIMS
 
         private static bool IsPrmCategory(string category)
         {
-            return category == "Raw Material" ||
+            return category == "Primary Packaging" || category == "Raw Material" ||
                    category == "Production / In-Process" ||
                    category == "Finished Product" ||
                    category == "Stability";
@@ -1445,8 +1445,8 @@ namespace PharmaLIMS
             string query = @"
                 SELECT
                     ps.SampleNumber,
-                    CASE WHEN ps.SampleCategory = N'Raw Material' THEN ISNULL(ps.MaterialCode, N'') ELSE ISNULL(ps.ProductCode, N'') END AS PointCode,
-                    CASE WHEN ps.SampleCategory = N'Raw Material' THEN ISNULL(ps.MaterialName, N'') ELSE ISNULL(ps.ProductName, N'') END AS Location,
+                    CASE WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.MaterialCode, N'') ELSE ISNULL(ps.ProductCode, N'') END AS PointCode,
+                    CASE WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.MaterialName, N'') ELSE ISNULL(ps.ProductName, N'') END AS Location,
                     FORMAT(COALESCE(ps.SampleDateTime, ps.CreatedDate), 'yyyy-MM-dd HH:mm') AS SamplingDate,
                     COALESCE(ps.SampleDateTime, ps.CreatedDate) AS SamplingDateTime,
                     ps.SampleCategory AS SampleType,

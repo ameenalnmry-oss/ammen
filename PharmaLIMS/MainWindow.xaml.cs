@@ -1126,7 +1126,7 @@ SELECT @Result;");
                 return;
             }
 
-            if (!EnsureRuntimeReadyForWorkflow("Production / Raw Material / Stability Samples"))
+            if (!EnsureRuntimeReadyForWorkflow("Production / Raw Material / Primary Packaging / Stability Samples"))
                 return;
 
             try
@@ -1154,7 +1154,7 @@ SELECT @Result;");
                 return;
             }
 
-            if (!EnsureRuntimeReadyForWorkflow("Production / Raw Material / Stability Results"))
+            if (!EnsureRuntimeReadyForWorkflow("Production / Raw Material / Primary Packaging / Stability Results"))
                 return;
 
             try

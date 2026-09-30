@@ -174,7 +174,7 @@
                     <Button x:Name="BtnPRMSamples" Style="{StaticResource NavButton}" Click="BtnPRMSamples_Click">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <Border Width="30" Height="30" CornerRadius="7" Background="#475569"><TextBlock Text="PS" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Production Samples" FontWeight="SemiBold"/><TextBlock Text="RM, IP, FP, stability" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Production Samples" FontWeight="SemiBold"/><TextBlock Text="RM, PP, IP, FP, stability" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
                         </Grid>
                     </Button>
 
@@ -311,7 +311,7 @@
                                     <Border Background="#EFF6FF" CornerRadius="9" Margin="0,0,8,8" Padding="12"><StackPanel><TextBlock Text="Water" FontWeight="Bold" Foreground="#1D4ED8"/><TextBlock Text="PW / PTW" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
                                     <Border Background="#F5F3FF" CornerRadius="9" Margin="0,0,0,8" Padding="12"><StackPanel><TextBlock Text="EM" FontWeight="Bold" Foreground="#6D28D9"/><TextBlock Text="Settle / Active Air" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
                                     <Border Background="#ECFDF5" CornerRadius="9" Margin="0,0,8,0" Padding="12"><StackPanel><TextBlock Text="Culture Media" FontWeight="Bold" Foreground="#047857"/><TextBlock Text="Qualification / Release" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
-                                    <Border Background="#FFF7ED" CornerRadius="9" Padding="12"><StackPanel><TextBlock Text="PRM" FontWeight="Bold" Foreground="#C2410C"/><TextBlock Text="RM / IP / FP / Stability" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
+                                    <Border Background="#FFF7ED" CornerRadius="9" Padding="12"><StackPanel><TextBlock Text="PRM" FontWeight="Bold" Foreground="#C2410C"/><TextBlock Text="RM / PP / IP / FP / Stability" FontSize="10" Foreground="#64748B"/></StackPanel></Border>
                                 </UniformGrid>
                             </StackPanel>
                         </Border>

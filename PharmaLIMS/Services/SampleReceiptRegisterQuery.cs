@@ -6,7 +6,7 @@ namespace PharmaLIMS.Services;
 
 internal static class SampleReceiptRegisterQuery
 {
-    internal static readonly string[] Types = { "All", "Purified Water", "Potable Water", "Environmental Monitoring", "Raw Material", "Production / In-Process", "Finished Product", "Stability" };
+    internal static readonly string[] Types = { "All", "Purified Water", "Potable Water", "Environmental Monitoring", "Raw Material", "Primary Packaging", "Production / In-Process", "Finished Product", "Stability" };
     internal static string NormalizeType(string value) => value.Trim().ToUpperInvariant() switch
     { "PW" or "PURIFIED WATER" => "Purified Water", "PTW" or "POTABLE WATER" => "Potable Water", _ => value.Trim() };
 
@@ -31,9 +31,9 @@ WITH RegisterRows AS (
  LEFT JOIN dbo.SamplingPoints sp ON sp.PointID=s.PointID
  UNION ALL
  SELECT 'PRM',ps.SampleID,ps.SampleNumber,ps.SampleCategory,
- CASE WHEN ps.SampleCategory=N'Raw Material' THEN ISNULL(ps.MaterialCode,N'')+N' | '+ISNULL(ps.MaterialName,N'')
+ CASE WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.MaterialCode,N'')+N' | '+ISNULL(ps.MaterialName,N'')
  ELSE ISNULL(ps.ProductCode,N'')+N' | '+ISNULL(ps.ProductName,N'') END + N' | '+ISNULL(ps.Department,N'')+N' | '+ISNULL(ps.SampleSource,N''),
- CASE WHEN ps.SampleCategory=N'Raw Material' THEN ISNULL(ps.ManufacturerLotNo,N'') ELSE ISNULL(ps.BatchNo,N'') END,
+ CASE WHEN ps.SampleCategory IN (N'Raw Material', N'Primary Packaging') THEN ISNULL(ps.ManufacturerLotNo,N'') ELSE ISNULL(ps.BatchNo,N'') END,
  COALESCE(CONVERT(nvarchar(60),ps.SampleQuantity),N'')+N' '+ISNULL(ps.Unit,N''),
  ps.SampleDateTime,CAST(NULL AS datetime2),ps.CreatedDate,ps.SampledBy,CAST(NULL AS nvarchar(100)),ps.CreatedBy,
  CAST(NULL AS nvarchar(50)),ps.SampleStatus,
