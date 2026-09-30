@@ -22,7 +22,9 @@ internal static class SampleRegisterSmoke
             DataRow row=source.NewRow(); row["RecordKind"]=type.Contains("Water") ? "WATER" : type=="Environmental Monitoring" ? "EM" : "PRM";
             row["SampleID"]=++id; row["SampleType"]=type; row["SampleNumber"]="REGISTER-TEST-"+id.ToString("D3");
             row["Description"]="Fixture sample / source "+(i==14 ? new string('x',700) : "Room 01"); row["BatchOrLot"]="BATCH-001"; row["Quantity"]="100 g";
-            row["SampledBy"]="Sampler"; row["RegisteredBy"]="Registrar"; row["Tests"]="TAMC; TYMC; Specified organisms"; row["Status"]=i==0 ? "Rejected" : "Registered";
+            row["SampledBy"]="Sampler"; row["RegisteredBy"]="Registrar";
+            row["Tests"]=i==13 ? string.Join("; ",Enumerable.Repeat("LONG-TEST-NAME",80)) : "TAMC; TYMC; Specified organisms";
+            row["Status"]=i==0 ? "Rejected" : "Registered";
             row["SamplingDateTime"]=new DateTime(2026,8,31,9,0,0); row["RegisteredDateTime"]=new DateTime(2026,9,1,12,0,0);
             if (type.Contains("Water")) {row["ReceivedDateTime"]=new DateTime(2026,9,1,10,0,0);row["ReceivedBy"]="Receiver";row["ReceiptDecision"]=i==0 ? "Rejected" : "Accepted";}
             source.Rows.Add(row);

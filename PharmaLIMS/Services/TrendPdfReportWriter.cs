@@ -146,9 +146,6 @@ internal sealed class TrendPdfReportWriter : IDisposable
         double[] weights = columns.Select(c => c is "Location" or "AreaName" or "TestName" or "ValueIntegrity" or "EvidenceSource" ? 2d : c.Contains("Date") || c == "SampleNumber" || c == "EventNo" ? 1.6d : 1d).ToArray();
         if (sampleRegister) weights = columns.Select(c => c switch { "No" => .35d, "Description" or "Dates" => 1.8d, "Tests" => 1.5d, "SampleNumber" => 1.6d, "Quantity" => .8d, "SampledBy" or "ReceivedBy" or "RegisteredBy" => .9d, "Status" => 1.1d, _ => 1d }).ToArray();
         double[] widths = weights.Select(w => Width * w / weights.Sum()).ToArray();
-        static bool IsContinuationContentColumn(string column) =>
-            column is "Description" or "Location" or "EvidenceSource" or "ValueIntegrity" or "HistoricalContext";
-
         void DrawCells(List<string>[] cells, int fromLine, int lineCount, bool header, bool alternate, string status)
         {
             double height = lineCount * 11 + 9, x = Left;
@@ -159,8 +156,9 @@ internal sealed class TrendPdfReportWriter : IDisposable
                 { "FAIL" or "ACTION" or "OOS" => new XSolidBrush(XColor.FromArgb(255, 225, 225)), "ALERT" => new XSolidBrush(XColor.FromArgb(255, 239, 209)), "PASS" => new XSolidBrush(XColor.FromArgb(224, 244, 231)), _ => background };
                 graphics!.DrawRectangle(new XPen(XColors.LightGray, .4), background, x, y, widths[i], height);
 
-                int cellOffset = !header && fromLine > 0 && !IsContinuationContentColumn(columns[i]) ? 0 : fromLine;
-                XBrush foreground = !header && fromLine > 0 && !IsContinuationContentColumn(columns[i]) ? XBrushes.Gray : header ? XBrushes.White : XBrushes.Black;
+                bool hasRemainingLines = fromLine < cells[i].Count;
+                int cellOffset = !header && fromLine > 0 && !hasRemainingLines ? 0 : fromLine;
+                XBrush foreground = !header && fromLine > 0 && !hasRemainingLines ? XBrushes.Gray : header ? XBrushes.White : XBrushes.Black;
                 for (int l = 0; l < lineCount && cellOffset + l < cells[i].Count; l++)
                     graphics.DrawString(cells[i][cellOffset + l], header ? bold : regular, foreground, new XRect(x + 4, y + 4 + l * 11, widths[i] - 8, 11), XStringFormats.TopLeft);
                 x += widths[i];
@@ -185,7 +183,7 @@ internal sealed class TrendPdfReportWriter : IDisposable
                 if (available < 1 || (offset == 0 && total <= 25 && available < total)) { NewPage(table.Title + " - continued"); Header(); available = (int)((Bottom - y - 9) / 11); }
                 int consume = Math.Min(available, total - offset);
                 int repeatedContextLines = offset > 0
-                    ? cells.Where((cell, index) => !IsContinuationContentColumn(columns[index])).Select(cell => cell.Count).DefaultIfEmpty(1).Max()
+                    ? cells.Where(cell => cell.Count <= offset).Select(cell => cell.Count).DefaultIfEmpty(1).Max()
                     : 1;
                 int drawLines = Math.Min(available, Math.Max(consume, repeatedContextLines));
                 DrawCells(cells, offset, drawLines, false, rowNumber % 2 == 1, status);
