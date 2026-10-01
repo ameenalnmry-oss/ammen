@@ -937,6 +937,9 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                 TxtSampleNo.Text = "Auto";
 
             ApplyCategoryLayout();
+
+            if (!_specificationMasterOnly)
+                LoadSamples();
         }
 
         private void BtnChooseProduction_Click(object sender, RoutedEventArgs e)
@@ -1331,19 +1334,22 @@ ORDER BY SpecificationNo;",
 
         private void LoadSamples()
         {
-            DataTable table = QuerySamples((TxtSearch.Text ?? string.Empty).Trim());
+            string search = (TxtSearch.Text ?? string.Empty).Trim();
+            string workflowCategory = GetSelectedCategory();
+            DataTable table = QuerySamples(search, workflowCategory);
             ApplySamples(table);
         }
 
         private async Task LoadSamplesAsync()
         {
             string search = (TxtSearch.Text ?? string.Empty).Trim();
+            string workflowCategory = GetSelectedCategory();
             BtnRefresh.IsEnabled = false;
             TxtStatus.Text = "Loading PRM sample records...";
 
             try
             {
-                DataTable table = await Task.Run(() => QuerySamples(search));
+                DataTable table = await Task.Run(() => QuerySamples(search, workflowCategory));
                 ApplySamples(table);
             }
             catch (Exception ex)
@@ -1358,7 +1364,7 @@ ORDER BY SpecificationNo;",
             }
         }
 
-        private static DataTable QuerySamples(string search)
+        private static DataTable QuerySamples(string search, string workflowCategory)
         {
             string query = @"
 SELECT TOP 300
@@ -1384,20 +1390,52 @@ SELECT TOP 300
     ReportStatus,
     CreatedBy
 FROM dbo.PRM_Samples
-WHERE (@search = N''
-       OR SampleNumber LIKE N'%' + @search + N'%'
-       OR MaterialName LIKE N'%' + @search + N'%'
-       OR ProductName LIKE N'%' + @search + N'%'
-       OR ManufacturerLotNo LIKE N'%' + @search + N'%'
-       OR BatchNo LIKE N'%' + @search + N'%')
+WHERE
+(
+    (@workflowCategory IN (N'Production / In-Process', N'Finished Product')
+        AND SampleCategory IN (N'Production / In-Process', N'Finished Product'))
+    OR (@workflowCategory = N'Raw Material' AND SampleCategory = N'Raw Material')
+    OR (@workflowCategory = N'Primary Packaging' AND SampleCategory = N'Primary Packaging')
+    OR (@workflowCategory = N'Stability' AND SampleCategory = N'Stability')
+)
+AND
+(
+    @search = N''
+    OR SampleNumber LIKE N'%' + @search + N'%'
+    OR MaterialName LIKE N'%' + @search + N'%'
+    OR ProductName LIKE N'%' + @search + N'%'
+    OR ManufacturerLotNo LIKE N'%' + @search + N'%'
+    OR BatchNo LIKE N'%' + @search + N'%'
+)
 ORDER BY SampleID DESC;";
 
             SqlParameter[] pars =
             {
+                new SqlParameter("@workflowCategory", SqlDbType.NVarChar, 40) { Value = workflowCategory },
                 new SqlParameter("@search", SqlDbType.NVarChar, 200) { Value = search }
             };
 
             return DatabaseHelper.ExecuteQuery(query, pars, commandTimeoutSeconds: 10);
+        }
+
+        private static bool IsSampleCategoryAllowedInWorkflow(string workflowCategory, string sampleCategory)
+        {
+            string workflow = (workflowCategory ?? string.Empty).Trim();
+            string sample = (sampleCategory ?? string.Empty).Trim();
+
+            if (workflow.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase) ||
+                workflow.Equals("Finished Product", StringComparison.OrdinalIgnoreCase))
+            {
+                return sample.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase) ||
+                       sample.Equals("Finished Product", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return (workflow.Equals("Raw Material", StringComparison.OrdinalIgnoreCase) &&
+                    sample.Equals("Raw Material", StringComparison.OrdinalIgnoreCase)) ||
+                   (workflow.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) &&
+                    sample.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)) ||
+                   (workflow.Equals("Stability", StringComparison.OrdinalIgnoreCase) &&
+                    sample.Equals("Stability", StringComparison.OrdinalIgnoreCase));
         }
 
         private void ApplySamples(DataTable table)
@@ -2129,6 +2167,20 @@ SELECT @prefix + N'-' + CAST(@year AS NVARCHAR(4)) + N'-' + RIGHT(N'0000' + CAST
             if (DgSamples.SelectedItem is DataRowView row && row.Row.Table.Columns.Contains("SampleID"))
             {
                 int sampleId = Convert.ToInt32(row["SampleID"], CultureInfo.InvariantCulture);
+                string workflowCategory = GetSelectedCategory();
+                string sampleCategory = row.Row.Table.Columns.Contains("SampleCategory")
+                    ? Convert.ToString(row["SampleCategory"], CultureInfo.InvariantCulture) ?? string.Empty
+                    : string.Empty;
+
+                if (!IsSampleCategoryAllowedInWorkflow(workflowCategory, sampleCategory))
+                {
+                    DgSamples.SelectedItem = null;
+                    MessageBox.Show(
+                        "This sample belongs to a different PRM workflow and cannot be opened from the current workflow.",
+                        "PRM Workflow Scope", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 try
                 {
                     IsEnabled = false;
@@ -2161,13 +2213,21 @@ SELECT @prefix + N'-' + CAST(@year AS NVARCHAR(4)) + N'-' + RIGHT(N'0000' + CAST
                 return;
 
             DataRow r = table.Rows[0];
+            string currentWorkflow = GetSelectedCategory();
+            string recordCategory = S(r, "SampleCategory");
+            if (!IsSampleCategoryAllowedInWorkflow(currentWorkflow, recordCategory))
+            {
+                throw new InvalidOperationException(
+                    "This sample belongs to a different PRM workflow and cannot be loaded from the current workflow.");
+            }
+
             _selectedSampleId = sampleId;
             _isLoading = true;
 
             try
             {
                 TxtSampleNo.Text = S(r, "SampleNumber");
-                _selectedCategory = S(r, "SampleCategory");
+                _selectedCategory = recordCategory;
                 ApplyCategoryLayout();
 
                 SetComboText(CmbRawPurpose, S(r, "SamplePurpose"));
