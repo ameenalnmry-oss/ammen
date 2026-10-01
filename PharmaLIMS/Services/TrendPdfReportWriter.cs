@@ -55,14 +55,14 @@ internal sealed class TrendPdfReportWriter : IDisposable
             writer.y += image.PixelHeight * scale + 24;
             writer.Paragraph("Results are separated by sampling point. Historical limits use each observation's frozen evidence. Qualified values are boundary markers, excluded from exact-value statistics. Missing evidence is not a passing result.");
         }
-        foreach (TrendReportTable table in tables) writer.Table(table);
+        for (int i = 0; i < tables.Count; i++) writer.Table(tables[i], sampleRegister && i == tables.Count - 1);
         if (!string.IsNullOrWhiteSpace(narrative))
         {
             writer.EnsureSpace(80, "Trend assessment");
             writer.Paragraph("Trend assessment", true);
             foreach (string block in narrative.Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries)) writer.Paragraph(block);
         }
-        writer.EnsureSpace(90, "Review and approval");
+        writer.EnsureSpace(sampleRegister ? 48 : 90, "Review and approval");
         writer.Paragraph("Prepared by (Microbiology): __________________    Checked by (Head of Microbiology): __________________", true);
         if (!sampleRegister) writer.Paragraph("Approved by (Quality Assurance): __________________    Date: __________________", true);
         writer.Paragraph(sampleRegister ? "SYSTEM-GENERATED REGISTER EXPORT. Dates and names are shown as recorded. Not recorded means the source has no documented value. This register is not a certificate of analysis or a release decision." : "SYSTEM-GENERATED REVIEW DRAFT. This report requires documented review and QA approval under the applicable approved procedure. Source records, historical specifications and audit evidence remain unchanged.");
@@ -138,9 +138,12 @@ internal sealed class TrendPdfReportWriter : IDisposable
         y += 6;
     }
 
-    private void Table(TrendReportTable table)
+    private void Table(TrendReportTable table, bool reserveApproval = false)
     {
-        string[] columns = table.Columns.Where(table.Data.Columns.Contains).ToArray();
+        // Register test lists use the full table width beneath their source row.
+        // Keeping them in a narrow column makes even short records consume a page.
+        bool registerTests = sampleRegister && table.Columns.Contains("Tests") && table.Data.Columns.Contains("Tests");
+        string[] columns = table.Columns.Where(c => table.Data.Columns.Contains(c) && !(registerTests && c == "Tests")).ToArray();
         if (columns.Length == 0) return;
         NewPage(table.Title);
         double[] weights = columns.Select(c => c is "Location" or "AreaName" or "TestName" or "ValueIntegrity" or "EvidenceSource" ? 2d : c.Contains("Date") || c == "SampleNumber" || c == "EventNo" ? 1.6d : 1d).ToArray();
@@ -174,13 +177,23 @@ internal sealed class TrendPdfReportWriter : IDisposable
         int rowNumber = 0;
         foreach (DataRow row in table.Data.Rows)
         {
+            double rowBottom = reserveApproval && rowNumber == table.Data.Rows.Count - 1 ? Bottom - 48 : Bottom;
             List<string>[] cells = columns.Select((c, i) => Wrap(c == "ResultValue" ? TrendReportData.ResultText(row) : FormatValue(row[c]), regular, widths[i] - 8)).ToArray();
             int total = cells.Max(c => c.Count), offset = 0;
+            string testLabel = "Tests | " + TrendReportData.Text(row, "SampleNumber") + ": ";
+            List<string> testLines = registerTests ? Wrap(testLabel + FormatValue(row["Tests"]), regular, Width - 8) : new();
+            // Keep an ordinary register row and its tests together when they fit
+            // on a fresh page; exceptionally long content can still continue.
+            double recordHeight = total * 11 + 9 + (registerTests ? testLines.Count * 11 + 9 : 0);
+            if (registerTests && recordHeight <= 300 && y + recordHeight > rowBottom)
+            {
+                NewPage(table.Title + " - continued"); Header();
+            }
             string status = TrendReportData.Text(row, "Status"); if (status.Length == 0) status = TrendReportData.Text(row, "Assessment");
             while (offset < total)
             {
-                int available = (int)((Bottom - y - 9) / 11);
-                if (available < 1 || (offset == 0 && total <= 25 && available < total)) { NewPage(table.Title + " - continued"); Header(); available = (int)((Bottom - y - 9) / 11); }
+                int available = (int)((rowBottom - y - 9) / 11);
+                if (available < 1 || (offset == 0 && total <= 25 && available < total)) { NewPage(table.Title + " - continued"); Header(); available = (int)((rowBottom - y - 9) / 11); }
                 int consume = Math.Min(available, total - offset);
                 int repeatedContextLines = offset > 0
                     ? cells.Where(cell => cell.Count <= offset).Select(cell => cell.Count).DefaultIfEmpty(1).Max()
@@ -189,9 +202,33 @@ internal sealed class TrendPdfReportWriter : IDisposable
                 DrawCells(cells, offset, drawLines, false, rowNumber % 2 == 1, status);
                 offset += consume;
             }
+            if (registerTests)
+            {
+                int testOffset = 0;
+                while (testOffset < testLines.Count)
+                {
+                    int available = (int)((rowBottom - y - 9) / 11);
+                    if (available < 1)
+                    {
+                        NewPage(table.Title + " - continued"); Header();
+                        Paragraph("Tests continued | Sample: " + TrendReportData.Text(row, "SampleNumber"), true);
+                        available = (int)((rowBottom - y - 9) / 11);
+                    }
+                    int count = Math.Min(available, testLines.Count - testOffset);
+                    double height = count * 11 + 9;
+                    XBrush background = rowNumber % 2 == 1 ? new XSolidBrush(XColor.FromArgb(246, 249, 252)) : XBrushes.White;
+                    graphics!.DrawRectangle(new XPen(XColors.LightGray, .4), background, Left, y, Width, height);
+                    for (int line = 0; line < count; line++)
+                        graphics.DrawString(testLines[testOffset + line], regular, XBrushes.Black,
+                            new XRect(Left + 4, y + 4 + line * 11, Width - 8, 11), XStringFormats.TopLeft);
+                    y += height; testOffset += count;
+                }
+            }
             rowNumber++;
         }
-        Paragraph($"End of {table.Title}: {table.Data.Rows.Count} record(s).");
+        // Register section headings already contain the complete record count.
+        // Do not create a near-empty page just to repeat that count.
+        if (!sampleRegister) Paragraph($"End of {table.Title}: {table.Data.Rows.Count} record(s).");
     }
 
     private static string FormatValue(object raw) => raw == DBNull.Value ? "NR" : raw is DateTimeOffset offset ? offset.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : raw is DateTime date ? date.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : Convert.ToString(raw, CultureInfo.InvariantCulture) ?? "";
