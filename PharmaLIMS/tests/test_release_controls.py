@@ -6207,5 +6207,59 @@ class ReleaseControlsTests(unittest.TestCase):
 
 
 
+
+    def test_v297_prm_registration_lists_are_strictly_scoped_by_workflow(self):
+        source = (ROOT / "ProductionRawMaterialSamples.xaml.cs").read_text(encoding="utf-8-sig")
+
+        self.assertIn("QuerySamples(string search, string workflowCategory)", source)
+        self.assertIn(
+            "(@workflowCategory IN (N'Production / In-Process', N'Finished Product')",
+            source,
+        )
+        self.assertIn(
+            "AND SampleCategory IN (N'Production / In-Process', N'Finished Product'))",
+            source,
+        )
+        self.assertIn(
+            "(@workflowCategory = N'Raw Material' AND SampleCategory = N'Raw Material')",
+            source,
+        )
+        self.assertIn(
+            "(@workflowCategory = N'Primary Packaging' AND SampleCategory = N'Primary Packaging')",
+            source,
+        )
+        self.assertIn(
+            "(@workflowCategory = N'Stability' AND SampleCategory = N'Stability')",
+            source,
+        )
+        self.assertIn(
+            'new SqlParameter("@workflowCategory", SqlDbType.NVarChar, 40)',
+            source,
+        )
+
+        self.assertIn("IsSampleCategoryAllowedInWorkflow", source)
+        self.assertIn(
+            '"This sample belongs to a different PRM workflow and cannot be opened from the current workflow."',
+            source,
+        )
+        self.assertIn(
+            '"This sample belongs to a different PRM workflow and cannot be loaded from the current workflow."',
+            source,
+        )
+
+        # Changing workflow refreshes the grid immediately, preventing stale rows
+        # from the previously selected category from remaining selectable.
+        select_start = source.index("private void SelectWorkflow(string category)")
+        select_end = source.index("private void BtnChooseProduction_Click", select_start)
+        select_block = source[select_start:select_end]
+        self.assertIn("LoadSamples();", select_block)
+
+        # The selected row can no longer silently switch the active workflow.
+        selection_start = source.index("private async void DgSamples_SelectionChanged")
+        selection_end = source.index("private static DataTable QuerySampleForEdit", selection_start)
+        selection_block = source[selection_start:selection_end]
+        self.assertIn("GetSelectedCategory()", selection_block)
+        self.assertIn("IsSampleCategoryAllowedInWorkflow", selection_block)
+
 if __name__ == "__main__":
     unittest.main()
