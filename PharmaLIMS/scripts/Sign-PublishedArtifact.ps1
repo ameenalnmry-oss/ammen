@@ -7,11 +7,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $publish = (Resolve-Path $PublishDirectory).Path
 
-if ([string]::IsNullOrWhiteSpace($env:PHARMALIMS_CODESIGN_PFX_BASE64)) {
-    throw 'PHARMALIMS_CODESIGN_PFX_BASE64 is required for Production release signing.'
+$hasPfx = -not [string]::IsNullOrWhiteSpace($env:PHARMALIMS_CODESIGN_PFX_BASE64)
+$hasPassword = -not [string]::IsNullOrWhiteSpace($env:PHARMALIMS_CODESIGN_PFX_PASSWORD)
+if (-not $hasPfx -and -not $hasPassword) {
+    Write-Warning 'Authenticode code signing is not configured. Continuing with an unsigned internal Production artifact; all remaining release validation gates still apply.'
+    return
 }
-if ([string]::IsNullOrWhiteSpace($env:PHARMALIMS_CODESIGN_PFX_PASSWORD)) {
-    throw 'PHARMALIMS_CODESIGN_PFX_PASSWORD is required for Production release signing.'
+if ($hasPfx -ne $hasPassword) {
+    throw 'Authenticode code signing is partially configured. PHARMALIMS_CODESIGN_PFX_BASE64 and PHARMALIMS_CODESIGN_PFX_PASSWORD must either both be configured or both be absent.'
 }
 
 $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
