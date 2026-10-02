@@ -12,8 +12,8 @@ def source(path: str) -> str:
 class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
     def test_release_version_is_v294(self):
         manifest = json.loads(source("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.1.296", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.10.1.296</Version>", source("PharmaLIMS.csproj"))
+        self.assertEqual("2026.10.2.297", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.10.2.297</Version>", source("PharmaLIMS.csproj"))
 
     def test_specification_master_exposes_template_loader(self):
         xaml = source("ProductionRawMaterialSamples.xaml")

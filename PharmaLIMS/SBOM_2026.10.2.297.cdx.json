@@ -1,15 +1,15 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:20261001-0296-4296-8296-202610010296",
+  "serialNumber": "urn:uuid:20261002-0297-4297-8297-202610020297",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-01T14:30:00Z",
+    "timestamp": "2026-10-02T13:18:38Z",
     "component": {
       "type": "application",
-      "bom-ref": "pkg:generic/PharmaLIMS@2026.10.1.296",
+      "bom-ref": "pkg:generic/PharmaLIMS@2026.10.2.297",
       "name": "PharmaLIMS",
-      "version": "2026.10.1.296",
+      "version": "2026.10.2.297",
       "properties": []
     },
     "properties": [
@@ -312,6 +312,14 @@
       {
         "name": "pharmalims:v295ReleaseGapClosure",
         "value": "23-Sep-2026 controlled review closure: release identity advanced and Clone Active Approved no longer silently substitutes a 120-hour timing value when historical controlled timing is absent. Production CI generates the authoritative resolved publish SBOM."
+      },
+      {
+        "name": "pharmalims:v297PrmWorkflowIsolation",
+        "value": "PR #30 scopes PRM registration lists by workflow: Raw Material only, Primary Packaging only, Stability only, and Production / In-Process plus Finished Product. Cross-workflow record opening is rejected defensively."
+      },
+      {
+        "name": "pharmalims:v297PrmFormResetAndReceiptChronology",
+        "value": "PR #31 clears prior PRM form state on workflow changes, rejects superseded asynchronous list responses, defers PRM repository initialization until database use, and prevents edited PRM sampling time from moving after a signed laboratory receipt."
       }
     ]
   },
