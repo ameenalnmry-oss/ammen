@@ -20,7 +20,8 @@ namespace PharmaLIMS
 {
     public partial class ProductionRawMaterialSamples : Window
     {
-        private readonly PrmSpecificationRepository _prmSpecificationRepository = new();
+        private readonly Lazy<PrmSpecificationRepository> _specificationRepository = new(() => new PrmSpecificationRepository());
+        private PrmSpecificationRepository _prmSpecificationRepository => _specificationRepository.Value;
         private int _selectedSampleId = 0;
         private int _sampleListRequest;
         private bool _isLoading = true;
