@@ -5,6 +5,12 @@ namespace PharmaLIMS.Services;
 
 internal static class LaboratoryReceiptSql
 {
+    // Caller holds the PRM parent update lock, matching the receipt capture lock order.
+    internal const string GuardPrmSamplingTime = @"
+IF EXISTS(SELECT 1 FROM dbo.LaboratoryReceipts WITH(UPDLOCK,HOLDLOCK)
+ WHERE PrmSampleID=@SampleID AND ReceivedDateTime<@SampleDateTime)
+ THROW 55308,'Sampling time cannot be later than the signed laboratory receipt. The edit was not saved.',1;";
+
     // Source locks serialize receipt capture with review/approval and concurrent capture.
     internal const string Insert = @"
 DECLARE @SourceNumber nvarchar(100), @sampled datetime2, @status nvarchar(100);

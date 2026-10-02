@@ -20,8 +20,10 @@ namespace PharmaLIMS
 {
     public partial class ProductionRawMaterialSamples : Window
     {
-        private readonly PrmSpecificationRepository _prmSpecificationRepository = new();
+        private readonly Lazy<PrmSpecificationRepository> _specificationRepository = new(() => new PrmSpecificationRepository());
+        private PrmSpecificationRepository _prmSpecificationRepository => _specificationRepository.Value;
         private int _selectedSampleId = 0;
+        private int _sampleListRequest;
         private bool _isLoading = true;
         private string _selectedCategory = "";
         private readonly ObservableCollection<SpecificationTestDraft> _specificationTests = new();
@@ -917,6 +919,9 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             try
             {
                 _selectedCategory = category;
+                ClearForm();
+                DgSamples.ItemsSource = null;
+                ++_sampleListRequest;
                 if (category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase))
                     SetComboText(CmbProductionStage, "After Mixing");
                 else if (category.Equals("Finished Product", StringComparison.OrdinalIgnoreCase))
@@ -938,32 +943,43 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
 
             ApplyCategoryLayout();
 
-            if (!_specificationMasterOnly)
-                LoadSamples();
         }
 
-        private void BtnChooseProduction_Click(object sender, RoutedEventArgs e)
+        private async Task ChooseWorkflowAsync(string category)
         {
-            SelectWorkflow("Production / In-Process");
+            try
+            {
+                SelectWorkflow(category);
+                if (!_specificationMasterOnly) await LoadSamplesAsync();
+            }
+            catch (Exception ex) { ShowOperationError("Open Sample Workflow", ex); }
         }
 
-        private void BtnChooseRaw_Click(object sender, RoutedEventArgs e)
+        private async void BtnChooseProduction_Click(object sender, RoutedEventArgs e)
         {
-            SelectWorkflow("Raw Material");
+            await ChooseWorkflowAsync("Production / In-Process");
         }
 
-        private void BtnChoosePackaging_Click(object sender, RoutedEventArgs e)
+        private async void BtnChooseRaw_Click(object sender, RoutedEventArgs e)
         {
-            SelectWorkflow("Primary Packaging");
+            await ChooseWorkflowAsync("Raw Material");
         }
 
-        private void BtnChooseStability_Click(object sender, RoutedEventArgs e)
+        private async void BtnChoosePackaging_Click(object sender, RoutedEventArgs e)
         {
-            SelectWorkflow("Stability");
+            await ChooseWorkflowAsync("Primary Packaging");
+        }
+
+        private async void BtnChooseStability_Click(object sender, RoutedEventArgs e)
+        {
+            await ChooseWorkflowAsync("Stability");
         }
 
         private void BtnBackToTypes_Click(object sender, RoutedEventArgs e)
         {
+            ++_sampleListRequest;
+            BtnRefresh.IsEnabled = true;
+            DgSamples.ItemsSource = null;
             if (PnlRegistration != null)
                 PnlRegistration.Visibility = Visibility.Collapsed;
 
@@ -1281,6 +1297,16 @@ ORDER BY SpecificationNo;",
             if (TxtChamberNo != null) TxtChamberNo.Text = string.Empty;
             if (TxtProtocolNo != null) TxtProtocolNo.Text = string.Empty;
 
+            foreach (ComboBox combo in new[] { CmbMaterialType, CmbDosageForm, CmbStabilityStudyType,
+                CmbPullPoint, CmbStabilityCondition, CmbUnit })
+            {
+                combo.SelectedIndex = -1;
+                combo.Text = string.Empty;
+            }
+            SetComboText(CmbUnit, "g");
+            TxtSampledBy.Text = Login.CurrentUser ?? string.Empty;
+            TxtSpecificationNo.SelectedIndex = -1;
+            TxtSpecificationNo.Items.Clear();
             TxtSpecificationNo.Text = string.Empty;
             TxtTestsRequired.Text = string.Empty;
             TxtSampleQty.Text = string.Empty;
@@ -1334,6 +1360,7 @@ ORDER BY SpecificationNo;",
 
         private void LoadSamples()
         {
+            ++_sampleListRequest;
             string search = (TxtSearch.Text ?? string.Empty).Trim();
             string workflowCategory = GetSelectedCategory();
             DataTable table = QuerySamples(search, workflowCategory);
@@ -1342,6 +1369,7 @@ ORDER BY SpecificationNo;",
 
         private async Task LoadSamplesAsync()
         {
+            int request = ++_sampleListRequest;
             string search = (TxtSearch.Text ?? string.Empty).Trim();
             string workflowCategory = GetSelectedCategory();
             BtnRefresh.IsEnabled = false;
@@ -1350,17 +1378,19 @@ ORDER BY SpecificationNo;",
             try
             {
                 DataTable table = await Task.Run(() => QuerySamples(search, workflowCategory));
-                ApplySamples(table);
+                if (request == _sampleListRequest && workflowCategory == GetSelectedCategory())
+                    ApplySamples(table);
             }
             catch (Exception ex)
             {
+                if (request != _sampleListRequest) return;
                 ApplicationLogger.Error("PRM sample list loading failed.", ex);
                 TxtStatus.Text = "PRM sample records could not be loaded.";
                 throw;
             }
             finally
             {
-                BtnRefresh.IsEnabled = true;
+                if (request == _sampleListRequest) BtnRefresh.IsEnabled = true;
             }
         }
 
@@ -1749,6 +1779,15 @@ WHERE SampleID = @SampleID;", connection, transaction))
                 {
                     throw new InvalidOperationException(
                         "Sample Category cannot be changed after PRM registration because the controlled sample number is category-specific. Register a new sample instead.");
+                }
+
+                using (var receiptGuard = new SqlCommand(
+                    PharmaLIMS.Services.LaboratoryReceiptSql.GuardPrmSamplingTime, connection, transaction))
+                {
+                    receiptGuard.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                    receiptGuard.Parameters.Add("@SampleID", SqlDbType.Int).Value = _selectedSampleId;
+                    receiptGuard.Parameters.Add("@SampleDateTime", SqlDbType.DateTime2).Value = newSampleDateTime;
+                    receiptGuard.ExecuteNonQuery();
                 }
 
                 string oldSnapshot = ReadPrmRegistrationSnapshotInTransaction(

@@ -7,7 +7,7 @@ internal static class LaboratoryReceiptIntegration
     {
         if(!connection.Database.StartsWith("PharmaLIMS_Integration_",StringComparison.Ordinal)) throw new InvalidOperationException("Disposable database required.");
         foreach(string kind in new[]{"PRM","EM"})
-        foreach(string scenario in new[]{"success","duplicate","early","future","identity","reviewed","update","delete","rollback"})
+        foreach(string scenario in new[]{"success","duplicate","early","future","identity","reviewed","update","delete","rollback","samplingBefore","samplingEqual","samplingAfter"})
         {
             using var tx=connection.BeginTransaction();
             try
@@ -35,11 +35,20 @@ OUTPUT INSERTED.Id VALUES(@number,@area,'20260101',N'Registered');",connection,t
                         "Fixture receiver","Received intact against approved procedure","Acceptance for laboratory testing","Technician","Fixture"));
                     await cmd.ExecuteScalarAsync();
                 }
-                int expected=scenario switch {"early" or "future"=>55305,"identity"=>55303,"reviewed"=>55304,"duplicate"=>55306,"update" or "delete"=>55301,_=>0};
+                int expected=scenario switch {"early" or "future"=>55305,"identity"=>55303,"reviewed"=>55304,"duplicate"=>55306,"update" or "delete"=>55301,"samplingAfter" when kind=="PRM"=>55308,_=>0};
                 try
                 {
                     await Capture();
                     if(scenario=="duplicate") await Capture();
+                    if(kind=="PRM" && scenario.StartsWith("sampling",StringComparison.Ordinal))
+                    {
+                        using var edit = new SqlCommand(LaboratoryReceiptSql.GuardPrmSamplingTime +
+                            " UPDATE dbo.PRM_Samples SET SampleDateTime=@SampleDateTime WHERE SampleID=@SampleID;",connection,tx);
+                        edit.Parameters.Add("@SampleID",SqlDbType.Int).Value=id;
+                        edit.Parameters.Add("@SampleDateTime",SqlDbType.DateTime2).Value=
+                            new DateTime(2026,1,2,10,15,0).AddSeconds(scenario=="samplingBefore"?-1:scenario=="samplingAfter"?1:0);
+                        await edit.ExecuteNonQueryAsync();
+                    }
                     if(scenario is "update" or "delete")
                     {
                         using var mutate=new SqlCommand(scenario=="update"?"UPDATE dbo.LaboratoryReceipts SET ReceiptDecision=N'Accepted' WHERE SampleNumber=@number":"DELETE dbo.LaboratoryReceipts WHERE SampleNumber=@number",connection,tx);
