@@ -6250,9 +6250,10 @@ class ReleaseControlsTests(unittest.TestCase):
         # Changing workflow refreshes the grid immediately, preventing stale rows
         # from the previously selected category from remaining selectable.
         select_start = source.index("private void SelectWorkflow(string category)")
-        select_end = source.index("private void BtnChooseProduction_Click", select_start)
+        select_end = source.index("private async void BtnChooseProduction_Click", select_start)
         select_block = source[select_start:select_end]
-        self.assertIn("LoadSamples();", select_block)
+        self.assertIn("await LoadSamplesAsync();", select_block)
+        self.assertIn("ClearForm();", select_block)
 
         # The selected row can no longer silently switch the active workflow.
         selection_start = source.index("private async void DgSamples_SelectionChanged")
