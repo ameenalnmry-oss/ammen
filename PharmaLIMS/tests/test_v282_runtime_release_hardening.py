@@ -57,11 +57,11 @@ class V282RuntimeReleaseHardeningTests(unittest.TestCase):
 
     def test_current_release_identity_advances_beyond_v282(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.1.296", manifest["applicationVersion"])
+        self.assertEqual("2026.10.2.297", manifest["applicationVersion"])
         project = text("PharmaLIMS.csproj")
-        self.assertIn("<Version>2026.10.1.296</Version>", project)
-        self.assertTrue((ROOT / "RELEASE_NOTES_2026.10.1.296.md").is_file())
-        self.assertTrue((ROOT / "SBOM_2026.10.1.296.cdx.json").is_file())
+        self.assertIn("<Version>2026.10.2.297</Version>", project)
+        self.assertTrue((ROOT / "RELEASE_NOTES_2026.10.2.297.md").is_file())
+        self.assertTrue((ROOT / "SBOM_2026.10.2.297.cdx.json").is_file())
 
 if __name__ == '__main__':
     unittest.main()
