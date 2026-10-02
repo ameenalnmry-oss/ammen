@@ -22,7 +22,7 @@ permissions:
 jobs:
   validate-build-publish:
     name: validate-build-publish
-    runs-on: windows-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && 'pharmalims-release' || 'windows-latest' }}
     timeout-minutes: 50
 
     defaults:
