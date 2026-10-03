@@ -111,11 +111,38 @@ jobs:
 
       - name: Unified source build SQL WPF runtime validation
         working-directory: PharmaLIMS
+        env:
+          PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING: ${{ secrets.PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING }}
         run: |
           $ErrorActionPreference = "Stop"
-          & ./scripts/Invoke-ReleaseValidation.ps1 -RunDatabaseIntegration -RunRuntimeSmoke
-          if (-not $?) {
-              throw "PharmaLIMS release validation did not complete successfully."
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+              $smokeConnection = $env:PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING
+              if ([string]::IsNullOrWhiteSpace($smokeConnection)) {
+                  throw "PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING is required for self-hosted SQL validation."
+              }
+
+              $masterConnection = [regex]::Replace(
+                  $smokeConnection,
+                  '(?i)(^|;)\s*(Database|Initial Catalog)\s*=\s*[^;]*',
+                  '$1Database=master'
+              )
+
+              if ($masterConnection -eq $smokeConnection -or $masterConnection -notmatch '(?i)(^|;)\s*Database\s*=\s*master(?:;|$)') {
+                  throw "Unable to derive the controlled SQL master connection from the Production smoke connection."
+              }
+
+              $env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING = $masterConnection
+          }
+
+          try {
+              & ./scripts/Invoke-ReleaseValidation.ps1 -RunDatabaseIntegration -RunRuntimeSmoke
+              if (-not $?) {
+                  throw "PharmaLIMS release validation did not complete successfully."
+              }
+          }
+          finally {
+              Remove-Item Env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING -ErrorAction SilentlyContinue
           }
 
       - name: Trend report WPF and complete PDF fixture smoke
