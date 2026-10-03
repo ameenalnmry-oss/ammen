@@ -267,16 +267,18 @@ FROM dbo.LIMS_SchemaVersions;", connection);
         await using SqlConnection connection = new(connectionString);
         await connection.OpenAsync();
 
+        // SQL Server catalog metadata can use the server collation while the target database uses another.
+        // Normalize every textual catalog component before concatenation/UNION so the fingerprint is collation-safe.
         await using (SqlCommand schemaCommand = new(@"
-SELECT N'OBJECT|' + s.name + N'.' + o.name + N'|' + CONVERT(nvarchar(20),o.type) + N'|' + CONVERT(nvarchar(33),o.modify_date,126)
+SELECT N'OBJECT|' + (s.name COLLATE DATABASE_DEFAULT) + N'.' + (o.name COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),o.type) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(33),o.modify_date,126) COLLATE DATABASE_DEFAULT)
 FROM sys.objects o JOIN sys.schemas s ON s.schema_id=o.schema_id
 WHERE o.is_ms_shipped=0
 UNION ALL
-SELECT N'COLUMN|' + s.name + N'.' + o.name + N'|' + c.name + N'|' + TYPE_NAME(c.user_type_id) + N'|' + CONVERT(nvarchar(20),c.max_length) + N'|' + CONVERT(nvarchar(20),c.precision) + N'|' + CONVERT(nvarchar(20),c.scale) + N'|' + CONVERT(nvarchar(1),c.is_nullable)
+SELECT N'COLUMN|' + (s.name COLLATE DATABASE_DEFAULT) + N'.' + (o.name COLLATE DATABASE_DEFAULT) + N'|' + (c.name COLLATE DATABASE_DEFAULT) + N'|' + (TYPE_NAME(c.user_type_id) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),c.max_length) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),c.precision) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),c.scale) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(1),c.is_nullable) COLLATE DATABASE_DEFAULT)
 FROM sys.columns c JOIN sys.objects o ON o.object_id=c.object_id JOIN sys.schemas s ON s.schema_id=o.schema_id
 WHERE o.is_ms_shipped=0
 UNION ALL
-SELECT N'TRIGGER|' + s.name + N'.' + o.name + N'|' + t.name + N'|' + CONVERT(nvarchar(1),t.is_disabled) + N'|' + ISNULL(m.definition,N'')
+SELECT N'TRIGGER|' + (s.name COLLATE DATABASE_DEFAULT) + N'.' + (o.name COLLATE DATABASE_DEFAULT) + N'|' + (t.name COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(1),t.is_disabled) COLLATE DATABASE_DEFAULT) + N'|' + (ISNULL(m.definition,N'') COLLATE DATABASE_DEFAULT)
 FROM sys.triggers t JOIN sys.objects o ON o.object_id=t.parent_id JOIN sys.schemas s ON s.schema_id=o.schema_id LEFT JOIN sys.sql_modules m ON m.object_id=t.object_id
 WHERE o.is_ms_shipped=0
 ORDER BY 1;", connection))
