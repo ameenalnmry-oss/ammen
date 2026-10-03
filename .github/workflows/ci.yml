@@ -70,11 +70,20 @@ jobs:
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
       - name: Install .NET 8 SDK
+        if: github.event_name != 'workflow_dispatch'
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
-        env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}\dotnet
         with:
           dotnet-version: '8.0.x'
+
+      - name: Verify installed .NET 8 SDK on Production runner
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdks = @(dotnet --list-sdks)
+          Write-Host ($sdks -join [Environment]::NewLine)
+          if (-not ($sdks | Where-Object { $_ -match '^8\.0\.' })) {
+              throw ".NET 8 SDK is required on the controlled self-hosted Production runner."
+          }
 
       - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS
