@@ -101,7 +101,7 @@ class V284DeepReviewClosureTests(unittest.TestCase):
             self.assertLess(attest_at, upload_at, workflow_path)
             self.assertIn("PHARMALIMS_CODESIGN_PFX_BASE64", ci, workflow_path)
             self.assertIn("PHARMALIMS_PRODUCTION_SMOKE_CONNECTION_STRING", ci, workflow_path)
-            self.assertIn("actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be", ci, workflow_path)
+            self.assertIn("actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373", ci, workflow_path)
             self.assertIn("id-token: write", ci, workflow_path)
             self.assertIn("attestations: write", ci, workflow_path)
 
