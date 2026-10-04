@@ -111,8 +111,9 @@ class V299DevelopmentAdminAndSnapshotControls(unittest.TestCase):
         start = code.index("private async void BtnExportPDF_Click")
         end = code.index("#endregion", start)
         method = code[start:end]
-        self.assertIn("await Task.Run(() =>", method)
+        self.assertIn("await RunOnStaThreadAsync(() =>", method)
         self.assertIn("ExportTrendModel(model)", method)
+        self.assertIn("ApartmentState.STA", code)
         self.assertIn("TrendPdfReportWriter.Write", method)
         self.assertIn("IsEnabled = false", method)
         self.assertIn("IsEnabled = true", method)
