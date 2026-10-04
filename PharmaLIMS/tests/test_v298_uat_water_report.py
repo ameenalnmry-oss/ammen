@@ -43,7 +43,8 @@ class V298UatWaterReportTests(unittest.TestCase):
     def test_controlled_print_requires_issued_document(self):
         code = source("ReportCertificate.xaml.cs")
         self.assertIn("bool hasIssuedDocument = !string.IsNullOrWhiteSpace(certificateNumber);", code)
-        self.assertIn("BtnPrint.IsEnabled = canPrint && hasIssuedDocument;", code)
+        self.assertIn("BtnPrint.IsEnabled = canPrint;", code)
+        self.assertIn("BtnPrint.IsEnabled = BtnPrint.IsEnabled && hasIssuedDocument;", code)
         self.assertIn("Controlled printing is available only after all required results are complete", code)
 
     def test_water_report_uses_concise_specification_and_no_temperature_phrase(self):
@@ -73,7 +74,7 @@ class V298UatWaterReportTests(unittest.TestCase):
     def test_report_rows_expand_instead_of_clipping_wrapped_limits(self):
         xaml = source("ReportCertificate.xaml")
         self.assertIn('MinRowHeight="31"', xaml)
-        self.assertNotIn('RowHeight="31"', xaml)
+        self.assertNotIn('\n                              RowHeight="31"', xaml)
 
 
 if __name__ == "__main__":
