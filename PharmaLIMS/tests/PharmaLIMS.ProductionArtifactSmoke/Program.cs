@@ -305,18 +305,28 @@ ORDER BY s.name,t.name;", connection))
         {
             string quoted = quoteBuilder.QuoteIdentifier(schema) + "." + quoteBuilder.QuoteIdentifier(table);
             var rowHashes = new List<string>();
-            await using SqlCommand dataCommand = new($"SELECT * FROM {quoted};", connection) { CommandTimeout = 120 };
-            await using SqlDataReader dataReader = await dataCommand.ExecuteReaderAsync();
-            while (await dataReader.ReadAsync())
+            await using SqlCommand dataCommand = new($"SELECT * FROM {quoted};", connection) { CommandTimeout = 600 };
+            try
             {
-                using var rowStream = new MemoryStream();
-                for (int i = 0; i < dataReader.FieldCount; i++)
+                await using SqlDataReader dataReader = await dataCommand.ExecuteReaderAsync();
+                while (await dataReader.ReadAsync())
                 {
-                    AppendFingerprintValue(rowStream, dataReader.GetName(i));
-                    object value = dataReader.IsDBNull(i) ? DBNull.Value : dataReader.GetValue(i);
-                    AppendFingerprintValue(rowStream, value);
+                    using var rowStream = new MemoryStream();
+                    for (int i = 0; i < dataReader.FieldCount; i++)
+                    {
+                        AppendFingerprintValue(rowStream, dataReader.GetName(i));
+                        object value = dataReader.IsDBNull(i) ? DBNull.Value : dataReader.GetValue(i);
+                        AppendFingerprintValue(rowStream, value);
+                    }
+                    rowHashes.Add(Convert.ToHexString(SHA256.HashData(rowStream.ToArray())).ToLowerInvariant());
                 }
-                rowHashes.Add(Convert.ToHexString(SHA256.HashData(rowStream.ToArray())).ToLowerInvariant());
+            }
+            catch (SqlException ex) when (ex.Number == -2)
+            {
+                throw new TimeoutException(
+                    $"Production smoke fingerprint timed out while reading {schema}.{table}. " +
+                    "The database was not modified and the exact-artifact smoke was not completed.",
+                    ex);
             }
             rowHashes.Sort(StringComparer.Ordinal);
             byte[] rowSetBytes = Encoding.UTF8.GetBytes(string.Join("\n", rowHashes));
