@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class V273PrmStandardProfileReadinessHistoricalTests(unittest.TestCase):
     def test_retired_v273_migration_is_checksum_preserved_and_superseded(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
-        self.assertEqual("2026.10.2.297", manifest["applicationVersion"])
+        self.assertEqual("2026.10.4.298", manifest["applicationVersion"])
         self.assertEqual(86, len(manifest["migrations"]))
 
         old = next(item for item in manifest["migrations"] if item["versionKey"] == "20260913_000")

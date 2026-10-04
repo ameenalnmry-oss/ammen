@@ -1,15 +1,15 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:20261002-0297-4297-8297-202610020297",
+  "serialNumber": "urn:uuid:20261004-0298-4298-8298-202610040298",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-02T13:18:38Z",
+    "timestamp": "2026-10-04T07:22:00Z",
     "component": {
       "type": "application",
-      "bom-ref": "pkg:generic/PharmaLIMS@2026.10.2.297",
+      "bom-ref": "pkg:generic/PharmaLIMS@2026.10.4.298",
       "name": "PharmaLIMS",
-      "version": "2026.10.2.297",
+      "version": "2026.10.4.298",
       "properties": []
     },
     "properties": [
