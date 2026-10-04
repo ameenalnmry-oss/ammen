@@ -233,10 +233,14 @@ namespace PharmaLIMS
                                 ELSE UPPER(st.ResultStatus)
                             END
                         WHEN st.ResultValue IS NULL THEN 'Pending'
-                        WHEN (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END) IS NOT NULL
-                             AND st.ResultValue > (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END) THEN 'FAIL'
-                        WHEN (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END) IS NOT NULL
-                             AND st.ResultValue > (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END) THEN 'ALERT'
+                        WHEN TRY_CONVERT(decimal(18,6), REPLACE(LTRIM(RTRIM(CONVERT(nvarchar(100), st.ResultValue))), ',', '.')) IS NOT NULL
+                             AND (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END) IS NOT NULL
+                             AND TRY_CONVERT(decimal(18,6), REPLACE(LTRIM(RTRIM(CONVERT(nvarchar(100), st.ResultValue))), ',', '.'))
+                                 > (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END) THEN 'FAIL'
+                        WHEN TRY_CONVERT(decimal(18,6), REPLACE(LTRIM(RTRIM(CONVERT(nvarchar(100), st.ResultValue))), ',', '.')) IS NOT NULL
+                             AND (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END) IS NOT NULL
+                             AND TRY_CONVERT(decimal(18,6), REPLACE(LTRIM(RTRIM(CONVERT(nvarchar(100), st.ResultValue))), ',', '.'))
+                                 > (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END) THEN 'ALERT'
                         ELSE 'PASS'
                     END AS ResultStatus,
                     ISNULL(st.EnteredBy, '') AS EnteredBy,
