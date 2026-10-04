@@ -18,6 +18,6 @@ using System.Windows;
     ResourceDictionaryLocation.SourceAssembly
 )]
 
-[assembly: AssemblyVersion("2026.10.2.297")]
-[assembly: AssemblyFileVersion("2026.10.2.297")]
-[assembly: AssemblyInformationalVersion("2026.10.2.297")]
+[assembly: AssemblyVersion("2026.10.4.298")]
+[assembly: AssemblyFileVersion("2026.10.4.298")]
+[assembly: AssemblyInformationalVersion("2026.10.4.298")]
