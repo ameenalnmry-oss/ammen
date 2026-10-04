@@ -67,6 +67,9 @@ jobs:
               throw "CHECKOUT BYTE INTEGRITY FAILURE: .gitignore does not match SOURCE_MANIFEST_SHA256.txt immediately after checkout."
           }
 
+          $releaseHash = (Get-FileHash -LiteralPath "PharmaLIMS/tests/test_release_controls.py" -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "RELEASE298_SHA256 $releaseHash tests/test_release_controls.py"
+
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
       - name: Install .NET 8 SDK
