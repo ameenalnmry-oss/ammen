@@ -44,6 +44,7 @@ namespace PharmaLIMS
             public string Unit { get; set; } = "";
             public decimal? AlertLimit { get; set; }
             public decimal? ActionLimit { get; set; }
+            public string SpecificationText { get; set; } = "";
             public string ResultValue { get; set; } = "";
             public string PassFail { get; set; } = "";
             public string Remarks { get; set; } = "";
@@ -931,6 +932,30 @@ WHERE st.SampleID=@SampleID
             return !numericUnit && IsComplianceQualitativeTest(testName);
         }
 
+        private bool IsApprovedComplianceQualitative(ResultItem item)
+        {
+            if (item == null || !IsComplianceQualitativeTest(item.TestName))
+                return false;
+
+            // Numeric specifications remain numeric. A legacy numeric master-unit
+            // label must not override an immutable approved comparator/endpoint snapshot.
+            if (item.AlertLimit.HasValue || item.ActionLimit.HasValue)
+                return false;
+
+            string specification = (item.SpecificationText ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(specification))
+                return IsApprovedComplianceQualitative(item);
+
+            string normalized = specification.ToLowerInvariant();
+            return normalized.Contains("record complies/does not comply") ||
+                   normalized.Contains("not more intensely coloured") ||
+                   normalized.Contains("not more intensely colored") ||
+                   normalized.Contains("comparator") ||
+                   normalized.Contains("does not change") ||
+                   normalized.Contains("remains faintly pink") ||
+                   normalized.Contains("not red");
+        }
+
 
         private void ApplyEffectiveSpecification(ResultItem item)
         {
@@ -1020,7 +1045,7 @@ WHERE st.SampleID=@SampleID
                 }
             }
 
-            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
+            if (IsApprovedComplianceQualitative(item))
             {
                 if (raw.Equals("Complies", StringComparison.OrdinalIgnoreCase) ||
                     raw.Equals("Comply", StringComparison.OrdinalIgnoreCase) ||
@@ -1119,7 +1144,7 @@ WHERE st.SampleID=@SampleID
                 return raw;
             }
 
-            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
+            if (IsApprovedComplianceQualitative(item))
             {
                 if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
                     return value <= 0 ? "Complies" : "Does Not Comply";
@@ -1157,7 +1182,7 @@ WHERE st.SampleID=@SampleID
             if (IsAppearanceTest(item.TestName))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
-            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
+            if (IsApprovedComplianceQualitative(item))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
             if (IsAbsencePresenceTest(item.Unit, item.TestName))
@@ -1844,35 +1869,22 @@ WHERE st.SampleID=@SampleID
             if (item == null)
                 return "";
 
-            if (IsPhTest(item.TestName))
-            {
-                if (item.AlertLimit.HasValue && item.ActionLimit.HasValue)
-                {
-                    return "Specification Range: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                           " - " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                           (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
-                }
+            // LimitDescription is the immutable approved specification snapshot captured
+            // at registration. Never replace it with a derived/generic result-time label.
+            if (!string.IsNullOrWhiteSpace(item.SpecificationText))
+                return item.SpecificationText.Trim();
 
-                return "";
-            }
-
-            if (item.AlertLimit.HasValue && item.ActionLimit.HasValue)
+            if (IsPhTest(item.TestName) &&
+                item.AlertLimit.HasValue && item.ActionLimit.HasValue)
             {
-                return "Alert Limit: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                       (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit) +
-                       "; Action Limit: " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                       (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
-            }
-
-            if (item.AlertLimit.HasValue)
-            {
-                return "Alert Limit: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
+                return "Specification Range: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
+                       " - " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
                        (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
             }
 
             if (item.ActionLimit.HasValue)
             {
-                return "Action Limit: " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
+                return "NMT " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
                        (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
             }
 
