@@ -69,7 +69,7 @@ SELECT
             if (invalidCount <= 0)
                 return;
 
-            if (IsDevelopmentAdminOverride())
+            if (IsDevelopmentAdminTimingOverride())
                 return;
 
             throw new InvalidOperationException(
