@@ -239,8 +239,8 @@ namespace PharmaLIMS
                              AND st.ResultValue > (CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END) THEN 'ALERT'
                         ELSE 'PASS'
                     END AS ResultStatus,
-                    ISNULL(st.EnteredBy, ISNULL(st.ResultEnteredBy, '')) AS EnteredBy,
-                    COALESCE(st.EnteredDate, st.ResultEnteredDate) AS EnteredDate,
+                    ISNULL(st.EnteredBy, '') AS EnteredBy,
+                    st.ResultEnteredDate AS EnteredDate,
                     ISNULL(st.Remarks, '') AS Remarks
                 FROM SampleTests st
                 LEFT JOIN Tests t ON st.TestID = t.TestID
@@ -248,7 +248,25 @@ namespace PharmaLIMS
                 ORDER BY CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN ISNULL(st.TestCategorySnapshot,N'') ELSE ISNULL(t.TestCategory,N'') END,
                          COALESCE(NULLIF(st.TestNameSnapshot,N''),t.TestName,N'')";
 
-            dgTests.ItemsSource = SafeQuery(query, new SqlParameter("@sampleId", _sampleId)).DefaultView;
+            DataTable tests = DatabaseHelper.ExecuteQuery(
+                query,
+                new[] { new SqlParameter("@sampleId", _sampleId) });
+
+            object expectedValue = DatabaseHelper.ExecuteScalar(
+                "SELECT COUNT(1) FROM dbo.SampleTests WHERE SampleID = @sampleId",
+                new[] { new SqlParameter("@sampleId", _sampleId) });
+            int expectedCount = expectedValue == null || expectedValue == DBNull.Value
+                ? 0
+                : Convert.ToInt32(expectedValue, CultureInfo.InvariantCulture);
+
+            if (tests.Rows.Count != expectedCount)
+            {
+                throw new InvalidOperationException(
+                    $"Sample test details are incomplete. Expected {expectedCount} test row(s), but loaded {tests.Rows.Count}. " +
+                    "Reload the sample and run System Preflight before continuing controlled work.");
+            }
+
+            dgTests.ItemsSource = tests.DefaultView;
         }
 
         private void LoadTimeline()
