@@ -348,7 +348,9 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('"Development Incubation Timing Override"', water)
         self.assertIn("AddAuditTrailAdvanced", water)
 
-        self.assertIn("developmentTimingOverrideUsed && !AppConfig.AllowEarlyMicrobiologyResults", em)
+        self.assertIn("developmentTimingOverrideUsed && !IsDevelopmentAdminTimingOverride()", em)
+        self.assertIn("AppConfig.AllowEarlyMicrobiologyResults", em)
+        self.assertIn("AppConfig.DevelopmentAdminFullPermissions", em)
         self.assertGreaterEqual(em.count('"Development Incubation Timing Override"'), 3)
         self.assertIn('"IncubationPhase1TargetEnd"', em)
         self.assertIn('"IncubationPhase2TargetEnd"', em)
@@ -4154,6 +4156,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("EnsureQualificationIncubationElapsedInTransaction", code)
         self.assertIn("SYSDATETIME()", code)
         self.assertIn("AppConfig.AllowEarlyMicrobiologyResults", code)
+        self.assertIn("IsDevelopmentAdminTimingOverride", code)
         self.assertIn("Development Culture Media Timing Override", code)
         self.assertIn("No active QA-approved Culture Media qualification requirements", code)
 
