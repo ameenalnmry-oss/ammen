@@ -1484,6 +1484,7 @@ SELECT COUNT(1) FROM @Inserted;",
                 string answer = GetSafeString(row, "AnswerValue");
                 string expected = GetSafeString(row, "ExpectedAnswer");
                 string comments = GetSafeString(row, "Comments");
+                string naJustification = GetSafeString(row, "NAJustification");
 
                 if (isRequired && string.IsNullOrWhiteSpace(answer))
                 {
@@ -1498,6 +1499,46 @@ SELECT COUNT(1) FROM @Inserted;",
 
                     FocusChecklistRow(row);
                     return false;
+                }
+
+                if (answer.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!IsControlledNaJustification(naJustification))
+                    {
+                        MessageBox.Show(
+                            "A controlled N/A justification is required before " + stage + ".\n\n" +
+                            "Section: " + GetSafeString(row, "SectionName") + "\n" +
+                            "Question: " + GetSafeString(row, "QuestionText") + "\n\n" +
+                            "Select the applicable reason in the N/A Justification column.",
+                            "PRM Checklist",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+
+                        FocusChecklistRow(row);
+                        return false;
+                    }
+
+                    int minimumNaCommentLength =
+                        naJustification.Equals("Other scientifically justified reason", StringComparison.OrdinalIgnoreCase)
+                            ? 30
+                            : 20;
+
+                    if (comments.Trim().Length < minimumNaCommentLength)
+                    {
+                        MessageBox.Show(
+                            "N/A requires a specific technical rationale or evidence reference.\n\n" +
+                            "Section: " + GetSafeString(row, "SectionName") + "\n" +
+                            "Question: " + GetSafeString(row, "QuestionText") + "\n" +
+                            "Controlled reason: " + naJustification + "\n\n" +
+                            "Enter at least " + minimumNaCommentLength.ToString(CultureInfo.InvariantCulture) +
+                            " characters describing why this item is not applicable to this investigation.",
+                            "PRM Checklist",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+
+                        FocusChecklistRow(row);
+                        return false;
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(answer) &&
@@ -1536,6 +1577,45 @@ SELECT COUNT(1) FROM @Inserted;",
             }
 
             return true;
+        }
+
+        private static bool IsControlledNaJustification(string value)
+        {
+            string reason = (value ?? string.Empty).Trim();
+
+            return reason.Equals("Not applicable to product/material/sample/test type", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Equals("Not applicable to investigation phase", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Equals("No relevant equipment/process step involved", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Equals("No relevant reagent/media/culture involved", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Equals("Not applicable per approved method/specification", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Equals("Other scientifically justified reason", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ExtractNaJustificationPrefix(string comments)
+        {
+            string text = (comments ?? string.Empty).Trim();
+            if (!text.StartsWith("[N/A: ", StringComparison.OrdinalIgnoreCase))
+                return string.Empty;
+
+            int end = text.IndexOf(']');
+            if (end <= 6)
+                return string.Empty;
+
+            string reason = text.Substring(6, end - 6).Trim();
+            return IsControlledNaJustification(reason) ? reason : string.Empty;
+        }
+
+        private static string StripNaJustificationPrefix(string comments)
+        {
+            string text = (comments ?? string.Empty).Trim();
+            if (!text.StartsWith("[N/A: ", StringComparison.OrdinalIgnoreCase))
+                return text;
+
+            int end = text.IndexOf(']');
+            if (end < 0)
+                return text;
+
+            return text.Substring(end + 1).TrimStart();
         }
 
         private bool AnswerRequiresComment(string answer, string expected)
@@ -1585,6 +1665,9 @@ SELECT COUNT(1) FROM @Inserted;",
             if (table == null || !table.Columns.Contains("AnswerValue"))
                 return;
 
+            if (!table.Columns.Contains("NAJustification"))
+                table.Columns.Add("NAJustification", typeof(string));
+
             foreach (DataRow row in table.Rows)
             {
                 if (row.RowState == DataRowState.Deleted)
@@ -1596,10 +1679,29 @@ SELECT COUNT(1) FROM @Inserted;",
                     row["AnswerValue"] = "Yes";
                 else if (answer.Contains("No", StringComparison.OrdinalIgnoreCase))
                     row["AnswerValue"] = "No";
-                else if (answer.Contains("N/A", StringComparison.OrdinalIgnoreCase) || answer.Contains("NA", StringComparison.OrdinalIgnoreCase))
+                else if (answer.Contains("N/A", StringComparison.OrdinalIgnoreCase) || answer.Equals("NA", StringComparison.OrdinalIgnoreCase))
                     row["AnswerValue"] = "N/A";
                 else if (string.IsNullOrWhiteSpace(answer))
                     row["AnswerValue"] = "";
+
+                string normalizedAnswer = GetSafeString(row, "AnswerValue");
+                string comments = GetSafeString(row, "Comments");
+
+                if (normalizedAnswer.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                {
+                    string currentReason = GetSafeString(row, "NAJustification");
+                    if (!IsControlledNaJustification(currentReason))
+                    {
+                        string persistedReason = ExtractNaJustificationPrefix(comments);
+                        row["NAJustification"] = persistedReason;
+                        if (!string.IsNullOrWhiteSpace(persistedReason))
+                            row["Comments"] = StripNaJustificationPrefix(comments);
+                    }
+                }
+                else
+                {
+                    row["NAJustification"] = "";
+                }
             }
         }
 
@@ -1807,10 +1909,11 @@ SELECT COUNT(1) FROM @Inserted;",
 
             Table table = new Table();
             table.CellSpacing = 0;
-            table.Columns.Add(new TableColumn { Width = new GridLength(145) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(350) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(70) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(220) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(125) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(300) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(65) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(190) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(205) });
 
             TableRowGroup group = new TableRowGroup();
             table.RowGroups.Add(group);
@@ -1819,6 +1922,7 @@ SELECT COUNT(1) FROM @Inserted;",
             header.Cells.Add(MakeReportCell("Section", true, 9));
             header.Cells.Add(MakeReportCell("Question", true, 9));
             header.Cells.Add(MakeReportCell("Answer", true, 9, TextAlignment.Center));
+            header.Cells.Add(MakeReportCell("N/A Justification", true, 9));
             header.Cells.Add(MakeReportCell("Comments / Evidence", true, 9));
             group.Rows.Add(header);
 
@@ -1834,6 +1938,7 @@ SELECT COUNT(1) FROM @Inserted;",
                 tr.Cells.Add(MakeReportCell(GetSafeString(row, "SectionName"), false, 8.5));
                 tr.Cells.Add(MakeReportCell(GetSafeString(row, "QuestionText"), false, 8.5));
                 tr.Cells.Add(MakeReportCell(GetSafeString(row, "AnswerValue"), false, 8.5, TextAlignment.Center));
+                tr.Cells.Add(MakeReportCell(GetSafeString(row, "NAJustification"), false, 8.5));
                 tr.Cells.Add(MakeReportCell(GetSafeString(row, "Comments"), false, 8.5));
                 group.Rows.Add(tr);
             }

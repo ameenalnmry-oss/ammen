@@ -230,6 +230,13 @@ namespace PharmaLIMS
                     role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
         }
 
+        private static bool IsDevelopmentAdminTimingOverride()
+        {
+            string role = Login.CurrentUserRole ?? string.Empty;
+            return AppConfig.AllowEarlyMicrobiologyResults &&
+                   IsDevelopmentAdminOverrideForRole(role);
+        }
+
         private string GetCurrentUserName()
         {
             try
@@ -2426,7 +2433,7 @@ WHERE MediaQualificationID=@MediaQualificationID;", conn, tx))
                 "; EarliestCompletionTime=" + eligibleAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) +
                 "; DatabaseNow=" + databaseNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-            if (!AppConfig.AllowEarlyMicrobiologyResults)
+            if (!IsDevelopmentAdminTimingOverride())
             {
                 throw new InvalidOperationException(
                     "Qualification completion is blocked until the controlled incubation period is complete. Earliest permitted database time: " +
@@ -2436,7 +2443,7 @@ WHERE MediaQualificationID=@MediaQualificationID;", conn, tx))
             DatabaseHelper.AddAuditTrailAdvanced(
                 conn, tx, "MediaQualifications", qualificationId,
                 "Development Culture Media Timing Override", timingEvidence,
-                "Early qualification completion permitted in Development only", reason,
+                "Early qualification completion permitted for Development Admin testing only", reason,
                 signedBy, "MinimumIncubationHoursSnapshot", null, reportNo, "Culture Media");
         }
     }

@@ -297,6 +297,11 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                 return;
             }
 
+            // MinimumElapsedHours represents the earliest reportable time from Analysis Start,
+            // using the shortest permitted incubation sequence in the controlled MEDICA USP <61>/<62> method:
+            // TAMC 72 h; TYMC 120 h; E. coli 60 h; Salmonella 54 h;
+            // S. aureus 36 h; P. aeruginosa 36 h; C. albicans 96 h.
+            // These are defaults for a new Draft and remain subject to the approved product/material specification.
             if (normalized.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase))
             {
                 // MEDICA's controlled in-process profile is intentionally row-based:
@@ -335,7 +340,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     Unit = string.Empty,
                     ResultType = "Qualitative",
                     RequiredTest = true,
-                    MinimumElapsedHours = 120m,
+                    MinimumElapsedHours = 60m,
                     SortOrder = 30
                 });
                 _specificationTests.Add(new SpecificationTestDraft
@@ -346,7 +351,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     Unit = string.Empty,
                     ResultType = "Qualitative",
                     RequiredTest = true,
-                    MinimumElapsedHours = 120m,
+                    MinimumElapsedHours = 54m,
                     SortOrder = 40
                 });
                 _specificationTests.Add(new SpecificationTestDraft
@@ -357,7 +362,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     Unit = string.Empty,
                     ResultType = "Qualitative",
                     RequiredTest = true,
-                    MinimumElapsedHours = 120m,
+                    MinimumElapsedHours = 36m,
                     SortOrder = 50
                 });
                 _specificationTests.Add(new SpecificationTestDraft
@@ -368,7 +373,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     Unit = string.Empty,
                     ResultType = "Qualitative",
                     RequiredTest = true,
-                    MinimumElapsedHours = 120m,
+                    MinimumElapsedHours = 36m,
                     SortOrder = 60
                 });
                 _specificationTests.Add(new SpecificationTestDraft
@@ -379,7 +384,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     Unit = string.Empty,
                     ResultType = "Qualitative",
                     RequiredTest = true,
-                    MinimumElapsedHours = 120m,
+                    MinimumElapsedHours = 96m,
                     SortOrder = 70
                 });
                 return;

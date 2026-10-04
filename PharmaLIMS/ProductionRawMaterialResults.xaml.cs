@@ -1164,7 +1164,7 @@ WHERE SampleID=@SampleID;",
             // The signed Development override is enforced and audited during
             // Save Results. It applies to Waiting only, never missing evidence.
             if (timingStatus.Equals("Waiting", StringComparison.OrdinalIgnoreCase) &&
-                AppConfig.AllowEarlyMicrobiologyResults)
+                IsDevelopmentAdminTimingOverrideAllowed())
                 return;
 
             e.Cancel = true;
@@ -2697,7 +2697,7 @@ WHERE SampleID = @SampleID;", conn, tx))
                 "; EarliestResultTime=" + eligibleAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) +
                 "; DatabaseNow=" + databaseNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-            if (!AppConfig.AllowEarlyMicrobiologyResults)
+            if (!IsDevelopmentAdminTimingOverrideAllowed())
             {
                 throw new InvalidOperationException(
                     "Result entry is blocked until the controlled minimum elapsed time is complete for " + testLabel +
@@ -2707,7 +2707,7 @@ WHERE SampleID = @SampleID;", conn, tx))
             DatabaseHelper.AddAuditTrailAdvanced(
                 conn, tx, "PRM_SampleTests", sampleTestId,
                 "Development PRM Timing Override", timingEvidence,
-                "Early result entry permitted in Development only", signature.Reason,
+                "Early result entry permitted for the Development Admin test account only", signature.Reason,
                 signature.SignedBy, "MinimumElapsedHours", testLabel,
                 TxtSampleNo?.Text, "PRM");
         }
@@ -2834,7 +2834,7 @@ GROUP BY s.AnalysisStartedDate;", conn, tx))
                 "; EarliestWorkflowTime=" + eligibleAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) +
                 "; DatabaseNow=" + databaseNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-            if (!AppConfig.AllowEarlyMicrobiologyResults)
+            if (!IsDevelopmentAdminTimingOverrideAllowed())
             {
                 throw new InvalidOperationException(
                     actionName + " is blocked until all required PRM minimum elapsed times are complete. " +
@@ -2844,7 +2844,7 @@ GROUP BY s.AnalysisStartedDate;", conn, tx))
             DatabaseHelper.AddAuditTrailAdvanced(
                 conn, tx, "PRM_Samples", _selectedSampleId,
                 "Development PRM Timing Override", timingEvidence,
-                actionName + " permitted early in Development only", signature.Reason,
+                actionName + " permitted early for the Development Admin test account only", signature.Reason,
                 signature.SignedBy, "AnalysisCompletedDate", null,
                 TxtSampleNo?.Text, "PRM");
         }

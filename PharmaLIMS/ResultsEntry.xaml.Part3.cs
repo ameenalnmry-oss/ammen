@@ -36,6 +36,7 @@ namespace PharmaLIMS
                 Unit = Convert.ToString(row["Unit"], CultureInfo.InvariantCulture) ?? "",
                 AlertLimit = row["AlertLimit"] == DBNull.Value ? null : Convert.ToDecimal(row["AlertLimit"], CultureInfo.InvariantCulture),
                 ActionLimit = row["ActionLimit"] == DBNull.Value ? null : Convert.ToDecimal(row["ActionLimit"], CultureInfo.InvariantCulture),
+                SpecificationText = Convert.ToString(row["LimitDescription"], CultureInfo.InvariantCulture) ?? "",
                 ResultValue = Convert.ToString(row["ResultValue"], CultureInfo.InvariantCulture) ?? "",
                 Remarks = Convert.ToString(row["Remarks"], CultureInfo.InvariantCulture) ?? ""
             };
@@ -101,7 +102,7 @@ namespace PharmaLIMS
 
                 string setClause = resultChanged
                     ? @"ResultValue=@resultValue, Remarks=@remarks, ResultStatus=@resultStatus,
-                        DeviationType=@deviationType, LimitDescription=@limitDescription"
+                        DeviationType=@deviationType"
                     : "Remarks=@remarks";
                 DataTable delta = ReadWaterRows(connection, transaction, @"
 DECLARE @Changes TABLE(OldValue nvarchar(max), NewValue nvarchar(max));
@@ -119,7 +120,6 @@ SELECT OldValue,NewValue FROM @Changes;",
                     new SqlParameter("@remarks", SqlDbType.NVarChar, -1) { Value = remarks },
                     new SqlParameter("@resultStatus", SqlDbType.NVarChar, 50) { Value = status },
                     new SqlParameter("@deviationType", SqlDbType.NVarChar, 100) { Value = (object)BuildDeviationType(authoritative, status) ?? DBNull.Value },
-                    new SqlParameter("@limitDescription", SqlDbType.NVarChar, 1000) { Value = (object)BuildLimitDescription(authoritative) ?? DBNull.Value },
                     new SqlParameter("@sampleTestId", edited.SampleTestID),
                     new SqlParameter("@sampleId", currentSampleId),
                     new SqlParameter("@expectedVersion", SqlDbType.Binary, 8) { Value = source["ResultRowVersion"] });

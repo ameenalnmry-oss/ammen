@@ -44,6 +44,7 @@ namespace PharmaLIMS
             public string Unit { get; set; } = "";
             public decimal? AlertLimit { get; set; }
             public decimal? ActionLimit { get; set; }
+            public string SpecificationText { get; set; } = "";
             public string ResultValue { get; set; } = "";
             public string PassFail { get; set; } = "";
             public string Remarks { get; set; } = "";
@@ -228,6 +229,15 @@ SELECT
         private bool CanOpenOrIssueCertificate() => DatabaseHelper.CanIssueCertificate(currentUser);
         private bool CanCancelCertificate() => DatabaseHelper.CanCancelCertificate(currentUser);
 
+        private static bool IsDevelopmentAdminTimingOverrideAllowed()
+        {
+            string role = Login.CurrentUserRole ?? string.Empty;
+            return AppConfig.AllowEarlyMicrobiologyResults &&
+                   AppConfig.DevelopmentAdminFullPermissions &&
+                   (role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+                    role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
+        }
+
         private void EnsureGlobalWaterDateColumns()
         {
             object count = DatabaseHelper.ExecuteScalar(@"
@@ -298,13 +308,31 @@ WHERE TABLE_SCHEMA = N'dbo'
                 .ToList();
             if (enteredTestIds.Count == 0) return false;
 
+            string enteredTestIdsXml =
+                "<ids>" +
+                string.Join(
+                    string.Empty,
+                    enteredTestIds.Select(id =>
+                        "<id>" + id.ToString(CultureInfo.InvariantCulture) + "</id>")) +
+                "</ids>";
+
             object microCount = ExecuteScalarInTransaction(connection, transaction, @"
 SELECT COUNT(1)
-FROM dbo.SampleTests st LEFT JOIN dbo.Tests t ON t.TestID=st.TestID
+FROM dbo.SampleTests st
+LEFT JOIN dbo.Tests t ON t.TestID=st.TestID
 WHERE st.SampleID=@SampleID
-  AND st.TestID IN (" + string.Join(",", enteredTestIds) + @")
+  AND EXISTS
+  (
+      SELECT 1
+      FROM @EnteredTestIdsXml.nodes('/ids/id') AS entered(id)
+      WHERE entered.id.value('(text())[1]', 'int') = st.TestID
+  )
   AND UPPER(ISNULL(CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.TestCategorySnapshot ELSE t.TestCategory END,N'')) LIKE N'%MICRO%';",
-                new[] { new SqlParameter("@SampleID", currentSampleId) });
+                new[]
+                {
+                    new SqlParameter("@SampleID", SqlDbType.Int) { Value = currentSampleId },
+                    new SqlParameter("@EnteredTestIdsXml", SqlDbType.Xml) { Value = enteredTestIdsXml }
+                });
 
             if (Convert.ToInt32(microCount, CultureInfo.InvariantCulture) <= 0)
                 return false;
@@ -322,7 +350,7 @@ WHERE st.SampleID=@SampleID
                 CultureInfo.InvariantCulture);
             if (serverNow < incubationEnd)
             {
-                if (AppConfig.AllowEarlyMicrobiologyResults)
+                if (IsDevelopmentAdminTimingOverrideAllowed())
                 {
                     ApplicationLogger.Warning(
                         "Development-only early microbiology result entry was used for water sample " +
@@ -922,6 +950,30 @@ WHERE st.SampleID=@SampleID
             return !numericUnit && IsComplianceQualitativeTest(testName);
         }
 
+        private bool IsApprovedComplianceQualitative(ResultItem item)
+        {
+            if (item == null || !IsComplianceQualitativeTest(item.TestName))
+                return false;
+
+            // Numeric specifications remain numeric. A legacy numeric master-unit
+            // label must not override an immutable approved comparator/endpoint snapshot.
+            if (item.AlertLimit.HasValue || item.ActionLimit.HasValue)
+                return false;
+
+            string specification = (item.SpecificationText ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(specification))
+                return IsApprovedComplianceQualitative(item);
+
+            string normalized = specification.ToLowerInvariant();
+            return normalized.Contains("record complies/does not comply") ||
+                   normalized.Contains("not more intensely coloured") ||
+                   normalized.Contains("not more intensely colored") ||
+                   normalized.Contains("comparator") ||
+                   normalized.Contains("does not change") ||
+                   normalized.Contains("remains faintly pink") ||
+                   normalized.Contains("not red");
+        }
+
 
         private void ApplyEffectiveSpecification(ResultItem item)
         {
@@ -1011,7 +1063,7 @@ WHERE st.SampleID=@SampleID
                 }
             }
 
-            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
+            if (IsApprovedComplianceQualitative(item))
             {
                 if (raw.Equals("Complies", StringComparison.OrdinalIgnoreCase) ||
                     raw.Equals("Comply", StringComparison.OrdinalIgnoreCase) ||
@@ -1110,7 +1162,7 @@ WHERE st.SampleID=@SampleID
                 return raw;
             }
 
-            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
+            if (IsApprovedComplianceQualitative(item))
             {
                 if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
                     return value <= 0 ? "Complies" : "Does Not Comply";
@@ -1148,7 +1200,7 @@ WHERE st.SampleID=@SampleID
             if (IsAppearanceTest(item.TestName))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
-            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
+            if (IsApprovedComplianceQualitative(item))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
             if (IsAbsencePresenceTest(item.Unit, item.TestName))
@@ -1835,35 +1887,22 @@ WHERE st.SampleID=@SampleID
             if (item == null)
                 return "";
 
-            if (IsPhTest(item.TestName))
-            {
-                if (item.AlertLimit.HasValue && item.ActionLimit.HasValue)
-                {
-                    return "Specification Range: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                           " - " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                           (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
-                }
+            // LimitDescription is the immutable approved specification snapshot captured
+            // at registration. Never replace it with a derived/generic result-time label.
+            if (!string.IsNullOrWhiteSpace(item.SpecificationText))
+                return item.SpecificationText.Trim();
 
-                return "";
-            }
-
-            if (item.AlertLimit.HasValue && item.ActionLimit.HasValue)
+            if (IsPhTest(item.TestName) &&
+                item.AlertLimit.HasValue && item.ActionLimit.HasValue)
             {
-                return "Alert Limit: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                       (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit) +
-                       "; Action Limit: " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
-                       (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
-            }
-
-            if (item.AlertLimit.HasValue)
-            {
-                return "Alert Limit: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
+                return "Specification Range: " + item.AlertLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
+                       " - " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
                        (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
             }
 
             if (item.ActionLimit.HasValue)
             {
-                return "Action Limit: " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
+                return "NMT " + item.ActionLimit.Value.ToString("0.##", CultureInfo.InvariantCulture) +
                        (string.IsNullOrWhiteSpace(item.Unit) ? "" : " " + item.Unit);
             }
 
@@ -2092,7 +2131,7 @@ WHERE st.SampleID=@SampleID
                             currentSampleId,
                             "Development Incubation Timing Override",
                             "Incubation completion required",
-                            "Early microbiology result entry permitted in Development only",
+                            "Early microbiology result entry permitted for the Development Admin test account only",
                             signatureWindow.Reason,
                             signatureWindow.SignedBy,
                             "IncubationEndDate",

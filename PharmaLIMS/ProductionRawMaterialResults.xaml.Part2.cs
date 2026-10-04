@@ -233,6 +233,12 @@ WHERE SampleID = @SampleID
             return AppConfig.DevelopmentAdminFullPermissions && IsAdminUser();
         }
 
+        private static bool IsDevelopmentAdminTimingOverrideAllowed()
+        {
+            return AppConfig.AllowEarlyMicrobiologyResults &&
+                   IsAdminWorkflowOverrideAllowed();
+        }
+
         private DataTable GetPrmElectronicSignatures()
         {
             return DatabaseHelper.ExecuteQuery(@"

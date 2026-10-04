@@ -342,6 +342,7 @@ SELECT
     q.QuestionLogic,
     ISNULL(a.AnswerValue, '') AS AnswerValue,
     ISNULL(a.Comments, '') AS Comments,
+    CAST(N'' AS nvarchar(120)) AS NAJustification,
     a.AnsweredBy,
     a.AnsweredDate
 FROM dbo.QualityEventChecklistQuestions q
@@ -429,6 +430,16 @@ SELECT CASE WHEN EXISTS
 
                 string answerValue = GetSafeString(row, "AnswerValue");
                 string comments = GetSafeString(row, "Comments");
+                string naJustification = GetSafeString(row, "NAJustification");
+
+                if (answerValue.Equals("N/A", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(naJustification))
+                {
+                    string prefix = "[N/A: " + naJustification.Trim() + "]";
+                    if (!comments.TrimStart().StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        comments = prefix + (string.IsNullOrWhiteSpace(comments) ? "" : " " + comments.Trim());
+                }
+
                 if (string.IsNullOrWhiteSpace(answerValue) && string.IsNullOrWhiteSpace(comments))
                     continue;
 
@@ -560,6 +571,7 @@ VALUES
             EnsureColumn(table, "QuestionText", typeof(string));
             EnsureColumn(table, "AnswerValue", typeof(string));
             EnsureColumn(table, "Comments", typeof(string));
+            EnsureColumn(table, "NAJustification", typeof(string));
             EnsureColumn(table, "IsRequired", typeof(bool));
             EnsureColumn(table, "ExpectedAnswer", typeof(string));
             EnsureColumn(table, "AnswerType", typeof(string));

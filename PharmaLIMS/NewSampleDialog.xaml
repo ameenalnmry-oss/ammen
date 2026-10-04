@@ -457,7 +457,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Text="5. Registration Information"
+                                       Text="6. Registration Information"
                                        Style="{StaticResource SectionTitleStyle}"/>
 
                             <Grid Grid.Row="1">
@@ -540,7 +540,7 @@
                     <Border x:Name="grpWaterReceipt"
                             Style="{StaticResource CardStyle}">
                         <StackPanel>
-                            <TextBlock Text="6. Water Sample Receipt / Chain of Custody" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="7. Water Sample Receipt / Chain of Custody" Style="{StaticResource SectionTitleStyle}"/>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -598,7 +598,7 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Text="7. Water Tests Selection" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Grid.Row="0" Text="8. Water Tests Selection" Style="{StaticResource SectionTitleStyle}"/>
 
                             <DockPanel Grid.Row="1" LastChildFill="False" Margin="0,0,0,10">
                                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">

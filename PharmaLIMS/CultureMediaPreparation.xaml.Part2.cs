@@ -69,7 +69,7 @@ SELECT
             if (invalidCount <= 0)
                 return;
 
-            if (AppConfig.AllowEarlyMicrobiologyResults)
+            if (IsDevelopmentAdminTimingOverride())
                 return;
 
             throw new InvalidOperationException(
