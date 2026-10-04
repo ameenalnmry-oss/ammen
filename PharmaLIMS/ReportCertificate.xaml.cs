@@ -87,10 +87,14 @@ namespace PharmaLIMS
                 }
 
                 bool canPrint = await Task.Run(CanPrint);
+                bool hasIssuedDocument = !string.IsNullOrWhiteSpace(certificateNumber);
                 BtnPrint.IsEnabled = canPrint;
-                BtnPrint.ToolTip = canPrint
-                    ? "Print controlled report."
-                    : "You don't have permission to print controlled reports.";
+                BtnPrint.IsEnabled = BtnPrint.IsEnabled && hasIssuedDocument;
+                BtnPrint.ToolTip = !canPrint
+                    ? "You don't have permission to print controlled reports."
+                    : hasIssuedDocument
+                        ? "Print issued controlled report."
+                        : "Controlled printing is available only after approval and certificate/report issuance.";
             }
             finally
             {
@@ -388,7 +392,8 @@ namespace PharmaLIMS
             status = status == null ? "" : status.Trim();
 
             return status.Equals("OOS", StringComparison.OrdinalIgnoreCase) ||
-                   status.Equals("Failed", StringComparison.OrdinalIgnoreCase);
+                   status.Equals("Failed", StringComparison.OrdinalIgnoreCase) ||
+                   status.Equals("Under Investigation", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsSystemGenericName(string name)
@@ -510,6 +515,26 @@ namespace PharmaLIMS
                    normalized.Contains("heavy metals") ||
                    normalized.Contains("oxidisable substances") ||
                    normalized.Contains("oxidizable substances");
+        }
+
+        private bool IsComplianceQualitativeTest(string testName, string unit)
+        {
+            string normalizedUnit = (unit ?? string.Empty).Trim().ToUpperInvariant()
+                .Replace("µ", "U", StringComparison.Ordinal)
+                .Replace("μ", "U", StringComparison.Ordinal)
+                .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+            bool numericUnit =
+                normalizedUnit.Contains("MG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("PPM", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("PPB", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("UG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("NG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("US/CM", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("NTU", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("MG/100ML", StringComparison.Ordinal);
+
+            return !numericUnit && IsComplianceQualitativeTest(testName);
         }
 
         private bool IsMicrobialCountTest(string testName)
@@ -682,12 +707,11 @@ namespace PharmaLIMS
                 return raw;
             }
 
-            if (IsComplianceQualitativeTest(testName))
+            if (IsComplianceQualitativeTest(testName, unit))
             {
-                decimal value;
-
-                if (TryGetDecimal(resultValue, out value))
-                    return value <= 0 ? "Complies" : "Does Not Comply";
+                decimal numericComplianceResult;
+                if (TryGetDecimal(resultValue, out numericComplianceResult))
+                    return numericComplianceResult.ToString("0.##", CultureInfo.InvariantCulture);
 
                 return raw;
             }
@@ -716,39 +740,45 @@ namespace PharmaLIMS
             return raw;
         }
 
-        private string FormatLimitForCertificate(string sampleType, string testName, string unit, object alertLimit, object actionLimit)
+        private string FormatReportSpecification(
+            string sampleType,
+            string testName,
+            string unit,
+            object alertLimit,
+            object actionLimit,
+            string storedDescription)
         {
+            // Controlled raw-data/method text remains in the source record. The certificate
+            // intentionally presents only the concise approved acceptance criterion.
             if (IsAppearanceTest(testName))
                 return "Clear and Colorless";
 
-            if (IsComplianceQualitativeTest(testName))
-                return "Complies with approved specification";
-
             if (IsPhTest(testName))
-            {
-                if (IsPurifiedWater(sampleType))
-                    return "5.0 - 7.0";
-
-                if (IsPotableWater(sampleType))
-                    return "6.5 - 8.5";
-
-                return "According to approved specification";
-            }
+                return IsPurifiedWater(sampleType) ? "5.0 - 7.0"
+                    : IsPotableWater(sampleType) ? "6.5 - 8.5"
+                    : "According to approved specification";
 
             if (IsConductivityTest(testName))
             {
-                if (IsPurifiedWater(sampleType))
-                    return "NMT 2.0";
+                if (TryGetDecimal(actionLimit, out decimal conductivityLimit) && conductivityLimit > 0)
+                    return "NMT " + conductivityLimit.ToString("0.##", CultureInfo.InvariantCulture);
 
-                if (IsPotableWater(sampleType))
-                    return "NMT 500";
+                return IsPurifiedWater(sampleType) ? "NMT 1.3"
+                    : IsPotableWater(sampleType) ? "NMT 500"
+                    : "According to approved specification";
+            }
 
-                decimal potableAction;
+            string normalizedName = (testName ?? string.Empty).Trim().ToLowerInvariant();
+            if (normalizedName.Contains("total dissolved solids") || normalizedName == "tds")
+            {
+                if (TryGetDecimal(actionLimit, out decimal tdsLimit) && tdsLimit > 0)
+                    return "NMT " + tdsLimit.ToString("0.##", CultureInfo.InvariantCulture);
+            }
 
-                if (TryGetDecimal(actionLimit, out potableAction) && potableAction > 0)
-                    return "NMT " + potableAction.ToString("0.##", CultureInfo.InvariantCulture);
-
-                return "According to approved specification";
+            if (normalizedName.Contains("total organic carbon") || normalizedName == "toc")
+            {
+                if (TryGetDecimal(actionLimit, out decimal tocLimit) && tocLimit > 0)
+                    return "NMT " + tocLimit.ToString("0.##", CultureInfo.InvariantCulture);
             }
 
             if (IsHardnessTest(testName) && IsPotableWater(sampleType))
@@ -766,20 +796,30 @@ namespace PharmaLIMS
             if (IsAbsencePresenceTest(unit, testName))
                 return "Absence";
 
-            if (IsMicrobialCountTest(testName))
+            if (IsMicrobialCountTest(testName) &&
+                TryGetDecimal(actionLimit, out decimal microbialLimit) && microbialLimit > 0)
             {
-                decimal action;
-
-                if (TryGetDecimal(actionLimit, out action) && action > 0)
-                    return "NMT " + action.ToString("0.##", CultureInfo.InvariantCulture);
-
-                return "According to approved specification";
+                return "NMT " + microbialLimit.ToString("0.##", CultureInfo.InvariantCulture);
             }
 
-            decimal actionLimitValue;
+            // A numeric approved upper/action limit is the preferred concise certificate criterion.
+            if (TryGetDecimal(actionLimit, out decimal numericLimit) && numericLimit > 0)
+                return "NMT " + numericLimit.ToString("0.##", CultureInfo.InvariantCulture);
 
-            if (TryGetDecimal(actionLimit, out actionLimitValue) && actionLimitValue > 0)
-                return "NMT " + actionLimitValue.ToString("0.##", CultureInfo.InvariantCulture);
+            if (IsComplianceQualitativeTest(testName, unit))
+            {
+                if (normalizedName == "acidity")
+                    return "Not red";
+                if (normalizedName.Contains("sulphate") || normalizedName.Contains("sulfate"))
+                    return "No visible change";
+                if (normalizedName.Contains("oxidisable") || normalizedName.Contains("oxidizable"))
+                    return "Remains faintly pink";
+                return "Complies";
+            }
+
+            string stored = (storedDescription ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(stored) && stored.Length <= 80)
+                return stored;
 
             return "According to approved specification";
         }
@@ -813,7 +853,7 @@ namespace PharmaLIMS
                 return "Non-Conform";
             }
 
-            if (IsComplianceQualitativeTest(testName))
+            if (IsComplianceQualitativeTest(testName, unit))
             {
                 decimal value;
 
@@ -851,18 +891,13 @@ namespace PharmaLIMS
                 if (!TryGetDecimal(resultValue, out value))
                     return "Non-Conform";
 
-                if (IsPurifiedWater(sampleType))
-                    return value <= 2.0m ? "Conform" : "Non-Conform";
+                if (TryGetDecimal(actionLimit, out decimal frozenConductivityLimit) && frozenConductivityLimit > 0)
+                    return value <= frozenConductivityLimit ? "Conform" : "Non-Conform";
 
-                if (IsPotableWater(sampleType))
-                    return value <= 500.0m ? "Conform" : "Non-Conform";
-
-                decimal potableAction;
-
-                if (TryGetDecimal(actionLimit, out potableAction) && potableAction > 0)
-                    return value <= potableAction ? "Conform" : "Non-Conform";
-
-                return "Conform";
+                decimal fallbackLimit = IsPurifiedWater(sampleType) ? 1.3m
+                    : IsPotableWater(sampleType) ? 500.0m
+                    : decimal.MaxValue;
+                return value <= fallbackLimit ? "Conform" : "Non-Conform";
             }
 
             if (IsHardnessTest(testName) && IsPotableWater(sampleType))
@@ -947,7 +982,7 @@ namespace PharmaLIMS
             if (IsAppearanceTest(testName))
                 return "-";
 
-            if (IsAbsencePresenceTest(unit, testName) || IsComplianceQualitativeTest(testName))
+            if (IsAbsencePresenceTest(unit, testName) || IsComplianceQualitativeTest(testName, unit))
                 return "-";
 
             return unit ?? "";
@@ -1007,7 +1042,7 @@ namespace PharmaLIMS
 
         private void UpdateFinalConclusion(List<TestResultDisplay> results)
         {
-            bool hasPending = false;
+            int pendingCount = 0;
             bool hasNonConform = IsOosSampleStatus(currentSampleStatus);
 
             foreach (TestResultDisplay item in results)
@@ -1015,7 +1050,7 @@ namespace PharmaLIMS
                 string status = item.Status == null ? "" : item.Status.Trim();
 
                 if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
-                    hasPending = true;
+                    pendingCount++;
 
                 if (status.Equals("Non-Conform", StringComparison.OrdinalIgnoreCase) ||
                     status.Equals("OOS", StringComparison.OrdinalIgnoreCase) ||
@@ -1025,21 +1060,27 @@ namespace PharmaLIMS
                 }
             }
 
-            if (hasPending)
-            {
-                lblFinalConclusion.Text = "FINAL CONCLUSION PENDING - ONE OR MORE TEST RESULTS HAVE NOT BEEN COMPLETED.";
-                lblFinalConclusion.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#92400E"));
-                FinalConclusionBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFFBEB"));
-                FinalConclusionBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
-                return;
-            }
-
             if (hasNonConform)
             {
-                lblFinalConclusion.Text = "THE TESTED SAMPLE DOES NOT COMPLY WITH THE APPROVED SPECIFICATION.";
+                lblFinalConclusion.Text = pendingCount > 0
+                    ? "NON-CONFORMING RESULT DETECTED - SAMPLE UNDER INVESTIGATION. " +
+                      pendingCount.ToString(CultureInfo.InvariantCulture) +
+                      " TEST RESULT(S) REMAIN PENDING. FINAL QA DISPOSITION PENDING."
+                    : "NON-CONFORMING RESULT DETECTED - SAMPLE UNDER INVESTIGATION. FINAL QA DISPOSITION PENDING.";
                 lblFinalConclusion.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#991B1B"));
                 FinalConclusionBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FEF2F2"));
                 FinalConclusionBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                return;
+            }
+
+            if (pendingCount > 0)
+            {
+                lblFinalConclusion.Text =
+                    pendingCount.ToString(CultureInfo.InvariantCulture) +
+                    " TEST RESULT(S) REMAIN PENDING. FINAL CONCLUSION CANNOT BE ISSUED.";
+                lblFinalConclusion.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#92400E"));
+                FinalConclusionBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFFBEB"));
+                FinalConclusionBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
                 return;
             }
 
@@ -1379,7 +1420,7 @@ namespace PharmaLIMS
 
                     lblReceivedDate.Text = FirstFormattedDate(row, "ReceivedDateTime", "CreatedDate", "SamplingDateTime");
                     lblAnalysisDate.Text = FirstFormattedDate(row, "AnalysisStartedDateTime", "AnalystSignedAt");
-                    lblAnalysisCompletedDate.Text = FirstFormattedDate(row, "AnalysisCompletedDateTime", "AnalystSignedAt");
+                    lblAnalysisCompletedDate.Text = FirstFormattedDate(row, "AnalysisCompletedDateTime");
                     lblReviewedSummaryDate.Text = FirstFormattedDate(row, "ReviewedBySignedAt");
                     lblApprovedSummaryDate.Text = FirstFormattedDate(row, "ApprovedBySignedAt");
 
@@ -1465,13 +1506,13 @@ namespace PharmaLIMS
                     string unit = row["Unit"] != DBNull.Value ? row.GetSafeString("Unit") : "";
                     string category = row.GetSafeString("TestCategory");
 
-                    string limit = row.GetSafeString("LimitDescription");
-                    if (string.IsNullOrWhiteSpace(limit)) limit = FormatLimitForCertificate(
+                    string limit = FormatReportSpecification(
                         sampleType,
                         testName,
                         unit,
                         row["AlertLimit"],
-                        row["ActionLimit"]);
+                        row["ActionLimit"],
+                        row.GetSafeString("LimitDescription"));
 
                     string resultText = FormatResultForCertificate(
                         testName,
@@ -1521,6 +1562,9 @@ namespace PharmaLIMS
 
                 currentResults.Clear();
                 currentResults.AddRange(results);
+
+                if (results.Any(item => string.Equals(item.Status, "Pending", StringComparison.OrdinalIgnoreCase)))
+                    lblAnalysisCompletedDate.Text = "Not completed";
 
                 ICollectionView groupedView = CollectionViewSource.GetDefaultView(currentResults);
                 groupedView.GroupDescriptions.Clear();
@@ -1842,6 +1886,16 @@ THEN 1 ELSE 0 END;",
                     MessageBox.Show(
                         "You do not have permission to print controlled reports.",
                         "Permission Denied",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(certificateNumber))
+                {
+                    MessageBox.Show(
+                        "Controlled printing is available only after all required results are complete, the workflow is approved, and the certificate/report has been issued.",
+                        "Controlled Print Block",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;

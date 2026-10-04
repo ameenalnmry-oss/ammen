@@ -473,7 +473,7 @@
                               AutoGenerateColumns="False"
                               HeadersVisibility="Column"
                               BorderThickness="0"
-                              RowHeight="31"
+                              MinRowHeight="31"
                               GridLinesVisibility="All"
                               FontSize="10.2"
                               CanUserAddRows="False"
