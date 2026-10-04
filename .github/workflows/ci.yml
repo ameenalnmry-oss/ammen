@@ -67,6 +67,18 @@ jobs:
               throw "CHECKOUT BYTE INTEGRITY FAILURE: .gitignore does not match SOURCE_MANIFEST_SHA256.txt immediately after checkout."
           }
 
+          $v299RehashFiles = @(
+              "PharmaLIMS/CultureMediaPreparation.xaml.Part2.cs",
+              "PharmaLIMS/CultureMediaPreparation.xaml.cs",
+              "PharmaLIMS/EMPlanning.xaml.cs",
+              "PharmaLIMS/tests/test_release_controls.py",
+              "PharmaLIMS/tests/test_v299_development_admin_and_snapshot_controls.py"
+          )
+          foreach ($v299File in $v299RehashFiles) {
+              $v299Hash = (Get-FileHash -LiteralPath $v299File -Algorithm SHA256).Hash.ToLowerInvariant()
+              Write-Host "V299_REHASH $v299Hash $($v299File.Substring('PharmaLIMS/'.Length))"
+          }
+
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
       - name: Install .NET 8 SDK
