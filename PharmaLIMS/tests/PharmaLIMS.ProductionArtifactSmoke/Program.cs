@@ -270,15 +270,15 @@ FROM dbo.LIMS_SchemaVersions;", connection);
         // SQL Server catalog metadata can use the server collation while the target database uses another.
         // Normalize every textual catalog component before concatenation/UNION so the fingerprint is collation-safe.
         await using (SqlCommand schemaCommand = new(@"
-SELECT N'OBJECT|' + (s.name COLLATE DATABASE_DEFAULT) + N'.' + (o.name COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),o.type) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(33),o.modify_date,126) COLLATE DATABASE_DEFAULT)
+SELECT (N'OBJECT|' COLLATE Latin1_General_100_BIN2) + (s.name COLLATE Latin1_General_100_BIN2) + (N'.' COLLATE Latin1_General_100_BIN2) + (o.name COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(20),o.type) COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(33),o.modify_date,126) COLLATE Latin1_General_100_BIN2)
 FROM sys.objects o JOIN sys.schemas s ON s.schema_id=o.schema_id
 WHERE o.is_ms_shipped=0
 UNION ALL
-SELECT N'COLUMN|' + (s.name COLLATE DATABASE_DEFAULT) + N'.' + (o.name COLLATE DATABASE_DEFAULT) + N'|' + (c.name COLLATE DATABASE_DEFAULT) + N'|' + (TYPE_NAME(c.user_type_id) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),c.max_length) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),c.precision) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(20),c.scale) COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(1),c.is_nullable) COLLATE DATABASE_DEFAULT)
+SELECT (N'COLUMN|' COLLATE Latin1_General_100_BIN2) + (s.name COLLATE Latin1_General_100_BIN2) + (N'.' COLLATE Latin1_General_100_BIN2) + (o.name COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (c.name COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (TYPE_NAME(c.user_type_id) COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(20),c.max_length) COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(20),c.precision) COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(20),c.scale) COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(1),c.is_nullable) COLLATE Latin1_General_100_BIN2)
 FROM sys.columns c JOIN sys.objects o ON o.object_id=c.object_id JOIN sys.schemas s ON s.schema_id=o.schema_id
 WHERE o.is_ms_shipped=0
 UNION ALL
-SELECT N'TRIGGER|' + (s.name COLLATE DATABASE_DEFAULT) + N'.' + (o.name COLLATE DATABASE_DEFAULT) + N'|' + (t.name COLLATE DATABASE_DEFAULT) + N'|' + (CONVERT(nvarchar(1),t.is_disabled) COLLATE DATABASE_DEFAULT) + N'|' + (ISNULL(m.definition,N'') COLLATE DATABASE_DEFAULT)
+SELECT (N'TRIGGER|' COLLATE Latin1_General_100_BIN2) + (s.name COLLATE Latin1_General_100_BIN2) + (N'.' COLLATE Latin1_General_100_BIN2) + (o.name COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (t.name COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (CONVERT(nvarchar(1),t.is_disabled) COLLATE Latin1_General_100_BIN2) + (N'|' COLLATE Latin1_General_100_BIN2) + (ISNULL(m.definition,N'') COLLATE Latin1_General_100_BIN2)
 FROM sys.triggers t JOIN sys.objects o ON o.object_id=t.parent_id JOIN sys.schemas s ON s.schema_id=o.schema_id LEFT JOIN sys.sql_modules m ON m.object_id=t.object_id
 WHERE o.is_ms_shipped=0
 ORDER BY 1;", connection))
