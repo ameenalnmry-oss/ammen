@@ -230,10 +230,11 @@ namespace PharmaLIMS
                     role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
         }
 
-        private bool IsDevelopmentAdminTimingOverride()
+        private static bool IsDevelopmentAdminTimingOverride()
         {
+            string role = Login.CurrentUserRole ?? string.Empty;
             return AppConfig.AllowEarlyMicrobiologyResults &&
-                   IsDevelopmentAdminOverride();
+                   IsDevelopmentAdminOverrideForRole(role);
         }
 
         private string GetCurrentUserName()
