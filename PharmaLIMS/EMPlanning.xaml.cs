@@ -1283,12 +1283,12 @@ WHERE PlanID=@Plan AND Status=N'Collected';", connection, transaction);
             DateTime phase1RequiredEnd = phase1Start.AddHours(72);
             DateTime databaseNow = DatabaseHelper.GetAuthoritativeDatabaseTime();
             bool developmentTimingOverrideUsed = databaseNow < phase1RequiredEnd;
-            if (developmentTimingOverrideUsed && !AppConfig.AllowEarlyMicrobiologyResults)
+            if (developmentTimingOverrideUsed && !IsDevelopmentAdminOverride())
                 throw new InvalidOperationException("Phase 1 cannot be completed before 72 hours have elapsed.");
             if (developmentTimingOverrideUsed)
             {
                 ApplicationLogger.Warning(
-                    "Development-only EM phase 1 timing override was used for plan " + plan.PlanNo +
+                    "Development Admin EM phase 1 timing override was used for plan " + plan.PlanNo +
                     ". Recorded target end: " + phase1RequiredEnd.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + ".");
             }
 
@@ -1340,7 +1340,7 @@ WHERE PlanID=@Plan
                 {
                     DatabaseHelper.AddAuditTrailAdvanced(connection, transaction, "EM_Plans", plan.PlanID,
                         "Development Incubation Timing Override", "Phase 1 requires 72 elapsed hours",
-                        "Early phase 1 completion permitted in Development only", signature.Reason,
+                        "Early phase 1 completion permitted for Development Admin testing only", signature.Reason,
                         signature.SignedBy, "IncubationPhase1TargetEnd", null, plan.PlanNo, "Environmental Monitoring");
                 }
             });
@@ -1359,12 +1359,12 @@ WHERE PlanID=@Plan
             DateTime phase2RequiredEnd = phase2Start.AddHours(48);
             DateTime databaseNow = DatabaseHelper.GetAuthoritativeDatabaseTime();
             bool developmentTimingOverrideUsed = databaseNow < phase2RequiredEnd;
-            if (developmentTimingOverrideUsed && !AppConfig.AllowEarlyMicrobiologyResults)
+            if (developmentTimingOverrideUsed && !IsDevelopmentAdminOverride())
                 throw new InvalidOperationException("Phase 2 cannot be completed before 48 hours have elapsed.");
             if (developmentTimingOverrideUsed)
             {
                 ApplicationLogger.Warning(
-                    "Development-only EM phase 2 timing override was used for plan " + plan.PlanNo +
+                    "Development Admin EM phase 2 timing override was used for plan " + plan.PlanNo +
                     ". Recorded target end: " + phase2RequiredEnd.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + ".");
             }
 
@@ -1412,7 +1412,7 @@ WHERE PlanID=@Plan
                 {
                     DatabaseHelper.AddAuditTrailAdvanced(connection, transaction, "EM_Plans", plan.PlanID,
                         "Development Incubation Timing Override", "Phase 2 requires 48 elapsed hours",
-                        "Early phase 2 completion permitted in Development only", signature.Reason,
+                        "Early phase 2 completion permitted for Development Admin testing only", signature.Reason,
                         signature.SignedBy, "IncubationPhase2TargetEnd", null, plan.PlanNo, "Environmental Monitoring");
                 }
             });
@@ -1464,12 +1464,12 @@ WHERE PlanID=@Plan
             bool developmentTimingOverrideUsed = _samples.Any(s =>
                 (s.PlannedIncubationEnd.HasValue && s.PlannedIncubationEnd.Value > databaseNow) ||
                 s.IncubationEnd!.Value > databaseNow);
-            if (developmentTimingOverrideUsed && !AppConfig.AllowEarlyMicrobiologyResults)
+            if (developmentTimingOverrideUsed && !IsDevelopmentAdminOverride())
                 throw new InvalidOperationException("Incubation is not complete. Samples cannot be released before the recorded end time.");
             if (developmentTimingOverrideUsed)
             {
                 ApplicationLogger.Warning(
-                    "Development-only early EM release was used for plan " + plan.PlanNo + ".");
+                    "Development Admin early EM release was used for plan " + plan.PlanNo + ".");
             }
             if (_samples.Any(s => s.IncubationEnd!.Value <= s.IncubationStart!.Value))
                 throw new InvalidOperationException("One or more samples have an invalid incubation period.");
