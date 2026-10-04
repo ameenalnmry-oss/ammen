@@ -1283,7 +1283,7 @@ WHERE PlanID=@Plan AND Status=N'Collected';", connection, transaction);
             DateTime phase1RequiredEnd = phase1Start.AddHours(72);
             DateTime databaseNow = DatabaseHelper.GetAuthoritativeDatabaseTime();
             bool developmentTimingOverrideUsed = databaseNow < phase1RequiredEnd;
-            if (developmentTimingOverrideUsed && !IsDevelopmentAdminOverride())
+            if (developmentTimingOverrideUsed && !IsDevelopmentAdminTimingOverride())
                 throw new InvalidOperationException("Phase 1 cannot be completed before 72 hours have elapsed.");
             if (developmentTimingOverrideUsed)
             {
@@ -1359,7 +1359,7 @@ WHERE PlanID=@Plan
             DateTime phase2RequiredEnd = phase2Start.AddHours(48);
             DateTime databaseNow = DatabaseHelper.GetAuthoritativeDatabaseTime();
             bool developmentTimingOverrideUsed = databaseNow < phase2RequiredEnd;
-            if (developmentTimingOverrideUsed && !IsDevelopmentAdminOverride())
+            if (developmentTimingOverrideUsed && !IsDevelopmentAdminTimingOverride())
                 throw new InvalidOperationException("Phase 2 cannot be completed before 48 hours have elapsed.");
             if (developmentTimingOverrideUsed)
             {
@@ -1464,7 +1464,7 @@ WHERE PlanID=@Plan
             bool developmentTimingOverrideUsed = _samples.Any(s =>
                 (s.PlannedIncubationEnd.HasValue && s.PlannedIncubationEnd.Value > databaseNow) ||
                 s.IncubationEnd!.Value > databaseNow);
-            if (developmentTimingOverrideUsed && !IsDevelopmentAdminOverride())
+            if (developmentTimingOverrideUsed && !IsDevelopmentAdminTimingOverride())
                 throw new InvalidOperationException("Incubation is not complete. Samples cannot be released before the recorded end time.");
             if (developmentTimingOverrideUsed)
             {
@@ -1689,6 +1689,12 @@ VALUES(@Plan,@Action,@Reason,@User,@Role,@Meaning);", connection, transaction);
             return AppConfig.DevelopmentAdminFullPermissions &&
                    (role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
                     role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool IsDevelopmentAdminTimingOverride()
+        {
+            return AppConfig.AllowEarlyMicrobiologyResults &&
+                   IsDevelopmentAdminOverride();
         }
 
         private static ElectronicSignature? ConfirmSignature(string record, string action)
