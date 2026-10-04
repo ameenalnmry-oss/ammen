@@ -82,5 +82,53 @@ class V299DevelopmentAdminAndSnapshotControls(unittest.TestCase):
         self.assertNotIn("fallbackLimit = IsPurifiedWater(sampleType) ? 1.3m", report)
 
 
+    def test_new_sample_sections_are_numbered_once_from_one_to_eight(self):
+        xaml = source("NewSampleDialog.xaml")
+        for expected in (
+            "1. Registration Type",
+            "2. Sampling Point / EM Area",
+            "3. Environmental Monitoring Details",
+            "4. Personnel / Surface Monitoring Context",
+            "5. EM Media and Incubation",
+            "6. Registration Information",
+            "7. Water Sample Receipt / Chain of Custody",
+            "8. Water Tests Selection",
+        ):
+            self.assertEqual(xaml.count(expected), 1, expected)
+        self.assertNotIn("5. Registration Information", xaml)
+
+    def test_water_incubation_gate_does_not_concatenate_ids_into_sql_text(self):
+        code = source("ResultsEntry.xaml.cs")
+        start = code.index("private bool ValidateWaterIncubationCompleteBeforeResultsInTransaction")
+        end = code.index("private DateTime? GetSampleDateTime", start)
+        method = code[start:end]
+        self.assertIn("@EnteredTestIdsXml.nodes('/ids/id')", method)
+        self.assertIn('new SqlParameter("@EnteredTestIdsXml", SqlDbType.Xml)', method)
+        self.assertNotIn('st.TestID IN (" + string.Join', method)
+
+    def test_trend_pdf_rendering_runs_off_dispatcher_thread(self):
+        code = source("ReportsTrends.xaml.cs")
+        start = code.index("private async void BtnExportPDF_Click")
+        end = code.index("#endregion", start)
+        method = code[start:end]
+        self.assertIn("await Task.Run(() =>", method)
+        self.assertIn("ExportTrendModel(model)", method)
+        self.assertIn("TrendPdfReportWriter.Write", method)
+        self.assertIn("IsEnabled = false", method)
+        self.assertIn("IsEnabled = true", method)
+
+    def test_prm_na_answers_require_controlled_reason_and_technical_rationale(self):
+        xaml = source("PRMQualityEventInvestigation.xaml")
+        code = source("PRMQualityEventInvestigation.xaml.cs")
+        service = source("Services/Investigations/PRMQualityEventInvestigationService.cs")
+        self.assertEqual(xaml.count('Header="N/A Justification"'), 3)
+        self.assertIn("IsControlledNaJustification", code)
+        self.assertIn("minimumNaCommentLength", code)
+        self.assertIn("Other scientifically justified reason", code)
+        self.assertIn('CAST(N\'\' AS nvarchar(120)) AS NAJustification', service)
+        self.assertIn('string prefix = "[N/A: " + naJustification.Trim() + "]";', service)
+        self.assertIn("NAJustification", service)
+
+
 if __name__ == "__main__":
     unittest.main()
