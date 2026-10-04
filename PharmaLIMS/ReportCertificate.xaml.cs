@@ -88,7 +88,8 @@ namespace PharmaLIMS
 
                 bool canPrint = await Task.Run(CanPrint);
                 bool hasIssuedDocument = !string.IsNullOrWhiteSpace(certificateNumber);
-                BtnPrint.IsEnabled = canPrint && hasIssuedDocument;
+                BtnPrint.IsEnabled = canPrint;
+                BtnPrint.IsEnabled = BtnPrint.IsEnabled && hasIssuedDocument;
                 BtnPrint.ToolTip = !canPrint
                     ? "You don't have permission to print controlled reports."
                     : hasIssuedDocument
