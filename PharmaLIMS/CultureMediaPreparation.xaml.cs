@@ -230,6 +230,12 @@ namespace PharmaLIMS
                     role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
         }
 
+        private bool IsDevelopmentAdminTimingOverride()
+        {
+            return AppConfig.AllowEarlyMicrobiologyResults &&
+                   IsDevelopmentAdminOverride();
+        }
+
         private string GetCurrentUserName()
         {
             try
@@ -2426,7 +2432,7 @@ WHERE MediaQualificationID=@MediaQualificationID;", conn, tx))
                 "; EarliestCompletionTime=" + eligibleAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) +
                 "; DatabaseNow=" + databaseNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-            if (!IsDevelopmentAdminOverride())
+            if (!IsDevelopmentAdminTimingOverride())
             {
                 throw new InvalidOperationException(
                     "Qualification completion is blocked until the controlled incubation period is complete. Earliest permitted database time: " +
