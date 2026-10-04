@@ -55,21 +55,22 @@ class V298UatWaterReportTests(unittest.TestCase):
         self.assertIn("BtnPrint.IsEnabled = BtnPrint.IsEnabled && hasIssuedDocument;", code)
         self.assertIn("Controlled printing is available only after all required results are complete", code)
 
-    def test_water_report_uses_concise_specification_and_no_temperature_phrase(self):
+    def test_water_report_uses_approved_snapshot_and_no_universal_conductivity_fallback(self):
         code = source("ReportCertificate.xaml.cs")
         self.assertIn("private string FormatReportSpecification(", code)
-        self.assertIn('return IsPurifiedWater(sampleType) ? "NMT 1.3"', code)
         report_formatter = code[code.index("private string FormatReportSpecification("):code.index("private string GetConformity(", code.index("private string FormatReportSpecification("))]
+        self.assertIn("immutable approved snapshot", report_formatter)
+        self.assertNotIn('IsPurifiedWater(sampleType) ? "NMT 1.3"', report_formatter)
         self.assertNotIn("25°C", report_formatter)
         self.assertNotIn("25 °C", report_formatter)
 
-    def test_numeric_unit_chemistry_is_not_forced_into_qualitative_encoding(self):
+    def test_qualitative_chemistry_is_driven_by_approved_snapshot_not_legacy_unit(self):
         results = source("ResultsEntry.xaml.cs")
         report = source("ReportCertificate.xaml.cs")
-        self.assertIn("private bool IsComplianceQualitativeTest(string testName, string unit)", results)
-        self.assertIn("IsComplianceQualitativeTest(item.TestName, item.Unit)", results)
-        self.assertIn("private bool IsComplianceQualitativeTest(string testName, string unit)", report)
-        self.assertIn("IsComplianceQualitativeTest(testName, unit)", report)
+        self.assertIn("private bool IsApprovedComplianceQualitative(ResultItem item)", results)
+        self.assertIn("item.SpecificationText", results)
+        self.assertIn("private bool IsApprovedComplianceQualitative(", report)
+        self.assertIn("storedDescription", report)
 
     def test_pw_conductivity_fallback_is_1_3_not_2_0(self):
         results = source("ResultsEntry.xaml.cs")
