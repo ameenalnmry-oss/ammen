@@ -67,33 +67,6 @@ jobs:
               throw "CHECKOUT BYTE INTEGRITY FAILURE: .gitignore does not match SOURCE_MANIFEST_SHA256.txt immediately after checkout."
           }
 
-          $releaseFiles = @(
-              "PharmaLIMS/AssemblyInfo.cs",
-              "PharmaLIMS/PharmaLIMS.csproj",
-              "PharmaLIMS/Database/MigrationManifest.json",
-              "PharmaLIMS/RELEASE_NOTES_2026.10.4.298.md",
-              "PharmaLIMS/SBOM_2026.10.4.298.cdx.json",
-              "PharmaLIMS/tests/test_v277_compile_fix.py",
-              "PharmaLIMS/tests/test_v287_auth_upgrade_path.py",
-              "PharmaLIMS/tests/test_v280_release_readiness.py",
-              "PharmaLIMS/tests/test_v285_deep_review_closure.py",
-              "PharmaLIMS/tests/test_v278_review_clean_release.py",
-              "PharmaLIMS/tests/test_v282_runtime_release_hardening.py",
-              "PharmaLIMS/tests/test_v283_runtime_schema_gate_closure.py",
-              "PharmaLIMS/tests/test_v268_certificate_json_transport.py",
-              "PharmaLIMS/tests/test_v294_prm_pharmacopoeial_templates.py",
-              "PharmaLIMS/tests/test_v288_user_admin_write_compatibility.py",
-              "PharmaLIMS/tests/test_v279_user_management.py",
-              "PharmaLIMS/tests/test_v262_merge_controls.py",
-              "PharmaLIMS/tests/test_v273_prm_standard_profile_readiness.py",
-              "PharmaLIMS/tests/test_v274_governance_failclosed.py",
-              "PharmaLIMS/tests/test_v289_user_administration_hardening.py"
-          )
-          foreach ($releaseFile in $releaseFiles) {
-              $releaseHash = (Get-FileHash -LiteralPath $releaseFile -Algorithm SHA256).Hash.ToLowerInvariant()
-              Write-Host "RELEASE298_SHA256 $releaseHash $($releaseFile.Substring('PharmaLIMS/'.Length))"
-          }
-
           Write-Host "CHECKOUT BYTE INTEGRITY PASS"
 
       - name: Install .NET 8 SDK
