@@ -228,6 +228,15 @@ SELECT
         private bool CanOpenOrIssueCertificate() => DatabaseHelper.CanIssueCertificate(currentUser);
         private bool CanCancelCertificate() => DatabaseHelper.CanCancelCertificate(currentUser);
 
+        private static bool IsDevelopmentAdminTimingOverrideAllowed()
+        {
+            string role = Login.CurrentUserRole ?? string.Empty;
+            return AppConfig.AllowEarlyMicrobiologyResults &&
+                   AppConfig.DevelopmentAdminFullPermissions &&
+                   (role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+                    role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
+        }
+
         private void EnsureGlobalWaterDateColumns()
         {
             object count = DatabaseHelper.ExecuteScalar(@"
@@ -322,7 +331,7 @@ WHERE st.SampleID=@SampleID
                 CultureInfo.InvariantCulture);
             if (serverNow < incubationEnd)
             {
-                if (AppConfig.AllowEarlyMicrobiologyResults)
+                if (IsDevelopmentAdminTimingOverrideAllowed())
                 {
                     ApplicationLogger.Warning(
                         "Development-only early microbiology result entry was used for water sample " +
@@ -2092,7 +2101,7 @@ WHERE st.SampleID=@SampleID
                             currentSampleId,
                             "Development Incubation Timing Override",
                             "Incubation completion required",
-                            "Early microbiology result entry permitted in Development only",
+                            "Early microbiology result entry permitted for the Development Admin test account only",
                             signatureWindow.Reason,
                             signatureWindow.SignedBy,
                             "IncubationEndDate",
