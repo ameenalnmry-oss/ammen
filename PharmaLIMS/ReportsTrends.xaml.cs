@@ -16,6 +16,7 @@ using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -1795,7 +1796,7 @@ namespace PharmaLIMS
                 IsEnabled = false;
                 windowDisabledForExport = true;
 
-                TrendReportChart[] charts = await Task.Run(() =>
+                TrendReportChart[] charts = await RunOnStaThreadAsync(() =>
                     reportModels
                         .Select(model => new TrendReportChart(
                             model.Title ?? "Trend",
@@ -1838,6 +1839,35 @@ namespace PharmaLIMS
                 if (windowDisabledForExport)
                     IsEnabled = true;
             }
+        }
+
+        private static Task<T> RunOnStaThreadAsync<T>(Func<T> work)
+        {
+            if (work == null)
+                throw new ArgumentNullException(nameof(work));
+
+            var completion = new TaskCompletionSource<T>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Thread thread = new Thread(() =>
+            {
+                try
+                {
+                    completion.SetResult(work());
+                }
+                catch (Exception ex)
+                {
+                    completion.SetException(ex);
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "PharmaLIMS Trend Export"
+            };
+
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            return completion.Task;
         }
 
         #endregion
