@@ -537,6 +537,53 @@ namespace PharmaLIMS
             return !numericUnit && IsComplianceQualitativeTest(testName);
         }
 
+        private bool IsApprovedComplianceQualitative(
+            string testName,
+            string unit,
+            object alertLimit,
+            object actionLimit,
+            string storedDescription)
+        {
+            if (!IsComplianceQualitativeTest(testName))
+                return false;
+
+            if (TryGetDecimal(alertLimit, out _) || TryGetDecimal(actionLimit, out _))
+                return false;
+
+            string description = (storedDescription ?? string.Empty).Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(description))
+                return IsComplianceQualitativeTest(testName, unit);
+
+            return description.Contains("record complies/does not comply") ||
+                   description.Contains("not more intensely coloured") ||
+                   description.Contains("not more intensely colored") ||
+                   description.Contains("comparator") ||
+                   description.Contains("does not change") ||
+                   description.Contains("remains faintly pink") ||
+                   description.Contains("not red");
+        }
+
+        private static string ConciseApprovedQualitativeCriterion(string testName, string storedDescription)
+        {
+            string normalizedName = (testName ?? string.Empty).Trim().ToLowerInvariant();
+            string description = (storedDescription ?? string.Empty).Trim().ToLowerInvariant();
+
+            if (normalizedName == "acidity" || description.Contains("not red"))
+                return "Not red";
+            if (normalizedName.Contains("oxidisable") || normalizedName.Contains("oxidizable") ||
+                description.Contains("remains faintly pink"))
+                return "Remains faintly pink";
+            if (normalizedName.Contains("chloride") || normalizedName.Contains("sulphate") ||
+                normalizedName.Contains("sulfate") || description.Contains("does not change"))
+                return "No visible change";
+            if (normalizedName.Contains("ammon") || normalizedName.Contains("heavy metal") ||
+                normalizedName == "nitrate" || normalizedName == "nitrates" ||
+                description.Contains("comparator") || description.Contains("not more intensely"))
+                return "Not more intense than comparator";
+
+            return "Complies with approved comparator / endpoint";
+        }
+
         private bool IsMicrobialCountTest(string testName)
         {
             testName = testName == null ? "" : testName.Trim().ToLowerInvariant();
@@ -667,7 +714,13 @@ namespace PharmaLIMS
             return decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out result);
         }
 
-        private string FormatResultForCertificate(string testName, string unit, object resultValue)
+        private string FormatResultForCertificate(
+            string testName,
+            string unit,
+            object resultValue,
+            object alertLimit,
+            object actionLimit,
+            string storedDescription)
         {
             if (resultValue == null || resultValue == DBNull.Value)
                 return "Pending";
@@ -707,11 +760,11 @@ namespace PharmaLIMS
                 return raw;
             }
 
-            if (IsComplianceQualitativeTest(testName, unit))
+            if (IsApprovedComplianceQualitative(testName, unit, alertLimit, actionLimit, storedDescription))
             {
                 decimal numericComplianceResult;
                 if (TryGetDecimal(resultValue, out numericComplianceResult))
-                    return numericComplianceResult.ToString("0.##", CultureInfo.InvariantCulture);
+                    return numericComplianceResult <= 0 ? "Complies" : "Does Not Comply";
 
                 return raw;
             }
@@ -748,83 +801,66 @@ namespace PharmaLIMS
             object actionLimit,
             string storedDescription)
         {
-            // Controlled raw-data/method text remains in the source record. The certificate
-            // intentionally presents only the concise approved acceptance criterion.
+            string stored = (storedDescription ?? string.Empty).Trim();
+
+            // The certificate is driven by the immutable approved snapshot captured at
+            // registration. No generic numeric/pharmacopoeial fallback is invented here.
+            if (IsApprovedComplianceQualitative(testName, unit, alertLimit, actionLimit, stored))
+                return ConciseApprovedQualitativeCriterion(testName, stored);
+
             if (IsAppearanceTest(testName))
                 return "Clear and Colorless";
 
             if (IsPhTest(testName))
-                return IsPurifiedWater(sampleType) ? "5.0 - 7.0"
-                    : IsPotableWater(sampleType) ? "6.5 - 8.5"
-                    : "According to approved specification";
-
-            if (IsConductivityTest(testName))
             {
-                if (TryGetDecimal(actionLimit, out decimal conductivityLimit) && conductivityLimit > 0)
-                    return "NMT " + conductivityLimit.ToString("0.##", CultureInfo.InvariantCulture);
+                if (TryGetDecimal(alertLimit, out decimal lower) &&
+                    TryGetDecimal(actionLimit, out decimal upper))
+                    return lower.ToString("0.##", CultureInfo.InvariantCulture) + " - " +
+                           upper.ToString("0.##", CultureInfo.InvariantCulture);
 
-                return IsPurifiedWater(sampleType) ? "NMT 1.3"
-                    : IsPotableWater(sampleType) ? "NMT 500"
-                    : "According to approved specification";
+                if (stored.Contains("operational", StringComparison.OrdinalIgnoreCase) ||
+                    stored.Contains("trend", StringComparison.OrdinalIgnoreCase))
+                    return "Operational / trend parameter";
+
+                return string.IsNullOrWhiteSpace(stored) ? "Approved specification snapshot missing" : stored;
             }
 
-            string normalizedName = (testName ?? string.Empty).Trim().ToLowerInvariant();
-            if (normalizedName.Contains("total dissolved solids") || normalizedName == "tds")
-            {
-                if (TryGetDecimal(actionLimit, out decimal tdsLimit) && tdsLimit > 0)
-                    return "NMT " + tdsLimit.ToString("0.##", CultureInfo.InvariantCulture);
-            }
-
-            if (normalizedName.Contains("total organic carbon") || normalizedName == "toc")
-            {
-                if (TryGetDecimal(actionLimit, out decimal tocLimit) && tocLimit > 0)
-                    return "NMT " + tocLimit.ToString("0.##", CultureInfo.InvariantCulture);
-            }
-
-            if (IsHardnessTest(testName) && IsPotableWater(sampleType))
-                return IsSoftWaterPoint(sampleType) ? "NMT 5" : "NMT 300";
-
-            if (IsResidualChlorineTest(testName))
-                return "2.0 - 4.0";
-
-            if (IsPathogenTest(testName) && IsPotableWater(sampleType))
-                return "Absence / 100 mL";
-
-            if (IsTotalBacterialCountTest(testName) && IsPotableWater(sampleType))
-                return "NMT 500";
-
-            if (IsAbsencePresenceTest(unit, testName))
-                return "Absence";
-
-            if (IsMicrobialCountTest(testName) &&
-                TryGetDecimal(actionLimit, out decimal microbialLimit) && microbialLimit > 0)
-            {
-                return "NMT " + microbialLimit.ToString("0.##", CultureInfo.InvariantCulture);
-            }
-
-            // A numeric approved upper/action limit is the preferred concise certificate criterion.
             if (TryGetDecimal(actionLimit, out decimal numericLimit) && numericLimit > 0)
                 return "NMT " + numericLimit.ToString("0.##", CultureInfo.InvariantCulture);
 
-            if (IsComplianceQualitativeTest(testName, unit))
+            if (IsAbsencePresenceTest(unit, testName))
+                return stored.Contains("100 mL", StringComparison.OrdinalIgnoreCase)
+                    ? "Absence / 100 mL"
+                    : "Absence";
+
+            if (!string.IsNullOrWhiteSpace(stored))
             {
-                if (normalizedName == "acidity")
-                    return "Not red";
-                if (normalizedName.Contains("sulphate") || normalizedName.Contains("sulfate"))
-                    return "No visible change";
-                if (normalizedName.Contains("oxidisable") || normalizedName.Contains("oxidizable"))
-                    return "Remains faintly pink";
-                return "Complies";
+                if (stored.Length <= 100)
+                    return stored;
+
+                // Keep the certificate concise while retaining full approved source text
+                // in the immutable SampleTests snapshot and audit evidence.
+                if (stored.Contains("NMT 100 CFU/mL", StringComparison.OrdinalIgnoreCase))
+                    return "NMT 100 CFU/mL";
+                if (stored.Contains("NMT 500", StringComparison.OrdinalIgnoreCase) &&
+                    IsMicrobialCountTest(testName))
+                    return "NMT 500 CFU/mL";
+                if (stored.Contains("500 ppb", StringComparison.OrdinalIgnoreCase) ||
+                    stored.Contains("0.50 mg", StringComparison.OrdinalIgnoreCase))
+                    return unit.Contains("ppb", StringComparison.OrdinalIgnoreCase) ? "NMT 500" : "NMT 0.50";
             }
 
-            string stored = (storedDescription ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(stored) && stored.Length <= 80)
-                return stored;
-
-            return "According to approved specification";
+            return "Approved specification snapshot missing";
         }
 
-        private string GetConformity(string sampleType, string testName, string unit, object resultValue, object alertLimit, object actionLimit)
+        private string GetConformity(
+            string sampleType,
+            string testName,
+            string unit,
+            object resultValue,
+            object alertLimit,
+            object actionLimit,
+            string storedDescription)
         {
             if (resultValue == null || resultValue == DBNull.Value)
                 return "Pending";
@@ -853,7 +889,7 @@ namespace PharmaLIMS
                 return "Non-Conform";
             }
 
-            if (IsComplianceQualitativeTest(testName, unit))
+            if (IsApprovedComplianceQualitative(testName, unit, alertLimit, actionLimit, storedDescription))
             {
                 decimal value;
 
@@ -870,34 +906,32 @@ namespace PharmaLIMS
 
             if (IsPhTest(testName))
             {
-                decimal value;
+                if (!TryGetDecimal(resultValue, out decimal value))
+                    return "Check Required";
 
-                if (!TryGetDecimal(resultValue, out value))
-                    return "Non-Conform";
+                if (TryGetDecimal(alertLimit, out decimal lower) &&
+                    TryGetDecimal(actionLimit, out decimal upper))
+                    return value >= lower && value <= upper ? "Conform" : "Non-Conform";
 
-                if (IsPurifiedWater(sampleType))
-                    return value >= 5.0m && value <= 7.0m ? "Conform" : "Non-Conform";
+                string stored = (storedDescription ?? string.Empty).Trim();
+                if (stored.Contains("operational", StringComparison.OrdinalIgnoreCase) ||
+                    stored.Contains("trend", StringComparison.OrdinalIgnoreCase))
+                    return "Trend";
 
-                if (IsPotableWater(sampleType))
-                    return value >= 6.5m && value <= 8.5m ? "Conform" : "Non-Conform";
-
-                return "Conform";
+                return "Check Required";
             }
 
             if (IsConductivityTest(testName))
             {
-                decimal value;
-
-                if (!TryGetDecimal(resultValue, out value))
-                    return "Non-Conform";
+                if (!TryGetDecimal(resultValue, out decimal value))
+                    return "Check Required";
 
                 if (TryGetDecimal(actionLimit, out decimal frozenConductivityLimit) && frozenConductivityLimit > 0)
                     return value <= frozenConductivityLimit ? "Conform" : "Non-Conform";
 
-                decimal fallbackLimit = IsPurifiedWater(sampleType) ? 1.3m
-                    : IsPotableWater(sampleType) ? 500.0m
-                    : decimal.MaxValue;
-                return value <= fallbackLimit ? "Conform" : "Non-Conform";
+                // Conductivity must be evaluated from the approved compendial/site
+                // snapshot; do not invent a universal 1.3 µS/cm or other fallback.
+                return "Check Required";
             }
 
             if (IsHardnessTest(testName) && IsPotableWater(sampleType))
@@ -977,12 +1011,18 @@ namespace PharmaLIMS
             return "Conform";
         }
 
-        private string GetUnitForCertificate(string testName, string unit)
+        private string GetUnitForCertificate(
+            string testName,
+            string unit,
+            object alertLimit,
+            object actionLimit,
+            string storedDescription)
         {
             if (IsAppearanceTest(testName))
                 return "-";
 
-            if (IsAbsencePresenceTest(unit, testName) || IsComplianceQualitativeTest(testName, unit))
+            if (IsAbsencePresenceTest(unit, testName) ||
+                IsApprovedComplianceQualitative(testName, unit, alertLimit, actionLimit, storedDescription))
                 return "-";
 
             return unit ?? "";
@@ -1514,10 +1554,15 @@ namespace PharmaLIMS
                         row["ActionLimit"],
                         row.GetSafeString("LimitDescription"));
 
+                    string storedLimitDescription = row.GetSafeString("LimitDescription");
+
                     string resultText = FormatResultForCertificate(
                         testName,
                         unit,
-                        row["ResultValue"]);
+                        row["ResultValue"],
+                        row["AlertLimit"],
+                        row["ActionLimit"],
+                        storedLimitDescription);
 
                     string savedStatus = row.GetSafeString("ResultStatus");
                     string conformity = savedStatus.Equals("PASS", StringComparison.OrdinalIgnoreCase) ? "Conform"
@@ -1529,7 +1574,8 @@ namespace PharmaLIMS
                         unit,
                         row["ResultValue"],
                         row["AlertLimit"],
-                        row["ActionLimit"]);
+                        row["ActionLimit"],
+                        storedLimitDescription);
 
                     results.Add(new TestResultDisplay
                     {
@@ -1540,7 +1586,8 @@ namespace PharmaLIMS
                         TestName = testName,
                         Specification = limit,
                         Result = resultText,
-                        Unit = GetUnitForCertificate(testName, unit),
+                        Unit = GetUnitForCertificate(
+                            testName, unit, row["AlertLimit"], row["ActionLimit"], storedLimitDescription),
                         Status = conformity
                     });
                 }
