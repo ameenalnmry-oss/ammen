@@ -308,13 +308,31 @@ WHERE TABLE_SCHEMA = N'dbo'
                 .ToList();
             if (enteredTestIds.Count == 0) return false;
 
+            string enteredTestIdsXml =
+                "<ids>" +
+                string.Join(
+                    string.Empty,
+                    enteredTestIds.Select(id =>
+                        "<id>" + id.ToString(CultureInfo.InvariantCulture) + "</id>")) +
+                "</ids>";
+
             object microCount = ExecuteScalarInTransaction(connection, transaction, @"
 SELECT COUNT(1)
-FROM dbo.SampleTests st LEFT JOIN dbo.Tests t ON t.TestID=st.TestID
+FROM dbo.SampleTests st
+LEFT JOIN dbo.Tests t ON t.TestID=st.TestID
 WHERE st.SampleID=@SampleID
-  AND st.TestID IN (" + string.Join(",", enteredTestIds) + @")
+  AND EXISTS
+  (
+      SELECT 1
+      FROM @EnteredTestIdsXml.nodes('/ids/id') AS entered(id)
+      WHERE entered.id.value('(text())[1]', 'int') = st.TestID
+  )
   AND UPPER(ISNULL(CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.TestCategorySnapshot ELSE t.TestCategory END,N'')) LIKE N'%MICRO%';",
-                new[] { new SqlParameter("@SampleID", currentSampleId) });
+                new[]
+                {
+                    new SqlParameter("@SampleID", SqlDbType.Int) { Value = currentSampleId },
+                    new SqlParameter("@EnteredTestIdsXml", SqlDbType.Xml) { Value = enteredTestIdsXml }
+                });
 
             if (Convert.ToInt32(microCount, CultureInfo.InvariantCulture) <= 0)
                 return false;
