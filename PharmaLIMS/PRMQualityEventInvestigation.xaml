@@ -318,6 +318,24 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
+<DataGridTemplateColumn Header="N/A Justification" Width="245">
+    <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+            <ComboBox SelectedValue="{Binding NAJustification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      Height="28"
+                      ToolTip="Required controlled reason when Answer is N/A.">
+                <ComboBoxItem Content=""/>
+                <ComboBoxItem Content="Not applicable to product/material/sample/test type"/>
+                <ComboBoxItem Content="Not applicable to investigation phase"/>
+                <ComboBoxItem Content="No relevant equipment/process step involved"/>
+                <ComboBoxItem Content="No relevant reagent/media/culture involved"/>
+                <ComboBoxItem Content="Not applicable per approved method/specification"/>
+                <ComboBoxItem Content="Other scientifically justified reason"/>
+            </ComboBox>
+        </DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+</DataGridTemplateColumn>
+
                             <DataGridTextColumn Header="Comments / Evidence / Record Reference"
                                                 Binding="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 Width="360"/>
@@ -429,6 +447,24 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
+
+<DataGridTemplateColumn Header="N/A Justification" Width="245">
+    <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+            <ComboBox SelectedValue="{Binding NAJustification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      Height="28"
+                      ToolTip="Required controlled reason when Answer is N/A.">
+                <ComboBoxItem Content=""/>
+                <ComboBoxItem Content="Not applicable to product/material/sample/test type"/>
+                <ComboBoxItem Content="Not applicable to investigation phase"/>
+                <ComboBoxItem Content="No relevant equipment/process step involved"/>
+                <ComboBoxItem Content="No relevant reagent/media/culture involved"/>
+                <ComboBoxItem Content="Not applicable per approved method/specification"/>
+                <ComboBoxItem Content="Other scientifically justified reason"/>
+            </ComboBox>
+        </DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+</DataGridTemplateColumn>
 
                                     <DataGridTextColumn Header="Comments / Evidence / Record Reference"
                                                         Binding="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -597,6 +633,24 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
+
+<DataGridTemplateColumn Header="N/A Justification" Width="245">
+    <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+            <ComboBox SelectedValue="{Binding NAJustification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      Height="28"
+                      ToolTip="Required controlled reason when Answer is N/A.">
+                <ComboBoxItem Content=""/>
+                <ComboBoxItem Content="Not applicable to product/material/sample/test type"/>
+                <ComboBoxItem Content="Not applicable to investigation phase"/>
+                <ComboBoxItem Content="No relevant equipment/process step involved"/>
+                <ComboBoxItem Content="No relevant reagent/media/culture involved"/>
+                <ComboBoxItem Content="Not applicable per approved method/specification"/>
+                <ComboBoxItem Content="Other scientifically justified reason"/>
+            </ComboBox>
+        </DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+</DataGridTemplateColumn>
 
                                 <DataGridTextColumn Header="Comments / Evidence"
                                                     Binding="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
