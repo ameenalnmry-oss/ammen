@@ -18,6 +18,14 @@ class V298UatWaterReportTests(unittest.TestCase):
         self.assertIn("Expected {expectedCount} test row(s), but loaded {tests.Rows.Count}", method)
         self.assertNotIn("SafeQuery(query", method)
 
+    def test_sample_details_numeric_comparison_is_safe_for_qualitative_results(self):
+        code = source("SampleDetails.xaml.cs")
+        start = code.index("private void LoadTestsAndResults")
+        end = code.index("private void LoadTimeline", start)
+        method = code[start:end]
+        self.assertIn("TRY_CONVERT(decimal(18,6)", method)
+        self.assertNotIn("AND st.ResultValue >", method)
+
     def test_nonconforming_result_precedes_pending_conclusion(self):
         code = source("ReportCertificate.xaml.cs")
         start = code.index("private void UpdateFinalConclusion")
