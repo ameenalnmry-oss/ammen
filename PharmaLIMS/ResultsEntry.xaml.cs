@@ -902,6 +902,27 @@ WHERE st.SampleID=@SampleID
         }
 
 
+        private bool IsComplianceQualitativeTest(string testName, string unit)
+        {
+            string normalizedUnit = (unit ?? string.Empty).Trim().ToUpperInvariant()
+                .Replace("µ", "U", StringComparison.Ordinal)
+                .Replace("μ", "U", StringComparison.Ordinal)
+                .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+            bool numericUnit =
+                normalizedUnit.Contains("MG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("PPM", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("PPB", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("UG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("NG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("US/CM", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("NTU", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("MG/100ML", StringComparison.Ordinal);
+
+            return !numericUnit && IsComplianceQualitativeTest(testName);
+        }
+
+
         private void ApplyEffectiveSpecification(ResultItem item)
         {
             if (item == null)
@@ -929,7 +950,7 @@ WHERE st.SampleID=@SampleID
                 if (IsPurifiedWaterSample())
                 {
                     item.AlertLimit = null;
-                    item.ActionLimit = 2.00m;
+                    item.ActionLimit = 1.30m;
                     return;
                 }
 
@@ -990,7 +1011,7 @@ WHERE st.SampleID=@SampleID
                 }
             }
 
-            if (IsComplianceQualitativeTest(item.TestName))
+            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
             {
                 if (raw.Equals("Complies", StringComparison.OrdinalIgnoreCase) ||
                     raw.Equals("Comply", StringComparison.OrdinalIgnoreCase) ||
@@ -1089,7 +1110,7 @@ WHERE st.SampleID=@SampleID
                 return raw;
             }
 
-            if (IsComplianceQualitativeTest(item.TestName))
+            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
             {
                 if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
                     return value <= 0 ? "Complies" : "Does Not Comply";
@@ -1127,7 +1148,7 @@ WHERE st.SampleID=@SampleID
             if (IsAppearanceTest(item.TestName))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
-            if (IsComplianceQualitativeTest(item.TestName))
+            if (IsComplianceQualitativeTest(item.TestName, item.Unit))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
             if (IsAbsencePresenceTest(item.Unit, item.TestName))
