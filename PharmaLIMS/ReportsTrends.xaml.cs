@@ -16,6 +16,7 @@ using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -1759,29 +1760,84 @@ namespace PharmaLIMS
         /// <summary>
         /// Export as PDF with full formatting
         /// </summary>
-        private void BtnExportPDF_Click(object sender, RoutedEventArgs e)
+        private async void BtnExportPDF_Click(object sender, RoutedEventArgs e)
         {
+            bool windowDisabledForExport = false;
             try
             {
                 if (!UserHasPermission("ExportPDF")) { ShowInfo("PDF export permission is required."); return; }
                 if (chkShowLimits != null) chkShowLimits.IsChecked = true;
                 if (!EnsureCurrentTrendDataForPdf()) return;
+
                 DateTime generatedOn = GetAuthoritativeTrendTime();
                 string reportNumber = GenerateReportNumber();
-                string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"PharmaLIMS_Report_{reportNumber}.pdf");
+                string filePath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    $"PharmaLIMS_Report_{reportNumber}.pdf");
+
                 bool hasWaterProfile = currentDataTable.Columns.Contains("WaterProfile");
                 bool hasSampleType = currentDataTable.Columns.Contains("SampleType");
                 string identityColumn = hasWaterProfile ? "WaterProfile" : hasSampleType ? "SampleType" : "Location";
                 string[] columns = { "SampleNumber", "PointCode", identityColumn, "SamplingDate", "TestName", "MethodName", "ResultValue", "Unit", "AlertLimit", "ActionLimit", "Status" };
-                var charts = _reportTrendModels.Select(model => new TrendReportChart(model.Title ?? "Trend", ExportTrendModel(model))).ToArray();
-                TrendPdfReportWriter.Write(filePath, "REPORTS AND TRENDS ANALYSIS", reportNumber, CurrentReportScope(), GetCurrentUserName(), generatedOn,
-                    FindReportLogoPath(), BuildStatisticsLines(), charts,
-                    new[] { new TrendReportTable("Full individual results", currentDataTable, columns) }, BuildInterpretation());
-                DatabaseHelper.AddAuditTrailAdvanced("AuditTrail", 0, "Trend PDF Review Draft Export", "", Path.GetFileName(filePath), "Source rows=" + currentDataTable.Rows.Count + "; Charts=" + charts.Length, Login.CurrentUser);
+
+                // Snapshot all UI-owned report inputs before leaving the dispatcher thread.
+                // The window is temporarily disabled so the PlotModel collection cannot be
+                // changed by another user action while OxyPlot/PDF rendering runs in background.
+                PlotModel[] reportModels = _reportTrendModels.ToArray();
+                DataTable reportData = currentDataTable.Copy();
+                string reportScope = CurrentReportScope();
+                string generatedBy = GetCurrentUserName();
+                string logoPath = FindReportLogoPath();
+                string[] statistics = BuildStatisticsLines().ToArray();
+                string interpretation = BuildInterpretation();
+
+                SetStatus("Rendering trend charts and PDF in background...", true);
+                IsEnabled = false;
+                windowDisabledForExport = true;
+
+                TrendReportChart[] charts = await Task.Run(() =>
+                    reportModels
+                        .Select(model => new TrendReportChart(
+                            model.Title ?? "Trend",
+                            ExportTrendModel(model)))
+                        .ToArray());
+
+                await Task.Run(() =>
+                    TrendPdfReportWriter.Write(
+                        filePath,
+                        "REPORTS AND TRENDS ANALYSIS",
+                        reportNumber,
+                        reportScope,
+                        generatedBy,
+                        generatedOn,
+                        logoPath,
+                        statistics,
+                        charts,
+                        new[] { new TrendReportTable("Full individual results", reportData, columns) },
+                        interpretation));
+
+                DatabaseHelper.AddAuditTrailAdvanced(
+                    "AuditTrail",
+                    0,
+                    "Trend PDF Review Draft Export",
+                    "",
+                    Path.GetFileName(filePath),
+                    "Source rows=" + reportData.Rows.Count + "; Charts=" + charts.Length,
+                    Login.CurrentUser);
+
                 ShowInfo("Medica trend review draft exported with all curves and results:\n\n" + filePath);
                 SetStatus("PDF exported successfully.", false);
             }
-            catch (Exception ex) { LogError("Error exporting PDF", ex); ShowError("PDF export failed:\n\n" + UserFacingError.SafeMessage(ex)); }
+            catch (Exception ex)
+            {
+                LogError("Error exporting PDF", ex);
+                ShowError("PDF export failed:\n\n" + UserFacingError.SafeMessage(ex));
+            }
+            finally
+            {
+                if (windowDisabledForExport)
+                    IsEnabled = true;
+            }
         }
 
         #endregion
