@@ -516,6 +516,26 @@ namespace PharmaLIMS
                    normalized.Contains("oxidizable substances");
         }
 
+        private bool IsComplianceQualitativeTest(string testName, string unit)
+        {
+            string normalizedUnit = (unit ?? string.Empty).Trim().ToUpperInvariant()
+                .Replace("µ", "U", StringComparison.Ordinal)
+                .Replace("μ", "U", StringComparison.Ordinal)
+                .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+            bool numericUnit =
+                normalizedUnit.Contains("MG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("PPM", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("PPB", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("UG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("NG/L", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("US/CM", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("NTU", StringComparison.Ordinal) ||
+                normalizedUnit.Contains("MG/100ML", StringComparison.Ordinal);
+
+            return !numericUnit && IsComplianceQualitativeTest(testName);
+        }
+
         private bool IsMicrobialCountTest(string testName)
         {
             testName = testName == null ? "" : testName.Trim().ToLowerInvariant();
@@ -686,7 +706,7 @@ namespace PharmaLIMS
                 return raw;
             }
 
-            if (IsComplianceQualitativeTest(testName))
+            if (IsComplianceQualitativeTest(testName, unit))
             {
                 decimal numericComplianceResult;
                 if (TryGetDecimal(resultValue, out numericComplianceResult))
@@ -785,7 +805,7 @@ namespace PharmaLIMS
             if (TryGetDecimal(actionLimit, out decimal numericLimit) && numericLimit > 0)
                 return "NMT " + numericLimit.ToString("0.##", CultureInfo.InvariantCulture);
 
-            if (IsComplianceQualitativeTest(testName))
+            if (IsComplianceQualitativeTest(testName, unit))
             {
                 if (normalizedName == "acidity")
                     return "Not red";
@@ -832,7 +852,7 @@ namespace PharmaLIMS
                 return "Non-Conform";
             }
 
-            if (IsComplianceQualitativeTest(testName))
+            if (IsComplianceQualitativeTest(testName, unit))
             {
                 decimal value;
 
@@ -961,7 +981,7 @@ namespace PharmaLIMS
             if (IsAppearanceTest(testName))
                 return "-";
 
-            if (IsAbsencePresenceTest(unit, testName) || IsComplianceQualitativeTest(testName))
+            if (IsAbsencePresenceTest(unit, testName) || IsComplianceQualitativeTest(testName, unit))
                 return "-";
 
             return unit ?? "";
