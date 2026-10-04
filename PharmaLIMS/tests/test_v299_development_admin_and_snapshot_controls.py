@@ -45,9 +45,11 @@ class V299DevelopmentAdminAndSnapshotControls(unittest.TestCase):
         em = source("EMPlanning.xaml.cs")
         media = source("CultureMediaPreparation.xaml.cs")
         media2 = source("CultureMediaPreparation.xaml.Part2.cs")
-        self.assertIn("!IsDevelopmentAdminOverride()", em)
-        self.assertIn("!IsDevelopmentAdminOverride()", media)
-        self.assertIn("if (IsDevelopmentAdminOverride())", media2)
+        self.assertIn("!IsDevelopmentAdminTimingOverride()", em)
+        self.assertIn("AppConfig.AllowEarlyMicrobiologyResults", em)
+        self.assertIn("!IsDevelopmentAdminTimingOverride()", media)
+        self.assertIn("AppConfig.AllowEarlyMicrobiologyResults", media)
+        self.assertIn("if (IsDevelopmentAdminTimingOverride())", media2)
 
     def test_prm_default_timing_is_per_test_not_120_hours_for_everything(self):
         code = source("ProductionRawMaterialSamples.xaml.cs")
