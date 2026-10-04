@@ -207,7 +207,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="3">
                                 <TextBlock Text="Department" Style="{StaticResource LabelStyle}"/>
-                                <TextBox x:Name="TxtDepartment" Text="Laboratory / QC" IsReadOnly="True" Background="#F1F5F9" Style="{StaticResource InputStyle}"/>
+                                <TextBox x:Name="TxtDepartment" Text="Microbiology Laboratory" IsReadOnly="True" Background="#F1F5F9" Style="{StaticResource InputStyle}"/>
                             </StackPanel>
                         </Grid>
 
