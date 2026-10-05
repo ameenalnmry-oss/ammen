@@ -33,10 +33,10 @@ class V283RuntimeSchemaGateClosureTests(unittest.TestCase):
 
     def test_release_identity_is_v283(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.4.298", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.10.4.298</Version>", text("PharmaLIMS.csproj"))
-        self.assertTrue((ROOT / "RELEASE_NOTES_2026.10.4.298.md").is_file())
-        self.assertTrue((ROOT / "SBOM_2026.10.4.298.cdx.json").is_file())
+        self.assertEqual("2026.10.5.299", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.10.5.299</Version>", text("PharmaLIMS.csproj"))
+        self.assertTrue((ROOT / "RELEASE_NOTES_2026.10.5.299.md").is_file())
+        self.assertTrue((ROOT / "SBOM_2026.10.5.299.cdx.json").is_file())
 
 
 if __name__ == "__main__":

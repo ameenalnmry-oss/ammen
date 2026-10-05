@@ -7,9 +7,9 @@
     "timestamp": "2026-10-04T07:22:00Z",
     "component": {
       "type": "application",
-      "bom-ref": "pkg:generic/PharmaLIMS@2026.10.4.298",
+      "bom-ref": "pkg:generic/PharmaLIMS@2026.10.5.299",
       "name": "PharmaLIMS",
-      "version": "2026.10.4.298",
+      "version": "2026.10.5.299",
       "properties": []
     },
     "properties": [
