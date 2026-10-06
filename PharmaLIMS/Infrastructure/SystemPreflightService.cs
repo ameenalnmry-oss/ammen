@@ -1,4 +1,4 @@
-using PharmaLIMS.Services;
+﻿using PharmaLIMS.Services;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
@@ -300,6 +300,8 @@ SELECT
                     await CheckControlledMasterDataAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical EM evidence";
                     await CheckHistoricalEmSnapshotIntegrityAsync(checks).ConfigureAwait(false);
+                    verificationStage = "Historical Water evidence";
+                    await CheckHistoricalWaterResultEvidenceAsync(checks).ConfigureAwait(false);
                     verificationStage = "Identity integrity";
                     await CheckIdentityIntegrityAsync(checks).ConfigureAwait(false);
                     verificationStage = "PRM certificate integrity";
@@ -2417,7 +2419,101 @@ ORDER BY CASE Severity WHEN N'BLOCKER' THEN 0 ELSE 1 END, Details;" ).ConfigureA
             }
         }
 
-        
+        private async Task CheckHistoricalWaterResultEvidenceAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable findings = await _database.ExecuteQueryAsync(@"
+DECLARE @Cutover datetime2(0) = NULL;
+IF OBJECT_ID(N'dbo.LIMS_SchemaVersions',N'U') IS NOT NULL
+   AND COL_LENGTH(N'dbo.LIMS_SchemaVersions',N'AppliedAt') IS NOT NULL
+BEGIN
+    SELECT TOP (1) @Cutover = AppliedAt
+    FROM dbo.LIMS_SchemaVersions
+    WHERE VersionKey = N'20260714_001'
+    ORDER BY AppliedAt;
+END;
+
+DECLARE @Rows TABLE
+(
+    Severity nvarchar(20) NOT NULL,
+    Finding nvarchar(100) NOT NULL,
+    CountValue int NOT NULL
+);
+
+IF OBJECT_ID(N'dbo.Samples',N'U') IS NOT NULL
+   AND OBJECT_ID(N'dbo.SampleTests',N'U') IS NOT NULL
+BEGIN
+    INSERT @Rows(Severity,Finding,CountValue)
+    SELECT
+        CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN N'BLOCKER' ELSE N'WARNING' END,
+        N'Persisted water results without ResultStatus',
+        COUNT(*)
+    FROM dbo.SampleTests st
+    INNER JOIN dbo.Samples s ON s.SampleID=st.SampleID
+    WHERE s.SampleType IN(N'Purified Water',N'Potable Water')
+      AND st.ResultValue IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultStatus,N''))),N'') IS NULL
+    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN 1 ELSE 0 END;
+
+    INSERT @Rows(Severity,Finding,CountValue)
+    SELECT
+        CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN N'BLOCKER' ELSE N'WARNING' END,
+        N'Water test rows without immutable LimitDescription evidence',
+        COUNT(*)
+    FROM dbo.SampleTests st
+    INNER JOIN dbo.Samples s ON s.SampleID=st.SampleID
+    WHERE s.SampleType IN(N'Purified Water',N'Potable Water')
+      AND NULLIF(LTRIM(RTRIM(ISNULL(st.LimitDescription,N''))),N'') IS NULL
+    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN 1 ELSE 0 END;
+
+    INSERT @Rows(Severity,Finding,CountValue)
+    SELECT
+        CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN N'BLOCKER' ELSE N'WARNING' END,
+        N'Terminal-state water samples with pending test rows',
+        COUNT(DISTINCT s.SampleID)
+    FROM dbo.Samples s
+    INNER JOIN dbo.SampleTests st ON st.SampleID=s.SampleID
+    WHERE s.SampleType IN(N'Purified Water',N'Potable Water')
+      AND UPPER(LTRIM(RTRIM(ISNULL(s.Status,N'')))) IN(N'APPROVED',N'COA ISSUED',N'COMPLETED',N'RELEASED AFTER INVESTIGATION')
+      AND st.ResultValue IS NULL
+    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN 1 ELSE 0 END;
+END;
+
+SELECT Severity,Finding,CountValue
+FROM @Rows
+WHERE CountValue > 0
+ORDER BY CASE Severity WHEN N'BLOCKER' THEN 0 ELSE 1 END, Finding;" ).ConfigureAwait(false);
+
+            if (findings.Rows.Count == 0)
+            {
+                Add(checks, "Water / Results", "PASS", "Historical water result evidence",
+                    "No persisted-result status gaps, missing immutable limit descriptions, or terminal-state samples with pending test rows were detected.");
+                return;
+            }
+
+            List<string> blockers = findings.Rows.Cast<DataRow>()
+                .Where(row => string.Equals(Convert.ToString(row["Severity"]), "BLOCKER", StringComparison.OrdinalIgnoreCase))
+                .Select(row => Convert.ToString(row["Finding"]) + ": " + Convert.ToString(row["CountValue"]))
+                .ToList();
+            List<string> warnings = findings.Rows.Cast<DataRow>()
+                .Where(row => string.Equals(Convert.ToString(row["Severity"]), "WARNING", StringComparison.OrdinalIgnoreCase))
+                .Select(row => Convert.ToString(row["Finding"]) + ": " + Convert.ToString(row["CountValue"]))
+                .ToList();
+
+            if (blockers.Count > 0)
+            {
+                Add(checks, "Water / Results", "BLOCKER", "Post-control water result evidence",
+                    string.Join(" | ", blockers) +
+                    ". These records are at or after the controlled water-workflow cutover and require QA-controlled correction/reconciliation before release reliance.");
+            }
+
+            if (warnings.Count > 0)
+            {
+                Add(checks, "Water / Results", "WARNING", "Legacy water result evidence",
+                    string.Join(" | ", warnings) +
+                    ". These records predate the controlled water-workflow cutover. Do not fabricate retrospective values; retain them as historical evidence and use a signed reconciliation when they must support a regulated decision.");
+            }
+        }
+
         private async Task CheckWaterCertificateIntegrityAsync(List<SystemPreflightCheck> checks)
         {
             DataTable findings = await _database.ExecuteQueryAsync(@"
@@ -2525,6 +2621,24 @@ BEGIN
     END;
 END;
 
+IF OBJECT_ID(N'dbo.QualityEvents',N'U') IS NOT NULL
+   AND COL_LENGTH(N'dbo.QualityEvents',N'SampleID') IS NOT NULL
+   AND COL_LENGTH(N'dbo.QualityEvents',N'CurrentStatus') IS NOT NULL
+   AND COL_LENGTH(N'dbo.Certificates',N'IssueDate') IS NOT NULL
+BEGIN
+    INSERT @Findings(Severity,Details)
+    SELECT DISTINCT
+        CASE WHEN ISNULL(q.DetectedDate,q.CreatedDate) <= c.IssueDate THEN N'BLOCKER' ELSE N'WARNING' END,
+        N'Active certificate ' + ISNULL(c.CertificateNumber,N'(unknown)') +
+        CASE WHEN ISNULL(q.DetectedDate,q.CreatedDate) <= c.IssueDate
+             THEN N' was issued while Quality Event ' + ISNULL(q.EventNumber,CONVERT(nvarchar(20),q.QualityEventID)) + N' was already open.'
+             ELSE N' has post-issuance open Quality Event ' + ISNULL(q.EventNumber,CONVERT(nvarchar(20),q.QualityEventID)) + N'; QA disposition is required before continued release reliance.' END
+    FROM dbo.Certificates c
+    INNER JOIN dbo.QualityEvents q ON q.SampleID=c.SampleID
+    WHERE UPPER(LTRIM(RTRIM(ISNULL(NULLIF(LTRIM(RTRIM(c.CertificateStatus)),N''),ISNULL(c.Status,N''))))) IN(N'ACTIVE',N'ISSUED')
+      AND ISNULL(c.IsCancelled,0)=0
+      AND UPPER(LTRIM(RTRIM(ISNULL(q.CurrentStatus,N'OPEN')))) NOT IN(N'CLOSED',N'QA CLOSED',N'CANCELLED',N'REJECTED CLOSED');
+END;
 IF OBJECT_ID(N'tempdb..#ResolvedLegacyCertificates',N'U') IS NOT NULL
     DROP TABLE #ResolvedLegacyCertificates;
 

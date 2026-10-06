@@ -516,7 +516,7 @@ WHERE st.SampleID=@SampleID
 
                 DatabaseHelper.ExecuteNonQuery(@"
                     UPDATE dbo.Samples
-                    SET AnalysisCompletedDateTime = GETDATE()
+                    SET AnalysisCompletedDateTime = SYSDATETIME()
                     WHERE SampleID = @SampleID", pars);
             }
             catch (Exception ex)
@@ -540,7 +540,7 @@ WHERE st.SampleID=@SampleID
 
             DatabaseHelper.ExecuteNonQuery(@"
                 UPDATE dbo.Samples
-                SET ReviewedDateTime = GETDATE()
+                SET ReviewedDateTime = SYSDATETIME()
                 WHERE SampleID = @SampleID", pars);
         }
 
@@ -558,7 +558,7 @@ WHERE st.SampleID=@SampleID
 
             DatabaseHelper.ExecuteNonQuery(@"
                 UPDATE dbo.Samples
-                SET ApprovedDateTime = GETDATE()
+                SET ApprovedDateTime = SYSDATETIME()
                 WHERE SampleID = @SampleID", pars);
         }
 
@@ -647,7 +647,7 @@ WHERE st.SampleID=@SampleID
                     @signedBy,
                     @meaning,
                     @role,
-                    GETDATE()
+                    SYSDATETIME()
                 )",
                 new SqlParameter("@sampleId", currentSampleId),
                 new SqlParameter("@actionType", string.IsNullOrWhiteSpace(actionType) ? (object)DBNull.Value : actionType),
@@ -719,7 +719,7 @@ WHERE st.SampleID=@SampleID
 
             ExecuteNonQueryInTransaction(con, tran, @"
                 UPDATE dbo.Samples
-                SET AnalysisCompletedDateTime = GETDATE()
+                SET AnalysisCompletedDateTime = SYSDATETIME()
                 WHERE SampleID = @sampleId AND AnalysisCompletedDateTime IS NULL",
                 new SqlParameter("@sampleId", currentSampleId));
         }
@@ -730,7 +730,7 @@ WHERE st.SampleID=@SampleID
 
             ExecuteNonQueryInTransaction(con, tran, @"
                 UPDATE dbo.Samples
-                SET ReviewedDateTime = GETDATE()
+                SET ReviewedDateTime = SYSDATETIME()
                 WHERE SampleID = @sampleId",
                 new SqlParameter("@sampleId", currentSampleId));
         }
@@ -741,7 +741,7 @@ WHERE st.SampleID=@SampleID
 
             ExecuteNonQueryInTransaction(con, tran, @"
                 UPDATE dbo.Samples
-                SET ApprovedDateTime = GETDATE()
+                SET ApprovedDateTime = SYSDATETIME()
                 WHERE SampleID = @sampleId",
                 new SqlParameter("@sampleId", currentSampleId));
         }
@@ -962,7 +962,7 @@ WHERE st.SampleID=@SampleID
 
             string specification = (item.SpecificationText ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(specification))
-                return IsApprovedComplianceQualitative(item);
+                return IsComplianceQualitativeTest(item.TestName);
 
             string normalized = specification.ToLowerInvariant();
             return normalized.Contains("record complies/does not comply") ||

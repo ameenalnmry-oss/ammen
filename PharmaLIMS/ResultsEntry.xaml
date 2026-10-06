@@ -425,7 +425,10 @@
                                     <TextBox Text="{Binding ResultValue, UpdateSourceTrigger=PropertyChanged}"
                                              Width="150"
                                              HorizontalAlignment="Left"
-                                             TextAlignment="Center"/>
+                                             TextAlignment="Center"
+                                             Foreground="#0F172A"
+                                             Background="White"
+                                             CaretBrush="#0F172A"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
