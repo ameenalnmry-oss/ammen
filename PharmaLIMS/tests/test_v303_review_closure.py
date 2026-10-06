@@ -54,6 +54,14 @@ class V303ReviewClosureTests(unittest.TestCase):
         self.assertIn("ExternalTrendNumericContract.TryParseQualified", code)
         self.assertIn("ExternalTrendNumericContract.IsExactlyRepresentable(row.ResultValue)", code)
         self.assertIn("result.Scale = 10", code)
+        self.assertEqual(4, code.count("ExternalTrendNumericContract.ToSqlValue("))
+        for column in ("ResultValue", "AlertLimit", "ActionLimit"):
+            self.assertIn(f"CONVERT(nvarchar(80), r.{column}) AS {column}", code)
+        contract = source("Services/ExternalTrendNumericContract.cs")
+        self.assertIn("SqlDecimal.ConvertToPrecScale", contract)
+        integration = source("tests/PharmaLIMS.DatabaseIntegration/V303ReviewClosureIntegration.cs")
+        self.assertIn("ExternalTrendNumericContract.ToSqlValue(value)", integration)
+        self.assertIn("adapter.Fill(table)", integration)
 
     def test_manual_em_investigation_reauthorizes_and_locks_before_creating_evidence(self):
         creation = body("EMResultsEntry.xaml.Part2.cs", "private bool CreateEMQualityEventFromCurrentResults", "private void AddInsertValue")

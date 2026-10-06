@@ -1,3 +1,5 @@
+using System.Data.SqlTypes;
+
 namespace PharmaLIMS.Services;
 
 /// <summary>The existing external import model supports upper limits only.</summary>
@@ -7,6 +9,16 @@ internal static class ExternalTrendNumericContract
 
     internal static bool IsExactlyRepresentable(decimal value) =>
         value > -ExclusiveMaximumMagnitude && value < ExclusiveMaximumMagnitude && decimal.Round(value, 10) == value;
+
+    internal static object ToSqlValue(decimal? value)
+    {
+        if (!value.HasValue) return DBNull.Value;
+        if (value.Value < 0m || !IsExactlyRepresentable(value.Value))
+            throw new ArgumentOutOfRangeException(nameof(value), "External numeric evidence must fit decimal(38,10) exactly.");
+        // SqlClient scales CLR decimal inputs through a 96-bit coefficient.
+        // Use SQL's 128-bit representation for large integral values at scale 10.
+        return SqlDecimal.ConvertToPrecScale(new SqlDecimal(value.Value), 38, 10);
+    }
 
     internal static bool TryParseQualified(string? text, out decimal value, out string? qualifier)
     {

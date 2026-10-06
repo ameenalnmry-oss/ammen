@@ -67,10 +67,20 @@ UPDATE dbo.PRM_Samples SET AnalysisStartedDate=SYSDATETIME(),SampleStatus=N'In P
             if (!ExternalTrendNumericContract.TryParseQualified(text, out decimal value, out _))
                 throw new InvalidOperationException("Accepted exact external fixture was rejected.");
             using var command = new SqlCommand("SELECT CAST(@value AS decimal(38,10));", connection);
-            command.Parameters.Add(new SqlParameter("@value", SqlDbType.Decimal) { Precision = 38, Scale = 10, Value = value });
-            using var reader = await command.ExecuteReaderAsync();
-            if (!await reader.ReadAsync() || !ControlledNumericValue.TryParse(reader.GetSqlDecimal(0).ToString(), out decimal stored) || stored != value)
-                throw new InvalidOperationException("An accepted external measurement changed during SQL storage.");
+            command.Parameters.Add(new SqlParameter("@value", SqlDbType.Decimal) { Precision = 38, Scale = 10, Value = ExternalTrendNumericContract.ToSqlValue(value) });
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                if (!await reader.ReadAsync() || !ControlledNumericValue.TryParse(reader.GetSqlDecimal(0).ToString(), out decimal stored) || stored != value)
+                    throw new InvalidOperationException("An accepted external measurement changed during SQL storage.");
+            }
+            // Approved external trend reads project SQL decimal as exact text,
+            // avoiding DataTable's narrower CLR decimal conversion at scale 10.
+            command.CommandText = "SELECT CONVERT(nvarchar(80),CAST(@value AS decimal(38,10))) AS ResultValue;";
+            using var adapter = new SqlDataAdapter(command);
+            DataTable table = new();
+            adapter.Fill(table);
+            if (!ControlledNumericValue.TryParse(Convert.ToString(table.Rows[0]["ResultValue"]), out decimal projected) || projected != value)
+                throw new InvalidOperationException("An accepted external measurement changed during approved trend materialization.");
         }
         foreach (string text in new[] { "100.000000000001", "1e-11", "1,3", "-1" })
             if (ExternalTrendNumericContract.TryParseQualified(text, out _, out _))

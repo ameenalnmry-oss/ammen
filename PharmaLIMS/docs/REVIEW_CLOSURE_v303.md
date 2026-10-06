@@ -14,7 +14,7 @@ Baseline: `e816de8c394c207136273f87c28d9924083ccc59` / 2026.10.6.302. Corrective
 | M04 | Numeric parser accepts CFU/Bottle without changing approved 100/10 master limits. | Implemented; case variants and below/equal/above boundaries. |
 | M05 | Qualitative decision respects the approved Present/Absent criterion; unclear/contradictory criteria require review. | Implemented; Present/Absent/Not Detected/Not present and ambiguous-rule cases. |
 | M06 | Water profile/specification and test identity are read and held in the registration transaction. | Implemented; SQL replacement writer must time out while capture holds its lock, then inactive replacement is not selected. |
-| M07 | Accepted external values/bounds must be exactly representable in SQL decimal(38,10); no silent rounding at write. | Implemented; excess precision rejected and accepted values checked through SQL storage. |
+| M07 | Accepted external values/bounds must be exactly representable in SQL decimal(38,10); no silent rounding at write. Use SqlDecimal transport and exact-text trend reads to preserve large integral values at SQL scale 10. | Implemented; excess precision rejected and accepted values checked through SQL storage and DataTable materialization. |
 | M08 | Unsigned Production output fails the signing gate; SBOM reports observed per-binary signature status. | Guard implemented. OPEN until genuine institutional certificate configuration, signed artifact verification and exact signed artifact smoke. |
 | M09 | Invariant ungrouped numbers with decimal point; comma input rejected consistently in native/external paths and trend parsing. | Implemented; en-US/de-DE/fr-FR/ar-YE and comma/grouping cases. No historical value is rewritten. |
 | O01 | New PRM analysis cannot start before accepted signed receipt; existing start evidence is preserved. | PRM correction implemented with SQL blocked/success cases. OPEN site decision: approved EM in-site receipt policy and QA disposition of legacy missing receipts. |
@@ -23,7 +23,7 @@ Baseline: `e816de8c394c207136273f87c28d9924083ccc59` / 2026.10.6.302. Corrective
 
 ## Validation and limits
 
-- Local headless regression: 288/288; source checks: 624/624 after controlled identity updates.
+- Local headless regression: 296/296; source checks: 624/624 after controlled identity updates.
 - SQL integration compilation checked locally; actual SQL execution and WPF UI/runtime checks run in Windows CI.
 - PowerShell absent/partial signing cases run in the mandatory release validator.
 - No new migration and no SQL/history mutation. Site-approved acceptance limits and Medica presentation remain intact.

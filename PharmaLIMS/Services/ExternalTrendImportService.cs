@@ -468,7 +468,7 @@ VALUES
                     SqlParameter result = command.Parameters.Add($"@Result{suffix}", SqlDbType.Decimal);
                     result.Precision = 38;
                     result.Scale = 10;
-                    result.Value = row.ResultValue;
+                    result.Value = ExternalTrendNumericContract.ToSqlValue(row.ResultValue);
                     command.Parameters.Add($"@Qualifier{suffix}", SqlDbType.NVarChar, 2).Value = DbValue(row.ResultQualifier);
 
                     command.Parameters.Add($"@Unit{suffix}", SqlDbType.NVarChar, 100).Value = row.UnitName;
@@ -476,12 +476,12 @@ VALUES
                     SqlParameter alert = command.Parameters.Add($"@Alert{suffix}", SqlDbType.Decimal);
                     alert.Precision = 38;
                     alert.Scale = 10;
-                    alert.Value = row.AlertLimit.HasValue ? row.AlertLimit.Value : DBNull.Value;
+                    alert.Value = ExternalTrendNumericContract.ToSqlValue(row.AlertLimit);
 
                     SqlParameter action = command.Parameters.Add($"@Action{suffix}", SqlDbType.Decimal);
                     action.Precision = 38;
                     action.Scale = 10;
-                    action.Value = row.ActionLimit.HasValue ? row.ActionLimit.Value : DBNull.Value;
+                    action.Value = ExternalTrendNumericContract.ToSqlValue(row.ActionLimit);
 
                     command.Parameters.Add($"@Status{suffix}", SqlDbType.NVarChar, 20).Value = row.ResultStatus;
                     command.Parameters.Add($"@Remarks{suffix}", SqlDbType.NVarChar, 1000).Value = DbValue(row.Remarks);
@@ -623,11 +623,11 @@ SELECT
     r.RecordDateTime AS SamplingDate,
     r.RecordDateTime AS SamplingDateTime,
     r.ParameterName AS TestName,
-    r.ResultValue,
+    CONVERT(nvarchar(80), r.ResultValue) AS ResultValue,
     r.ResultQualifier,
     r.UnitName AS Unit,
-    r.AlertLimit,
-    r.ActionLimit,
+    CONVERT(nvarchar(80), r.AlertLimit) AS AlertLimit,
+    CONVERT(nvarchar(80), r.ActionLimit) AS ActionLimit,
     r.ResultStatus AS Status,
     b.ImportNumber,
     b.ModuleName,
@@ -1408,7 +1408,7 @@ WHERE ImportBatchID = @BatchID AND Status = N'Pending Approval';";
             SqlParameter parameter = command.Parameters.Add(name, SqlDbType.Decimal);
             parameter.Precision = 38;
             parameter.Scale = 10;
-            parameter.Value = value.HasValue ? value.Value : DBNull.Value;
+            parameter.Value = ExternalTrendNumericContract.ToSqlValue(value);
         }
 
         private static object DbText(string? value) =>

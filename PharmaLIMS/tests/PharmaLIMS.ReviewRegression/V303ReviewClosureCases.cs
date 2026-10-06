@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.SqlTypes;
 using System.Globalization;
 using PharmaLIMS.Services;
 
@@ -64,6 +65,16 @@ internal static partial class Program
         Run("v303 import 10 places exact",()=>{Equal(true,ExternalTrendNumericContract.TryParseQualified("100.0000000001",out decimal v,out _));Equal(100.0000000001m,v);});
         Run("v303 import zero tail can be preserved",()=>{Equal(true,ExternalTrendNumericContract.TryParseQualified("100.000000000000",out decimal v,out _));Equal(100m,v);});
         Run("v303 import qualifier remains separate",()=>{Equal(true,ExternalTrendNumericContract.TryParseQualified("≤10",out decimal v,out string? q));Equal(10m,v);Equal("<=",q);});
+        foreach (decimal value in new[] { 0m, 0.0000000001m, 100.0000000001m, 9999999999999999999999999999m })
+            Run("v303 SQL decimal transport preserves " + value.ToString(CultureInfo.InvariantCulture),()=> {
+                SqlDecimal sql = (SqlDecimal)ExternalTrendNumericContract.ToSqlValue(value);
+                Equal((byte)38,sql.Precision);Equal((byte)10,sql.Scale);
+                Equal(true,ControlledNumericValue.TryParse(sql.ToString(),out decimal restored));Equal(value,restored);
+            });
+        Run("v303 SQL nullable numeric evidence stays null",()=>Equal(DBNull.Value,ExternalTrendNumericContract.ToSqlValue(null)));
+        Run("v303 SQL negative evidence rejected",()=>Throws<ArgumentOutOfRangeException>(()=>ExternalTrendNumericContract.ToSqlValue(-1m)));
+        Run("v303 SQL excess precision rejected",()=>Throws<ArgumentOutOfRangeException>(()=>ExternalTrendNumericContract.ToSqlValue(0.00000000001m)));
+        Run("v303 SQL excess magnitude rejected",()=>Throws<ArgumentOutOfRangeException>(()=>ExternalTrendNumericContract.ToSqlValue(decimal.MaxValue)));
         Run("v303 negative count never assessed PASS",()=>Equal("UNASSESSED",ExternalTrendNumericContract.EvaluateUpper(-1m,null,10m,20m)));
         Run("v303 upper classifier below action",()=>Equal("PASS",ExternalTrendNumericContract.EvaluateUpper(1m,null,10m,20m)));
         Run("v303 greater-than action equality is a failure",()=>Equal("FAIL",ExternalTrendNumericContract.EvaluateUpper(20m,">",10m,20m)));
