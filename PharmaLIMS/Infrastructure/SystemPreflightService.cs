@@ -2452,7 +2452,7 @@ BEGIN
     WHERE s.SampleType IN(N'Purified Water',N'Potable Water')
       AND st.ResultValue IS NOT NULL
       AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultStatus,N''))),N'') IS NULL
-    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN 1 ELSE 0 END;
+    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN N'BLOCKER' ELSE N'WARNING' END;
 
     INSERT @Rows(Severity,Finding,CountValue)
     SELECT
@@ -2463,7 +2463,7 @@ BEGIN
     INNER JOIN dbo.Samples s ON s.SampleID=st.SampleID
     WHERE s.SampleType IN(N'Purified Water',N'Potable Water')
       AND NULLIF(LTRIM(RTRIM(ISNULL(st.LimitDescription,N''))),N'') IS NULL
-    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN 1 ELSE 0 END;
+    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN N'BLOCKER' ELSE N'WARNING' END;
 
     INSERT @Rows(Severity,Finding,CountValue)
     SELECT
@@ -2475,7 +2475,7 @@ BEGIN
     WHERE s.SampleType IN(N'Purified Water',N'Potable Water')
       AND UPPER(LTRIM(RTRIM(ISNULL(s.Status,N'')))) IN(N'APPROVED',N'COA ISSUED',N'COMPLETED',N'RELEASED AFTER INVESTIGATION')
       AND st.ResultValue IS NULL
-    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN 1 ELSE 0 END;
+    GROUP BY CASE WHEN @Cutover IS NOT NULL AND ISNULL(s.CreatedDate,s.SamplingDateTime) >= @Cutover THEN N'BLOCKER' ELSE N'WARNING' END;
 END;
 
 SELECT Severity,Finding,CountValue
