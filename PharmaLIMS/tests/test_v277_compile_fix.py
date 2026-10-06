@@ -15,9 +15,9 @@ class V277CompileFixTests(unittest.TestCase):
 
     def test_compile_fix_is_preserved_in_current_release(self):
         manifest = (ROOT / "Database" / "MigrationManifest.json").read_text(encoding="utf-8-sig")
-        self.assertIn('"applicationVersion": "2026.10.6.300"', manifest)
+        self.assertIn('"applicationVersion": "2026.10.6.301"', manifest)
         project = (ROOT / "PharmaLIMS.csproj").read_text(encoding="utf-8-sig")
-        self.assertIn("<Version>2026.10.6.300</Version>", project)
+        self.assertIn("<Version>2026.10.6.301</Version>", project)
 
 
 if __name__ == "__main__":
