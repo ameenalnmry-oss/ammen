@@ -1368,6 +1368,7 @@ WHERE st.SampleID=@SampleID
             {
                 BtnStartAnalysis.Visibility = Visibility.Collapsed;
                 BtnCorrectTimes.IsEnabled = false;
+                BtnReconcileWaterEvidence.Visibility = Visibility.Collapsed;
                 BtnSubmitReview.Visibility = Visibility.Collapsed;
                 BtnReview.Visibility = Visibility.Collapsed;
                 BtnApprove.Visibility = Visibility.Collapsed;
@@ -1450,6 +1451,8 @@ WHERE st.SampleID=@SampleID
                 IsWaterSampleType(currentSampleType) &&
                 !locked &&
                 !hasActiveCertificate;
+
+            UpdateWaterEvidenceReconciliationButton(certificateStateVerified, hasActiveCertificate, locked);
 
             bool qualityEventStateVerified = true;
             bool hasOpenQualityEvent = false;

@@ -298,6 +298,13 @@
                                 ToolTip="Controlled water timestamp correction with electronic signature and audit trail"
                                 Style="{StaticResource PrimaryButtonStyle}"/>
 
+                        <Button x:Name="BtnReconcileWaterEvidence"
+                                Content="Reconcile Evidence"
+                                Click="BtnReconcileWaterEvidence_Click"
+                                Background="#0F766E"
+                                ToolTip="QA-controlled restoration of missing immutable water specification snapshots from original audit evidence"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+
                         <Button x:Name="BtnSaveResults"
                                 Content="Save Results"
                                 Click="BtnSaveResults_Click"
