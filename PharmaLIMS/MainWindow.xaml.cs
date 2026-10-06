@@ -1209,6 +1209,9 @@ SELECT @Result;");
                 return;
             }
 
+            if (!EnsureRuntimeReadyForWorkflow("Reports"))
+                return;
+
             try
             {
                 ShowWorkspaceWindow(() => GetService<ReportsTrends>());
