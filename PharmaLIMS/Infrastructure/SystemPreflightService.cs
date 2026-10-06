@@ -2428,7 +2428,7 @@ IF OBJECT_ID(N'dbo.LIMS_SchemaVersions',N'U') IS NOT NULL
 BEGIN
     SELECT TOP (1) @Cutover = AppliedAt
     FROM dbo.LIMS_SchemaVersions
-    WHERE VersionKey = N'20260714_001'
+    WHERE VersionKey = N'20260908_000'
     ORDER BY AppliedAt;
 END;
 
