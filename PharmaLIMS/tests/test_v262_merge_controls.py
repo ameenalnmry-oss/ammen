@@ -136,7 +136,7 @@ class Merge262Contracts(unittest.TestCase):
         self.assertIn('<ColumnDefinition Width="*"/>', xaml)
     def test_merged_version_identity_agrees(self):
         version=re.search(r'<Version>([^<]+)</Version>',source('PharmaLIMS.csproj')).group(1)
-        self.assertEqual('2026.10.6.301',version)
+        self.assertEqual('2026.10.6.302',version)
         self.assertIn(f'AssemblyFileVersion("{version}")',source('AssemblyInfo.cs'))
         self.assertEqual(version,json.loads(source(f'SBOM_{version}.cdx.json'))['metadata']['component']['version'])
 if __name__=='__main__': unittest.main()
