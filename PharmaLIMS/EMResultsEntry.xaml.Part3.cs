@@ -65,6 +65,36 @@ ORDER BY P.Id;";
             return result;
         }
 
+        private static List<EMPlateResultItem> BuildSavedQualityEventEvidence(DataTable locked)
+        {
+            List<EMPlateResultItem> evidence = new List<EMPlateResultItem>();
+            foreach (DataRow row in locked.Rows)
+            {
+                int? count = EmResultCalculator.ReadStoredCount(row["TotalCount"]);
+                if (!count.HasValue) continue;
+                EmCalculatedResult calculated = CalculateLockedPlate(row, count);
+                if (!EmResultCalculator.StoredEvidenceMatches(calculated, row["ResultCFU"], row["Status"], row["ResultCalculationVersion"]))
+                    throw new DBConcurrencyException("The stored EM calculation/status is inconsistent. Save the controlled result before opening its investigation.");
+                evidence.Add(new EMPlateResultItem
+                {
+                    PlateId = Convert.ToInt32(row["Id"], CultureInfo.InvariantCulture),
+                    EventId = Convert.ToInt32(row["EventId"], CultureInfo.InvariantCulture),
+                    Method = Convert.ToString(row["Method"], CultureInfo.InvariantCulture) ?? "",
+                    PlateCode = Convert.ToString(row["PlateCode"], CultureInfo.InvariantCulture) ?? "",
+                    Grade = Convert.ToString(row["Grade"], CultureInfo.InvariantCulture) ?? "",
+                    TotalCount = count,
+                    AirVolumeLiters = row["AirVolumeLitersSnapshot"] == DBNull.Value ? null : Convert.ToInt32(row["AirVolumeLitersSnapshot"], CultureInfo.InvariantCulture),
+                    AlertLimit = row["AlertLimitSnapshot"] == DBNull.Value ? null : Convert.ToDecimal(row["AlertLimitSnapshot"], CultureInfo.InvariantCulture),
+                    ActionLimit = row["ActionLimitSnapshot"] == DBNull.Value ? null : Convert.ToDecimal(row["ActionLimitSnapshot"], CultureInfo.InvariantCulture),
+                    Unit = Convert.ToString(row["ResultUnitSnapshot"], CultureInfo.InvariantCulture) ?? "",
+                    ResultCFU = Convert.ToString(row["ResultCFU"], CultureInfo.InvariantCulture) ?? "",
+                    Status = calculated.Status,
+                    Remarks = Convert.ToString(row["ColoniesObserved"], CultureInfo.InvariantCulture) ?? ""
+                });
+            }
+            return evidence;
+        }
+
         private string PersistEmResultsInTransaction(
             SqlConnection connection, SqlTransaction transaction, ElectronicSignature signature)
         {

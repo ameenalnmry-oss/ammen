@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 
 namespace PharmaLIMS.Services
 {
@@ -19,13 +20,16 @@ namespace PharmaLIMS.Services
             string normalizedSpecification = specification ?? string.Empty;
             string normalizedResult = result.Trim();
 
-            if (IsQualitativeAbsenceTest(normalizedType, normalizedSpecification))
+            bool hasRequiredPresence = TryGetRequiredPresence(normalizedSpecification, out bool requiredPresence);
+            if (normalizedType.Contains("Presence", StringComparison.OrdinalIgnoreCase) ||
+                normalizedType.Contains("Qualitative", StringComparison.OrdinalIgnoreCase) || hasRequiredPresence)
             {
+                if (!hasRequiredPresence) return "Check Required";
                 if (IsNegativeQualitativeResult(normalizedResult))
-                    return "Conforms";
+                    return requiredPresence ? "Does Not Conform" : "Conforms";
 
                 if (IsPositiveQualitativeResult(normalizedResult))
-                    return "Does Not Conform";
+                    return requiredPresence ? "Conforms" : "Does Not Conform";
 
                 return "Check Required";
             }
@@ -58,14 +62,20 @@ namespace PharmaLIMS.Services
             return "Check Required";
         }
 
-        private static bool IsQualitativeAbsenceTest(string resultType, string specification)
+        internal static bool TryGetRequiredPresence(string? specification, out bool requiredPresence)
         {
-            return resultType.Contains("Presence", StringComparison.OrdinalIgnoreCase) ||
-                   resultType.Contains("Qualitative", StringComparison.OrdinalIgnoreCase) ||
-                   specification.Contains("Absent", StringComparison.OrdinalIgnoreCase) ||
-                   specification.Contains("Absence", StringComparison.OrdinalIgnoreCase) ||
-                   specification.Contains("Not Detected", StringComparison.OrdinalIgnoreCase) ||
-                   specification.Contains("Negative", StringComparison.OrdinalIgnoreCase);
+            requiredPresence = false;
+            string spec = (specification ?? string.Empty).Trim();
+            if (spec.Length == 0 || spec.Length > 4096) return false;
+            const RegexOptions options = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+            const string absence = @"\b(?:absent|absence|not\s+detected|not\s+(?:be\s+)?present|negative|no\s+growth|nil)\b";
+            bool requiresAbsence = Regex.IsMatch(spec, absence, options);
+            string remaining = Regex.Replace(spec, absence, string.Empty, options);
+            if (Regex.IsMatch(remaining, @"\b(?:not|unless|except)\b", options)) return false;
+            bool requiresPresence = Regex.IsMatch(remaining, @"\b(?:present|presence|detected|positive|growth)\b", options);
+            if (requiresAbsence == requiresPresence) return false;
+            requiredPresence = requiresPresence;
+            return true;
         }
 
         private static bool IsNegativeQualitativeResult(string result)

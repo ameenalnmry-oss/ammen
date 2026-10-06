@@ -10,8 +10,7 @@ $publish = (Resolve-Path $PublishDirectory).Path
 $hasPfx = -not [string]::IsNullOrWhiteSpace($env:PHARMALIMS_CODESIGN_PFX_BASE64)
 $hasPassword = -not [string]::IsNullOrWhiteSpace($env:PHARMALIMS_CODESIGN_PFX_PASSWORD)
 if (-not $hasPfx -and -not $hasPassword) {
-    Write-Warning 'Authenticode code signing is not configured. Continuing with an unsigned internal Production artifact; all remaining release validation gates still apply.'
-    return
+    throw 'Production release requires Authenticode signing. Configure both PHARMALIMS_CODESIGN_PFX_BASE64 and PHARMALIMS_CODESIGN_PFX_PASSWORD; an unsigned artifact cannot be uploaded as a Production release.'
 }
 if ($hasPfx -ne $hasPassword) {
     throw 'Authenticode code signing is partially configured. PHARMALIMS_CODESIGN_PFX_BASE64 and PHARMALIMS_CODESIGN_PFX_PASSWORD must either both be configured or both be absent.'

@@ -1,18 +1,13 @@
-# PharmaLIMS 2026.9.23.295 — Full Copy / Replace
+# PharmaLIMS 2026.10.6.303
 
-هذه النسخة مبنية على آخر `main` بعد إغلاق مراجعة 23-Sep-2026، وتثبت هوية إصدار مستقلة عن v294. خط lineage المحكوم يشمل الإصدار السابق `2026.9.17.288` ضمن سلسلة التطوير التاريخية.
+إصلاحات مراجعة v302 مبنية على المصدر المطابق للنسخة الإنتاجية عند commit `e816de8c394c207136273f87c28d9924083ccc59`. يشمل خط التطوير التاريخي الإصدار `2026.9.17.288`، مع إبقاء ملفات SQL التاريخية وبصماتها دون تغيير.
 
-## حدود التغيير
+تمنع الإصلاحات قبول الأرقام السالبة والحدود الرقمية الناقصة وصيغ الفاصلة الملتبسة، وتوحّد تقييم حدود المياه واتجاهاتها، وتصحح CFU/Bottle وتفسير الحضور/الغياب وقرار GPT قبل التقريب. تحفظ تسجيل المياه وإنشاء تحقيق EM ضمن معاملات تتحقق من الصلاحية والدليل المحفوظ، وتشترط استلام PRM الموقّع قبل بدء تحليل جديد.
 
-- جميع **85 controlled migrations** الحالية محفوظة دون تعديل bytes التاريخية.
-- تم تحديث release identity إلى `2026.9.23.295`.
-- تم إغلاق فجوة `Clone Active Approved`: لا يتم اختراع `MinimumElapsedHours = 120` عند غياب القيمة التاريخية.
-- أي required cloned row بدون controlled timing يبقى fail-closed عند `Save Draft` حتى إدخال قيمة صحيحة ثم `Review / Approve`.
-- Production / In-Process يبقى مربوطًا بالـcontrolled profile `MQC-G-0021` وبصفوف مستقلة لكل اختبار.
-- لم يتم إدخال تغيير وظيفي على Water أو EM أو Culture Media ضمن هذا الإغلاق.
+راجع `RELEASE_NOTES_2026.10.6.303.md` وسجل `docs/REVIEW_CLOSURE_v303.md`. لا توجد ترحيلات جديدة أو تعبئة بأثر رجعي للتواريخ أو النتائج أو الحدود المعتمدة، ولم يتغير تصميم Medica.
 
 ## قبل اعتماد Production
 
-لا تعتبر نسخة Production معتمدة بمجرد نجاح source CI. يجب أن ينجح المسار المحكوم على `main`: Production configuration validation، self-contained win-x64 publish، Authenticode signing، exact signed artifact smoke، publish manifest، resolved SBOM، provenance attestation، ثم controlled artifact upload.
+يجب استكمال شهادة Authenticode الفعلية للمؤسسة، واختبار نفس الملف الإنتاجي الموقّع، وأدلة publish manifest وresolved SBOM وprovenance، ثم preflight وUAT واعتماد QA في الموقع. أصبح غياب إعداد التوقيع سببًا لإيقاف الإصدار.
 
-راجع `RELEASE_NOTES_2026.9.23.295.md` و`CHANGESET_v295.txt`.
+يلزم قرار URS/SOP معتمد حول الاستلام الرسمي لأحداث EM داخل الموقع، ومعالجة QA للسجلات القديمة التي ينقصها دليل استلام أو مواصفة. لا يجوز اختراع هذا الدليل أو تغيير النتائج القديمة لإغلاق الملاحظات.

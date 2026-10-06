@@ -162,7 +162,7 @@ namespace PharmaLIMS.Services
         }
 
         private const string UnitPattern =
-            @"(?:CFU(?:\s*/\s*(?:\d+\s*)?(?:g|mL|L|m3|m\^3|cm2|cm\^2|plate|swab|glove)(?:\s+or\s+(?:g|mL))?)|%|pH)";
+            @"(?:CFU(?:\s*/\s*(?:\d+\s*)?(?:g|mL|L|m3|m\^3|cm2|cm\^2|plate|swab|glove|bottle)(?:\s+or\s+(?:g|mL))?)|%|pH)";
 
         private static string StripTestLabel(string text)
         {

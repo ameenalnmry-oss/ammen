@@ -199,6 +199,7 @@ internal static partial class Program
         });
         RunMergedRegressionCases();
         RunPrmSignatureChainCases();
+        RunV303ReviewClosureCases();
         Console.WriteLine($"Review regression: {passed} passed, {failed} failed.");
         return failed==0 ? 0 : 1;
     }

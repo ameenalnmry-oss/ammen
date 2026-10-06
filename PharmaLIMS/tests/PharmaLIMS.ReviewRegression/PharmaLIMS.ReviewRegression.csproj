@@ -7,6 +7,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Services/EmQualityEventEvidenceGuard.cs" Link="Shared/EmQualityEventEvidenceGuard.cs" />
+    <Compile Include="../../Services/MediaGrowthPromotionEvaluator.cs" Link="Shared/MediaGrowthPromotionEvaluator.cs" />
+    <Compile Include="../../Services/ControlledNumericValue.cs" Link="Shared/ControlledNumericValue.cs" />
+    <Compile Include="../../Services/WaterNumericResultEvaluator.cs" Link="Shared/WaterNumericResultEvaluator.cs" />
+    <Compile Include="../../Services/ExternalTrendNumericContract.cs" Link="Shared/ExternalTrendNumericContract.cs" />
+    <Compile Include="../../Services/TrendReportData.cs" Link="Shared/TrendReportData.cs" />
     <Compile Include="../../Services/PrmNumericSpecificationEvaluator.cs" Link="Production/PrmNumericSpecificationEvaluator.cs" />
     <Compile Include="../../Services/PrmResultInterpretationEvaluator.cs" Link="Production/PrmResultInterpretationEvaluator.cs" />
     <Compile Include="../../Services/ResultSnapshotGuard.cs" Link="Production/ResultSnapshotGuard.cs" />

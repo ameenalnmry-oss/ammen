@@ -1336,6 +1336,9 @@ WHERE SampleID = @SampleID;",
                     return;
                 }
 
+                ExecuteScalarInTransaction(conn, tx, LaboratoryReceiptSql.GuardPrmAnalysisStart,
+                    new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId });
+
                 object sampleDateValue = ExecuteScalarInTransaction(conn, tx, @"
 SELECT SampleDateTime
 FROM dbo.PRM_Samples

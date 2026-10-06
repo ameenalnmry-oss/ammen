@@ -10,6 +10,12 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../Services/EmResultCalculator.cs" Link="Shared/EmResultCalculator.cs" />
+    <Compile Include="../../Services/EmQualityEventEvidenceGuard.cs" Link="Shared/EmQualityEventEvidenceGuard.cs" />
+    <Compile Include="../../Services/MediaGrowthPromotionEvaluator.cs" Link="Shared/MediaGrowthPromotionEvaluator.cs" />
+    <Compile Include="../../Services/ExternalTrendNumericContract.cs" Link="Shared/ExternalTrendNumericContract.cs" />
+    <Compile Include="../../Services/ControlledNumericValue.cs" Link="Shared/ControlledNumericValue.cs" />
+    <Compile Include="../../Services/WaterNumericResultEvaluator.cs" Link="Shared/WaterNumericResultEvaluator.cs" />
     <Compile Include="../../Services/LaboratoryReceiptSql.cs" Link="Shared/LaboratoryReceiptSql.cs" />
     <Compile Include="../../Services/SampleDetailsEvidenceQuery.cs" Link="Shared/SampleDetailsEvidenceQuery.cs" />
     <Compile Include="../../Services/DashboardSampleQuery.cs" Link="Shared/DashboardSampleQuery.cs" />

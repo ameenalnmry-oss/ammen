@@ -12,8 +12,10 @@ internal static class TrendReportData
     internal static bool ExactNumber(object? raw, out double value)
     {
         string text = Convert.ToString(raw, CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
-        return double.TryParse(text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out value)
-            && double.IsFinite(value);
+        value = 0d;
+        if (!ControlledNumericValue.TryParse(text, out decimal parsed)) return false;
+        value = (double)parsed;
+        return double.IsFinite(value);
     }
 
     internal static string Population(DataRow row) => string.Join(" / ", new[]
@@ -31,18 +33,25 @@ internal static class TrendReportData
 
     internal static string WaterStatus(string stored, string testName, double value, double? alert, double? action)
     {
-        string name = testName.Trim().ToLowerInvariant();
-        bool ph = name == "ph" || name == "p.h" || name.Contains("ph value") || name.Contains("ph test") || name.StartsWith("ph ") || name.EndsWith(" ph");
-        if (ph)
+        if (!double.IsFinite(value) || alert.HasValue && !double.IsFinite(alert.Value) ||
+            action.HasValue && !double.IsFinite(action.Value)) return "NOT ASSESSED";
+        try
         {
-            if (alert.HasValue && value < alert.Value || action.HasValue && value > action.Value) return "FAIL";
-            return alert.HasValue && action.HasValue ? "PASS" : "NOT ASSESSED";
+            return WaterStatusExact(stored, testName, Convert.ToDecimal(value),
+                alert.HasValue ? Convert.ToDecimal(alert.Value) : null,
+                action.HasValue ? Convert.ToDecimal(action.Value) : null);
         }
-        if (action.HasValue && value > action.Value) return "FAIL";
-        if (alert.HasValue && value > alert.Value) return "ALERT";
-        if (action.HasValue) return "PASS";
-        // A historical failure stays visible even if the numeric specification is absent.
-        return stored.Trim().ToUpperInvariant() is "FAIL" or "OOS" or "ACTION" ? "FAIL" : "NOT ASSESSED";
+        catch (OverflowException) { return "NOT ASSESSED"; }
+    }
+
+    internal static string WaterStatusExact(string stored, string testName, decimal value, decimal? alert, decimal? action)
+    {
+        string status = WaterNumericResultEvaluator.Evaluate(testName, value, alert, action);
+        if (status == "OOS") return "FAIL";
+        if (status == "Invalid") return "NOT ASSESSED";
+        if (status == "NOT ASSESSED" && (stored.Trim().ToUpperInvariant() is "FAIL" or "OOS" or "ACTION"))
+            return "FAIL";
+        return status;
     }
 
     internal static IReadOnlyList<string> Statistics(DataTable? data)
@@ -64,7 +73,7 @@ internal static class TrendReportData
                 if (ExactNumber(result, out double value)) values.Add(value);
             }
             string context = string.IsNullOrWhiteSpace(group.Key) ? "Unspecified population" : group.Key;
-            string completeness = $"Records {group.Count()} | Pending {pending} | Not assessed {unassessed} | Qualified {qualified} (excluded from exact statistics)";
+            string completeness = $"Records {group.Count()} | Pending {pending} | Not assessed {unassessed} (exact measurements included, conformity not implied) | Qualified {qualified} (excluded from exact statistics)";
             if (values.Count == 0) { lines.Add(context + ": " + completeness + " | No exact numeric observations."); continue; }
             double mean = values.Average();
             string sd = values.Count > 1 ? Math.Sqrt(values.Sum(v => Math.Pow(v - mean, 2)) / (values.Count - 1)).ToString("0.###", CultureInfo.InvariantCulture) : "NR (n < 2)";

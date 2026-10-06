@@ -11,6 +11,16 @@ IF EXISTS(SELECT 1 FROM dbo.LaboratoryReceipts WITH(UPDLOCK,HOLDLOCK)
  WHERE PrmSampleID=@SampleID AND ReceivedDateTime<@SampleDateTime)
  THROW 55308,'Sampling time cannot be later than the signed laboratory receipt. The edit was not saved.',1;";
 
+    // New analysis starts need actual signed receipt evidence. Existing analysis
+    // timestamps are never synthesized or backfilled by this guard.
+    internal const string GuardPrmAnalysisStart = @"
+IF NOT EXISTS(SELECT 1 FROM dbo.LaboratoryReceipts WITH(UPDLOCK,HOLDLOCK)
+ WHERE PrmSampleID=@SampleID AND ReceiptDecision=N'Accepted'
+   AND ReceivedDateTime<=SYSDATETIME()
+   AND NULLIF(LTRIM(RTRIM(ReceivedBy)),N'') IS NOT NULL
+   AND NULLIF(LTRIM(RTRIM(MeaningOfSignature)),N'') IS NOT NULL)
+ THROW 55309,'Record the actual accepted, signed laboratory receipt before starting PRM analysis. No analysis timestamp was recorded.',1;";
+
     // Source locks serialize receipt capture with review/approval and concurrent capture.
     internal const string Insert = @"
 DECLARE @SourceNumber nvarchar(100), @sampled datetime2, @status nvarchar(100);

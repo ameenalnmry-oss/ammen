@@ -31,14 +31,24 @@ foreach ($projectEntry in $report.projects) {
 if ($packages.Count -eq 0) { throw "Resolved dependency graph was empty; refusing to emit SBOM." }
 $publishManifest = Join-Path $PublishDirectory "PUBLISH_MANIFEST_SHA256.txt"
 if (-not (Test-Path -LiteralPath $PublishDirectory)) { throw "Publish directory not found: $PublishDirectory" }
+$signingProperties = @()
+foreach ($binaryName in @('PharmaLIMS.exe', 'PharmaLIMS.dll')) {
+    $binaryPath = Join-Path $PublishDirectory $binaryName
+    if (-not (Test-Path -LiteralPath $binaryPath)) { throw "Application binary is missing from the SBOM subject: $binaryName" }
+    $signature = Get-AuthenticodeSignature -LiteralPath $binaryPath
+    $signingProperties += [ordered]@{name="pharmalims:codeSigning:$binaryName";value=[string]$signature.Status}
+    if ($signature.Status -eq 'Valid') {
+        $signingProperties += [ordered]@{name="pharmalims:signerThumbprint:$binaryName";value=[string]$signature.SignerCertificate.Thumbprint}
+    }
+}
 $component = [ordered]@{ type="application"; name="PharmaLIMS"; version=$Version; 'bom-ref'="pkg:generic/PharmaLIMS@$Version" }
 $document = [ordered]@{
     bomFormat="CycloneDX"; specVersion="1.5"; serialNumber="urn:uuid:$([guid]::NewGuid())"; version=1;
     metadata=[ordered]@{ timestamp=(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"); component=$component; properties=@(
         [ordered]@{name="pharmalims:dependencySource";value="Generated in CI from dotnet restore/list package resolved graph for the current build."},
         [ordered]@{name="pharmalims:resolvedNuGetComponentCount";value=[string]$packages.Count},
-        [ordered]@{name="pharmalims:artifact";value="Signed and smoke-tested win-x64 publish directory"}
-    )};
+        [ordered]@{name="pharmalims:artifact";value="win-x64 publish directory; Authenticode status recorded separately for each application binary"}
+    ) + $signingProperties};
     components=@($packages.Keys | Sort-Object | ForEach-Object { $packages[$_] })
 }
 $parent = Split-Path -Parent $OutputPath

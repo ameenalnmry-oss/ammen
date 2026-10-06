@@ -685,7 +685,7 @@ SELECT CASE
             {
                 bool qualityEventRelevant = hasEvent && (currentQualityEventId > 0 || HasQualityEventTriggerResults());
                 BtnOpenDeviation.Visibility = qualityEventRelevant ? Visibility.Visible : Visibility.Collapsed;
-                BtnOpenDeviation.IsEnabled = qualityEventRelevant;
+                BtnOpenDeviation.IsEnabled = qualityEventRelevant && (currentQualityEventId > 0 || currentCanEditResults);
                 BtnOpenDeviation.Content = currentQualityEventId > 0 ? "Open Quality Event" : "Create Quality Event";
             }
 
@@ -2757,7 +2757,7 @@ SELECT CASE
             }
         }
 
-        private DataTable FindLinkedQualityEvent()
+        private DataTable FindLinkedQualityEvent(SqlConnection connection = null, SqlTransaction transaction = null)
         {
             if (!TableExists("QualityEvents"))
                 return new DataTable();
@@ -2795,8 +2795,8 @@ SELECT CASE
                 SELECT TOP 1
                     TRY_CONVERT(INT, [" + idColumn + @"]) AS QualityEventId,
                     " + qualityEventNoSelect + @" AS QualityEventNo
-                FROM QualityEvents
-                WHERE (" + string.Join(" OR ", conditions) + @")
+                FROM dbo.QualityEvents" + (transaction == null ? "" : " WITH(UPDLOCK,HOLDLOCK)") + @"
+                WHERE (" + string.Join(" OR ", conditions) + @") AND (" + BuildEmQualityEventSourcePredicate("") + @")
                 ORDER BY TRY_CONVERT(INT, [" + idColumn + @"]) DESC;";
 
             SqlParameter[] pars =
@@ -2805,15 +2805,27 @@ SELECT CASE
                 new SqlParameter("@EventNo", currentEventNo ?? "")
             };
 
-            DataTable result = DatabaseHelper.ExecuteQuery(query, pars);
+            DataTable result = transaction == null ? DatabaseHelper.ExecuteQuery(query, pars) : ReadEmRows(connection, transaction, query, pars);
 
             if (result.Rows.Count > 0)
                 return result;
 
-            return FindLinkedQualityEventFromRelatedItems(idColumn, numberColumn);
+            return FindLinkedQualityEventFromRelatedItems(idColumn, numberColumn, connection, transaction);
         }
 
-        private DataTable FindLinkedQualityEventFromRelatedItems(string qualityEventIdColumn, string qualityEventNoColumn)
+        private string BuildEmQualityEventSourcePredicate(string prefix)
+        {
+            List<string> source = new List<string>();
+            foreach (string column in new[] { "SourceModule", "DetectionSource", "SourceType" })
+                if (ColumnExists("QualityEvents", column))
+                    source.Add("UPPER(LTRIM(RTRIM(ISNULL(" + prefix + "[" + column + "],N'')))) IN(N'EM',N'ENVIRONMENTAL MONITORING')");
+            foreach (string column in new[] { "SampleNumber", "SourceReferenceNo", "RelatedRecordNo", "ReferenceNo", "EventNo" })
+                if (ColumnExists("QualityEvents", column))
+                    source.Add(prefix + "[" + column + "]=@EventNo");
+            return source.Count == 0 ? "1=0" : string.Join(" OR ", source);
+        }
+
+        private DataTable FindLinkedQualityEventFromRelatedItems(string qualityEventIdColumn, string qualityEventNoColumn, SqlConnection connection = null, SqlTransaction transaction = null)
         {
             if (!TableExists("QualityEventRelatedItems"))
                 return new DataTable();
@@ -2846,10 +2858,10 @@ SELECT CASE
                 SELECT TOP 1
                     TRY_CONVERT(INT, Q.[" + qualityEventIdColumn + @"]) AS QualityEventId,
                     " + qualityEventNoSelect + @" AS QualityEventNo
-                FROM QualityEventRelatedItems R
-                INNER JOIN QualityEvents Q
+                FROM dbo.QualityEventRelatedItems R" + (transaction == null ? "" : " WITH(UPDLOCK,HOLDLOCK)") + @"
+                INNER JOIN dbo.QualityEvents Q" + (transaction == null ? "" : " WITH(UPDLOCK,HOLDLOCK)") + @"
                     ON TRY_CONVERT(INT, Q.[" + qualityEventIdColumn + @"]) = TRY_CONVERT(INT, R.[" + relatedQualityEventIdColumn + @"])
-                WHERE (" + string.Join(" OR ", relatedConditions) + @")
+                WHERE (" + string.Join(" OR ", relatedConditions) + @") AND (" + BuildEmQualityEventSourcePredicate("Q.") + @")
                 ORDER BY TRY_CONVERT(INT, Q.[" + qualityEventIdColumn + @"]) DESC;";
 
             SqlParameter[] pars =
@@ -2858,7 +2870,7 @@ SELECT CASE
                 new SqlParameter("@EventNo", currentEventNo ?? "")
             };
 
-            return DatabaseHelper.ExecuteQuery(query, pars);
+            return transaction == null ? DatabaseHelper.ExecuteQuery(query, pars) : ReadEmRows(connection, transaction, query, pars);
         }
 
         private bool TableExists(string tableName)

@@ -1,4 +1,4 @@
-﻿"""Source contracts for the merge. These do not compile/execute C#, SQL or WPF."""
+"""Source contracts for the merge. These do not compile/execute C#, SQL or WPF."""
 import json
 import re
 import unittest
@@ -136,7 +136,7 @@ class Merge262Contracts(unittest.TestCase):
         self.assertIn('<ColumnDefinition Width="*"/>', xaml)
     def test_merged_version_identity_agrees(self):
         version=re.search(r'<Version>([^<]+)</Version>',source('PharmaLIMS.csproj')).group(1)
-        self.assertEqual('2026.10.6.302',version)
+        self.assertEqual('2026.10.6.303',version)
         self.assertIn(f'AssemblyFileVersion("{version}")',source('AssemblyInfo.cs'))
         self.assertEqual(version,json.loads(source(f'SBOM_{version}.cdx.json'))['metadata']['component']['version'])
 if __name__=='__main__': unittest.main()

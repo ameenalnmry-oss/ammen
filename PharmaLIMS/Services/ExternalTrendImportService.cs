@@ -378,7 +378,7 @@ VALUES
                     batchId = Convert.ToInt32(insertBatch.ExecuteScalar(), CultureInfo.InvariantCulture);
                 }
 
-                InsertRowsInSmallBatches(connection, transaction, preview.Rows, batchId, now);
+                InsertRowsInSmallBatches(connection, transaction, preview.Rows, batchId, now, preview.ModuleName);
 
                 DatabaseHelper.AddAuditTrailAdvanced(
                     connection,
@@ -410,7 +410,8 @@ VALUES
             SqlTransaction transaction,
             IReadOnlyList<TrendImportRow> rows,
             int batchId,
-            DateTimeOffset createdAt)
+            DateTimeOffset createdAt,
+            string moduleName)
         {
             const int rowsPerBatch = 40;
 
@@ -438,6 +439,11 @@ VALUES
                 for (int index = 0; index < count; index++)
                 {
                     TrendImportRow row = rows[offset + index];
+                    if (row.ResultValue < 0m || !ExternalTrendNumericContract.IsExactlyRepresentable(row.ResultValue) ||
+                        row.AlertLimit.HasValue && (row.AlertLimit.Value < 0m || !ExternalTrendNumericContract.IsExactlyRepresentable(row.AlertLimit.Value)) ||
+                        row.ActionLimit.HasValue && (row.ActionLimit.Value < 0m || !ExternalTrendNumericContract.IsExactlyRepresentable(row.ActionLimit.Value)) ||
+                        moduleName == "Water" && WaterNumericResultEvaluator.IsRangeTest(row.ParameterName))
+                        throw new InvalidOperationException("An import row is invalid or cannot preserve its exact numeric value. No rows were committed.");
                     string suffix = index.ToString(CultureInfo.InvariantCulture);
 
                     if (index > 0)
@@ -832,6 +838,11 @@ WHERE ImportBatchID = @BatchID AND Status = N'Pending Approval';";
                 AddRowError(issues, rowNumber, "Parameter is required.");
                 hasError = true;
             }
+            if (moduleName == "Water" && WaterNumericResultEvaluator.IsRangeTest(parameter))
+            {
+                AddRowError(issues, rowNumber, "This import template supports upper-limit tests only. pH and residual chlorine require a lower/upper range and cannot be imported as Alert/Action limits.");
+                hasError = true;
+            }
             if (string.IsNullOrWhiteSpace(unit))
             {
                 AddRowError(issues, rowNumber, "Unit is required. Use '-' only when the controlled method has no unit.");
@@ -839,7 +850,7 @@ WHERE ImportBatchID = @BatchID AND Status = N'Pending Approval';";
             }
             if (!TryParseQualifiedDecimal(resultText, out decimal result, out string? resultQualifier))
             {
-                AddRowError(issues, rowNumber, $"Result '{resultText}' is not a supported numeric result. Use a number or a controlled qualifier such as <10, <=10, >20 or >=20.");
+                AddRowError(issues, rowNumber, $"Result '{resultText}' is invalid. Use a nonnegative number with '.' as the decimal separator, no thousands separators, and at most 10 nonzero decimal places; qualifiers such as <10, <=10, >20 or >=20 are supported.");
                 hasError = true;
             }
 
@@ -1004,76 +1015,18 @@ WHERE ImportBatchID = @BatchID AND Status = N'Pending Approval';";
 
         private static bool TryParseDecimal(string? text, out decimal value)
         {
-            string normalized = (text ?? string.Empty).Trim();
-            return decimal.TryParse(normalized, NumberStyles.Float | NumberStyles.AllowThousands,
-                       CultureInfo.InvariantCulture, out value) ||
-                   decimal.TryParse(normalized, NumberStyles.Float | NumberStyles.AllowThousands,
-                       CultureInfo.CurrentCulture, out value);
+            return ControlledNumericValue.TryParse(text, out value) && value >= 0m &&
+                ExternalTrendNumericContract.IsExactlyRepresentable(value);
         }
 
         private static bool TryParseQualifiedDecimal(string text, out decimal value, out string? qualifier)
         {
-            value = 0m;
-            qualifier = null;
-            string normalized = (text ?? string.Empty).Trim()
-                .Replace("≤", "<=", StringComparison.Ordinal)
-                .Replace("≥", ">=", StringComparison.Ordinal);
-            foreach (string candidate in new[] { "<=", ">=", "<", ">" })
-            {
-                if (!normalized.StartsWith(candidate, StringComparison.Ordinal))
-                    continue;
-                qualifier = candidate;
-                normalized = normalized[candidate.Length..].Trim();
-                break;
-            }
-            return decimal.TryParse(normalized, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out value) ||
-                   decimal.TryParse(normalized, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out value);
+            return ExternalTrendNumericContract.TryParseQualified(text, out value, out qualifier);
         }
 
         private static string EvaluateQualifiedUpperLimitStatus(decimal result, string? qualifier, decimal? alert, decimal? action)
         {
-            if (!alert.HasValue && !action.HasValue)
-                return "UNASSESSED";
-
-            string q = qualifier ?? string.Empty;
-            if (q is "<" or "<=")
-            {
-                // Upper-bounded results can only be classified PASS when the reported bound
-                // itself is at or below the lowest applicable controlled limit.
-                decimal? lowestLimit = alert ?? action;
-                return lowestLimit.HasValue && result <= lowestLimit.Value ? "PASS" : "UNASSESSED";
-            }
-
-            if (q == ">")
-            {
-                // The true value is strictly greater than the reported lower bound.  If the
-                // bound itself reaches the action level, an Action excursion is certain.
-                // When the bound only reaches Alert while an Action level also exists, the
-                // true value could be either Alert or Action, so do not under-classify it.
-                if (action.HasValue && result >= action.Value)
-                    return "FAIL";
-                if (alert.HasValue && result >= alert.Value)
-                    return action.HasValue ? "UNASSESSED" : "ALERT";
-                return "UNASSESSED";
-            }
-
-            if (q == ">=")
-            {
-                // For >= the boundary itself is possible.  Under NMT logic equality with the
-                // action level is not yet an Action excursion, therefore it remains unresolved
-                // unless the lower bound is strictly above Action.
-                if (action.HasValue && result > action.Value)
-                    return "FAIL";
-                if (alert.HasValue && result > alert.Value)
-                    return action.HasValue ? "UNASSESSED" : "ALERT";
-                return "UNASSESSED";
-            }
-
-            return action.HasValue && result > action.Value
-                ? "FAIL"
-                : alert.HasValue && result > alert.Value
-                    ? "ALERT"
-                    : "PASS";
+            return ExternalTrendNumericContract.EvaluateUpper(result, qualifier, alert, action);
         }
 
         private static bool TryParseDate(string text, out DateTimeOffset value)
