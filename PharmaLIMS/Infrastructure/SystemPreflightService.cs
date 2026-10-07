@@ -984,6 +984,18 @@ FROM (VALUES
 ) expected(TableName,ColumnName)
 LEFT JOIN sys.columns c ON c.object_id=OBJECT_ID(expected.TableName) AND c.name=expected.ColumnName
 WHERE c.column_id IS NULL OR c.system_type_id<>189 OR c.is_nullable<>0;
+IF NOT EXISTS
+(
+    SELECT 1 FROM sys.columns
+    WHERE object_id=OBJECT_ID(N'dbo.SampleTests')
+      AND name=N'LimitDescription'
+      AND system_type_id=TYPE_ID(N'nvarchar')
+      AND is_computed=0
+      AND is_nullable=1
+      AND (max_length=-1 OR max_length>=1000)
+)
+    INSERT @Missing VALUES(N'SampleTests.LimitDescription NVARCHAR(500) NULL or wider');
+
 IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.EM_EventPlates')
     AND name=N'ResultCFU' AND system_type_id IN(106,108) AND precision=28 AND scale=12 AND is_nullable=1)
     INSERT @Missing VALUES(N'EM_EventPlates.ResultCFU DECIMAL(28,12) NULL');

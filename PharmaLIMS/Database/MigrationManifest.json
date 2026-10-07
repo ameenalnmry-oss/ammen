@@ -539,6 +539,12 @@
       "description": "Signed, append-only laboratory receipt evidence for PRM samples and EM events",
       "file": "Migrations/20260930_001_Laboratory_Receipt_Evidence.sql",
       "sha256": "47128426eeb408105f5529dc63141f30c72a1dfc808538df5c207b5dea4cdc77"
+    },
+    {
+      "versionKey": "20261007_001",
+      "description": "Water result immutable LimitDescription schema contract",
+      "file": "Migrations/20261007_001_Water_LimitDescription_Schema_Contract.sql",
+      "sha256": "28ef9333fac8e3da114c9c5b7c9023c24c18548185f6699744657dff8736e81b"
     }
   ]
 }
