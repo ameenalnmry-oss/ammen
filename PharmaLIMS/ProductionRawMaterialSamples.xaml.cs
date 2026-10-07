@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Repositories;
+using PharmaLIMS.Services;
 using System;
 using System.Data;
 using System.Diagnostics;
@@ -532,6 +533,10 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     if (test.RequiredTest && test.MinimumElapsedHours <= 0m)
                         throw new InvalidOperationException("Every required microbiology test must define a Minimum Elapsed Hours value greater than zero before the profile can be saved.");
                     test.ResultType = NormalizeControlledResultType(test.ResultType);
+                    if ((test.ResultType.Contains("Presence", StringComparison.OrdinalIgnoreCase) ||
+                         test.ResultType.Contains("Qualitative", StringComparison.OrdinalIgnoreCase)) &&
+                        !PrmResultInterpretationEvaluator.TryGetRequiredPresence(test.SpecificationText, out _))
+                        throw new InvalidOperationException("Qualitative acceptance must unambiguously require Present or Absent for " + test.TestName + ".");
                     validTests.Add(test);
                 }
                 if (string.IsNullOrWhiteSpace(specificationNo) || string.IsNullOrWhiteSpace(category) ||

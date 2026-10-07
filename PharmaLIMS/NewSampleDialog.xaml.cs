@@ -753,7 +753,7 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
                     : "Potable";
 
                 string sql = @"
-                    SELECT 
+                    SELECT
                         Id,
                         PointCode,
                         PointName,
@@ -871,7 +871,7 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
                 var parameters = new List<SqlParameter>();
 
                 StringBuilder sql = new StringBuilder(@"
-                    SELECT 
+                    SELECT
                         Id,
                         AreaCode,
                         AreaName,
@@ -994,7 +994,7 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
             try
             {
                 _testsTable = ExecuteDataTable(@"
-                    SELECT 
+                    SELECT
                         TestID AS test_id,
                         TestName AS test_name,
                         TestCategory AS test_type
@@ -1678,37 +1678,6 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
             int sampleId = 0;
             int insertedTests = 0;
             var testSnapshots = new Dictionary<int, (string Name, string Category, string Unit, decimal? Alert, decimal? Action, string Specification)>();
-            foreach (int testId in _selectedTestIds)
-            {
-                DataTable master = ExecuteDataTable(@"SELECT TestName,ISNULL(TestCategory,N'') TestCategory,ISNULL(Unit,N'') Unit,AlertLimit,ActionLimit FROM dbo.Tests WHERE TestID=@TestID",
-                    new SqlParameter("@TestID", testId));
-                if (master.Rows.Count == 0) throw new InvalidOperationException("Selected water test no longer exists: " + testId.ToString(CultureInfo.InvariantCulture));
-                DataRow m = master.Rows[0];
-                decimal? alert = null;
-                decimal? action = null;
-                string specificationText = string.Empty;
-                DataTable effective = DatabaseHelper.GetEffectiveWaterTestSpecification(sampleType, testId, pointCode);
-                if (effective.Rows.Count > 0)
-                {
-                    DataRow specification = effective.Rows[0];
-                    alert = specification["AlertLimit"] != DBNull.Value
-                        ? Convert.ToDecimal(specification["AlertLimit"], CultureInfo.InvariantCulture)
-                        : specification["LowerLimit"] != DBNull.Value
-                            ? Convert.ToDecimal(specification["LowerLimit"], CultureInfo.InvariantCulture)
-                            : null;
-                    action = specification["ActionLimit"] != DBNull.Value
-                        ? Convert.ToDecimal(specification["ActionLimit"], CultureInfo.InvariantCulture)
-                        : specification["UpperLimit"] != DBNull.Value
-                            ? Convert.ToDecimal(specification["UpperLimit"], CultureInfo.InvariantCulture)
-                            : null;
-                    specificationText = specification["SpecificationText"]?.ToString()?.Trim() ?? string.Empty;
-                }
-
-                if (string.IsNullOrWhiteSpace(specificationText))
-                    throw new InvalidOperationException("Selected water test has no effective approved specification text: " + (m["TestName"]?.ToString() ?? testId.ToString(CultureInfo.InvariantCulture)) + ".");
-
-                testSnapshots[testId] = (m["TestName"]?.ToString() ?? "", m["TestCategory"]?.ToString() ?? "", m["Unit"]?.ToString() ?? "", alert, action, specificationText);
-            }
 
             using (SqlConnection con = new SqlConnection(AppConfig.ConnectionString))
             {
@@ -1721,6 +1690,50 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
                     {
                         DatabaseHelper.EnsureUserPermissionInTransaction(
                             con, tran, registrationSignature.SignedBy, "CanRegisterSamples", "register water samples");
+
+                        registrationStage = "locked approved water specification capture";
+                        foreach (int testId in _selectedTestIds.OrderBy(id => id))
+                        {
+                            DataTable master = new DataTable();
+                            using (SqlCommand masterCommand = new SqlCommand(@"SELECT TestName,ISNULL(TestCategory,N'') TestCategory,ISNULL(Unit,N'') Unit
+            FROM dbo.Tests WITH(UPDLOCK,HOLDLOCK) WHERE TestID=@TestID AND ISNULL(IsActive,0)=1;", con, tran))
+                            {
+                                masterCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                                masterCommand.Parameters.Add(new SqlParameter("@TestID", testId));
+                                using SqlDataReader masterReader = masterCommand.ExecuteReader();
+                                master.Load(masterReader);
+                            }
+                            if (master.Rows.Count == 0) throw new InvalidOperationException("Selected water test no longer exists: " + testId.ToString(CultureInfo.InvariantCulture));
+                            DataRow m = master.Rows[0];
+                            decimal? alert = null;
+                            decimal? action = null;
+                            string specificationText = string.Empty;
+                            DataTable effective = DatabaseHelper.GetEffectiveWaterTestSpecification(sampleType, testId, pointCode, con, tran);
+                            if (effective.Rows.Count > 0)
+                            {
+                                DataRow specification = effective.Rows[0];
+                                alert = specification["AlertLimit"] != DBNull.Value
+                                    ? Convert.ToDecimal(specification["AlertLimit"], CultureInfo.InvariantCulture)
+                                    : specification["LowerLimit"] != DBNull.Value
+                                        ? Convert.ToDecimal(specification["LowerLimit"], CultureInfo.InvariantCulture)
+                                        : null;
+                                action = specification["ActionLimit"] != DBNull.Value
+                                    ? Convert.ToDecimal(specification["ActionLimit"], CultureInfo.InvariantCulture)
+                                    : specification["UpperLimit"] != DBNull.Value
+                                        ? Convert.ToDecimal(specification["UpperLimit"], CultureInfo.InvariantCulture)
+                                        : null;
+                                specificationText = specification["SpecificationText"]?.ToString()?.Trim() ?? string.Empty;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(specificationText))
+                                throw new InvalidOperationException("Selected water test has no effective approved specification text: " + (m["TestName"]?.ToString() ?? testId.ToString(CultureInfo.InvariantCulture)) + ".");
+
+                            if (WaterNumericResultEvaluator.RequiresNumericLimits(m["TestName"]?.ToString(), m["Unit"]?.ToString(), specificationText) &&
+                                !WaterNumericResultEvaluator.HasCompleteLimits(m["TestName"]?.ToString(), alert, action))
+                                throw new InvalidOperationException("The approved numeric specification is incomplete for " + m["TestName"] + ". Registration was not committed.");
+
+                            testSnapshots[testId] = (m["TestName"]?.ToString() ?? "", m["TestCategory"]?.ToString() ?? "", m["Unit"]?.ToString() ?? "", alert, action, specificationText);
+                        }
 
                         registrationStage = "authoritative timestamp validation";
                         DateTime databaseNow;

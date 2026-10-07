@@ -1034,7 +1034,8 @@ WHERE st.SampleID=@SampleID
             if (string.IsNullOrWhiteSpace(raw))
                 return false;
 
-            raw = raw.Replace(",", ".");
+            if (raw.Contains(','))
+                return false;
 
             if (IsAppearanceTest(item.TestName))
             {
@@ -1089,8 +1090,7 @@ WHERE st.SampleID=@SampleID
                     return true;
                 }
 
-                if (decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal qualitativeValue) &&
-                    (qualitativeValue == 0m || qualitativeValue == 1m))
+                if (WaterNumericResultEvaluator.TryParseBinary(raw, out decimal qualitativeValue))
                 {
                     result = qualitativeValue;
                     return true;
@@ -1119,16 +1119,16 @@ WHERE st.SampleID=@SampleID
                     return true;
                 }
 
-                if (decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal qualitativeValue))
+                if (WaterNumericResultEvaluator.TryParseBinary(raw, out decimal qualitativeValue))
                 {
-                    result = qualitativeValue <= 0 ? 0 : 1;
+                    result = qualitativeValue;
                     return true;
                 }
 
                 return false;
             }
 
-            return decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out result);
+            return WaterNumericResultEvaluator.TryParseNonnegative(raw, out result);
         }
 
         private decimal GetPersistedResultValue(ResultItem item, decimal normalizedResult)
@@ -1156,7 +1156,7 @@ WHERE st.SampleID=@SampleID
 
             if (IsAppearanceTest(item.TestName))
             {
-                if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+                if (ControlledNumericValue.TryParse(raw, out decimal value) && (value == 0m || value == 1m))
                     return value <= 0 ? "Clear and Colorless" : "Not Clear / Colored";
 
                 return raw;
@@ -1164,7 +1164,7 @@ WHERE st.SampleID=@SampleID
 
             if (IsApprovedComplianceQualitative(item))
             {
-                if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+                if (ControlledNumericValue.TryParse(raw, out decimal value) && (value == 0m || value == 1m))
                     return value <= 0 ? "Complies" : "Does Not Comply";
 
                 return raw;
@@ -1172,13 +1172,13 @@ WHERE st.SampleID=@SampleID
 
             if (IsAbsencePresenceTest(item.Unit, item.TestName))
             {
-                if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+                if (ControlledNumericValue.TryParse(raw, out decimal value) && (value == 0m || value == 1m))
                     return value <= 0 ? "Absence" : "Presence";
 
                 return raw;
             }
 
-            if (decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal numeric))
+            if (ControlledNumericValue.TryParse(raw, out decimal numeric))
                 return WaterResultValueContract.FormatNumeric(numeric);
 
             return raw;
@@ -1206,35 +1206,7 @@ WHERE st.SampleID=@SampleID
             if (IsAbsencePresenceTest(item.Unit, item.TestName))
                 return resultValue <= 0 ? "PASS" : "OOS";
 
-            if (IsPhTest(item.TestName))
-            {
-                if (item.AlertLimit.HasValue && resultValue < item.AlertLimit.Value)
-                    return "OOS";
-
-                if (item.ActionLimit.HasValue && resultValue > item.ActionLimit.Value)
-                    return "OOS";
-
-                return "PASS";
-            }
-
-            if (IsResidualChlorineTest(item.TestName))
-            {
-                if (item.AlertLimit.HasValue && resultValue < item.AlertLimit.Value)
-                    return "OOS";
-
-                if (item.ActionLimit.HasValue && resultValue > item.ActionLimit.Value)
-                    return "OOS";
-
-                return "PASS";
-            }
-
-            if (item.ActionLimit.HasValue && resultValue > item.ActionLimit.Value)
-                return "OOS";
-
-            if (item.AlertLimit.HasValue && resultValue > item.AlertLimit.Value)
-                return "ALERT";
-
-            return "PASS";
+            return WaterNumericResultEvaluator.Evaluate(item.TestName, resultValue, item.AlertLimit, item.ActionLimit);
         }
 
         private bool IsLockedStatus(string status)
@@ -2039,11 +2011,11 @@ WHERE st.SampleID=@SampleID
 
                 item.PassFail = CalculatePassFail(item);
 
-                if (item.PassFail == "Invalid")
+                if (item.PassFail == "Invalid" || item.PassFail == "NOT ASSESSED")
                 {
                     MessageBox.Show(
                         "Invalid result value for test: " + item.TestName +
-                        "\n\nFor qualitative tests use Absence / Presence or Clear / Not Clear.\nFor numeric tests use a number.",
+                        "\n\nFor qualitative tests use the approved text or 0/1 code. For numeric tests use a nonnegative number with '.' and no thousands separators. Complete frozen numeric limits are required before saving or signing.",
                         "Invalid Result",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);

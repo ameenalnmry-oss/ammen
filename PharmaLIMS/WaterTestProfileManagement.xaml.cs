@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
+using PharmaLIMS.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -1839,6 +1840,12 @@ WHERE ProfileID=@ProfileID
 
             if (requireSpecificationText && string.IsNullOrWhiteSpace(row.SpecificationText))
                 throw new InvalidOperationException($"Specification Text is required for selected test '{row.TestName}'.");
+            if (new[] { lower, upper, alert, action }.Any(value => value.HasValue && value.Value < 0m))
+                throw new InvalidOperationException($"Limits cannot be negative for '{row.TestName}'.");
+            if (requireSpecificationText &&
+                WaterNumericResultEvaluator.RequiresNumericLimits(row.TestName, row.Unit, row.SpecificationText) &&
+                !WaterNumericResultEvaluator.HasCompleteLimits(row.TestName, alert ?? lower, action ?? upper))
+                throw new InvalidOperationException($"Complete controlled numeric limits are required for '{row.TestName}' before Review/Approval. Range tests require both lower and upper limits; upper-limit tests require an action/upper limit.");
         }
 
         private static void ParseNullableDecimal(string? text, string field, string testName, out decimal? value)
@@ -1850,7 +1857,7 @@ WHERE ProfileID=@ProfileID
                 return;
             }
 
-            if (!decimal.TryParse(clean, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsed))
+            if (!ControlledNumericValue.TryParse(clean, out decimal parsed, allowExponent: false))
                 throw new InvalidOperationException($"{field} for '{testName}' must be a valid number using '.' as the decimal separator.");
 
             value = parsed;

@@ -1,4 +1,4 @@
-#nullable disable
+﻿#nullable disable
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
@@ -112,59 +112,83 @@ namespace PharmaLIMS
 
             try
             {
-                string eventType = HasOosResults() ? "OOS" : "Alert";
-                string severity = HasOosResults() ? "Major" : "Minor";
-                string profile = GetCurrentEMInvestigationProfile();
-                string eventNumber = GenerateEMQualityEventNumber();
-                string description = BuildEMQualityEventDescription(eventType, profile);
-                string immediateAction = HasOosResults()
-                    ? "EM event placed under Quality Event Investigation. Final approval and final report printing are blocked pending QA disposition."
-                    : "Alert result recorded. Trend follow-up and QA assessment required according to the approved EM procedure.";
-
-                List<string> columns = new List<string>();
-                List<string> values = new List<string>();
-                List<SqlParameter> pars = new List<SqlParameter>();
-
-                AddInsertValue(columns, values, pars, "QualityEvents", "EventNumber", "@EventNumber", eventNumber);
-                AddInsertValue(columns, values, pars, "QualityEvents", "QualityEventNo", "@EventNumber", eventNumber);
-                AddInsertValue(columns, values, pars, "QualityEvents", "EventType", "@EventType", eventType);
-                AddInsertValue(columns, values, pars, "QualityEvents", "Severity", "@Severity", severity);
-                AddInsertValue(columns, values, pars, "QualityEvents", "SampleID", "@SampleID", DBNull.Value);
-                AddInsertValue(columns, values, pars, "QualityEvents", "SampleNumber", "@SampleNumber", currentEventNo);
-                AddInsertValue(columns, values, pars, "QualityEvents", "CurrentStatus", "@CurrentStatus", "Open");
-                AddInsertValue(columns, values, pars, "QualityEvents", "Status", "@CurrentStatus", "Open");
-                AddInsertValue(columns, values, pars, "QualityEvents", "InvestigationStatus", "@CurrentStatus", "Open");
-                AddInsertValue(columns, values, pars, "QualityEvents", "DetectedBy", "@DetectedBy", currentUser);
-                AddInsertValue(columns, values, pars, "QualityEvents", "DetectedDate", "GETDATE()", null, false);
-                AddInsertValue(columns, values, pars, "QualityEvents", "DetectionSource", "@DetectionSource", "Environmental Monitoring");
-                AddInsertValue(columns, values, pars, "QualityEvents", "SourceType", "@DetectionSource", "Environmental Monitoring");
-                AddInsertValue(columns, values, pars, "QualityEvents", "SourceRecordID", "@SourceRecordID", currentEventId);
-                AddInsertValue(columns, values, pars, "QualityEvents", "SourceRecordId", "@SourceRecordID", currentEventId);
-                AddInsertValue(columns, values, pars, "QualityEvents", "RelatedRecordID", "@SourceRecordID", currentEventId);
-                AddInsertValue(columns, values, pars, "QualityEvents", "RelatedRecordId", "@SourceRecordID", currentEventId);
-                AddInsertValue(columns, values, pars, "QualityEvents", "SourceReferenceNo", "@SourceReferenceNo", currentEventNo);
-                AddInsertValue(columns, values, pars, "QualityEvents", "RelatedRecordNo", "@SourceReferenceNo", currentEventNo);
-                AddInsertValue(columns, values, pars, "QualityEvents", "ReferenceNo", "@SourceReferenceNo", currentEventNo);
-                AddInsertValue(columns, values, pars, "QualityEvents", "InitialDescription", "@InitialDescription", description);
-                AddInsertValue(columns, values, pars, "QualityEvents", "ImmediateAction", "@ImmediateAction", immediateAction);
-                AddInsertValue(columns, values, pars, "QualityEvents", "InvestigationProfile", "@InvestigationProfile", profile);
-                AddInsertValue(columns, values, pars, "QualityEvents", "CAPARequired", "@CAPARequired", HasOosResults() ? 1 : 0);
-                AddInsertValue(columns, values, pars, "QualityEvents", "CreatedDate", "GETDATE()", null, false);
-                AddInsertValue(columns, values, pars, "QualityEvents", "ModifiedBy", "@ModifiedBy", currentUser);
-                AddInsertValue(columns, values, pars, "QualityEvents", "ModifiedDate", "GETDATE()", null, false);
-
-                if (columns.Count == 0)
-                    throw new InvalidOperationException("QualityEvents table does not contain supported columns.");
-
-                string idColumn = FirstExistingColumn("QualityEvents", "QualityEventID", "QualityEventId", "Id", "EventID", "EventId");
-                if (string.IsNullOrWhiteSpace(idColumn))
-                    throw new InvalidOperationException("QualityEvents primary key column was not found.");
-
-                string query = "INSERT INTO dbo.QualityEvents (" + string.Join(", ", columns) + ") OUTPUT INSERTED.[" + idColumn.Replace("]", "]]", StringComparison.Ordinal) + "] VALUES (" + string.Join(", ", values) + ");";
                 int createdQualityEventId = 0;
-
+                string createdQualityEventNo = string.Empty;
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureUserPermissionInTransaction(conn, tx, currentUser, "CanEnterResults", "create an EM Quality Event");
+                    DatabaseHelper.EnsureUserPermissionInTransaction(conn, tx, currentUser, "CanAccessEM", "access EM evidence");
+                    DataTable parent = ReadEmRows(conn, tx, @"SELECT Id, EventNo FROM dbo.EM_Events WITH(UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
+                        new SqlParameter("@eventId", currentEventId));
+                    if (parent.Rows.Count != 1) throw new DBConcurrencyException("The EM event no longer exists. Reload before creating its investigation.");
+                    if (!string.Equals(Convert.ToString(parent.Rows[0]["EventNo"], CultureInfo.InvariantCulture), currentEventNo, StringComparison.Ordinal))
+                        throw new DBConcurrencyException("The EM event identity changed. Reload before creating its investigation.");
+                    DataTable locked = ReadEmRows(conn, tx, PlateSnapshotSql(true), new SqlParameter("@eventId", currentEventId));
+                    EmQualityEventEvidenceGuard.EnsureSaved(_loadedPlateSnapshot, locked, currentEventId,
+                        plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)));
+                    List<EMPlateResultItem> savedEvidence = BuildSavedQualityEventEvidence(locked);
+                    if (!savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase) || item.Status.Equals("Alert", StringComparison.OrdinalIgnoreCase)))
+                        throw new InvalidOperationException("No saved, assessable EM excursion exists. No Quality Event was committed.");
+                    DataTable existing = FindLinkedQualityEvent(conn, tx);
+                    if (existing.Rows.Count > 0)
+                    {
+                        createdQualityEventId = Convert.ToInt32(existing.Rows[0]["QualityEventId"], CultureInfo.InvariantCulture);
+                        createdQualityEventNo = Convert.ToString(existing.Rows[0]["QualityEventNo"], CultureInfo.InvariantCulture) ?? string.Empty;
+                        return;
+                    }
+                    bool hasOos = savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase));
+                    string eventType = hasOos ? "OOS" : "Alert";
+                    string severity = hasOos ? "Major" : "Minor";
+                    string profile = GetCurrentEMInvestigationProfile(savedEvidence);
+                    string eventNumber = GenerateEMQualityEventNumber();
+                    createdQualityEventNo = eventNumber;
+                    string description = BuildEMQualityEventDescription(eventType, profile, savedEvidence);
+                    string immediateAction = hasOos
+                        ? "EM event placed under Quality Event Investigation. Final approval and final report printing are blocked pending QA disposition."
+                        : "Alert result recorded. Trend follow-up and QA assessment required according to the approved EM procedure.";
+
+                    List<string> columns = new List<string>();
+                    List<string> values = new List<string>();
+                    List<SqlParameter> pars = new List<SqlParameter>();
+
+                    AddInsertValue(columns, values, pars, "QualityEvents", "EventNumber", "@EventNumber", eventNumber);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "QualityEventNo", "@EventNumber", eventNumber);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "EventType", "@EventType", eventType);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "Severity", "@Severity", severity);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SampleID", "@SampleID", DBNull.Value);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SampleNumber", "@SampleNumber", currentEventNo);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "CurrentStatus", "@CurrentStatus", "Open");
+                    AddInsertValue(columns, values, pars, "QualityEvents", "Status", "@CurrentStatus", "Open");
+                    AddInsertValue(columns, values, pars, "QualityEvents", "InvestigationStatus", "@CurrentStatus", "Open");
+                    AddInsertValue(columns, values, pars, "QualityEvents", "DetectedBy", "@DetectedBy", currentUser);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "DetectedDate", "GETDATE()", null, false);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "DetectionSource", "@DetectionSource", "Environmental Monitoring");
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SourceType", "@DetectionSource", "Environmental Monitoring");
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SourceModule", "@SourceModule", "EM");
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SourceRecordID", "@SourceRecordID", currentEventId);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SourceRecordId", "@SourceRecordID", currentEventId);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "RelatedRecordID", "@SourceRecordID", currentEventId);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "RelatedRecordId", "@SourceRecordID", currentEventId);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "SourceReferenceNo", "@SourceReferenceNo", currentEventNo);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "RelatedRecordNo", "@SourceReferenceNo", currentEventNo);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "ReferenceNo", "@SourceReferenceNo", currentEventNo);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "InitialDescription", "@InitialDescription", description);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "ImmediateAction", "@ImmediateAction", immediateAction);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "InvestigationProfile", "@InvestigationProfile", profile);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "CAPARequired", "@CAPARequired", hasOos ? 1 : 0);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "CreatedDate", "GETDATE()", null, false);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "ModifiedBy", "@ModifiedBy", currentUser);
+                    AddInsertValue(columns, values, pars, "QualityEvents", "ModifiedDate", "GETDATE()", null, false);
+
+                    if (columns.Count == 0)
+                        throw new InvalidOperationException("QualityEvents table does not contain supported columns.");
+
+                    string idColumn = FirstExistingColumn("QualityEvents", "QualityEventID", "QualityEventId", "Id", "EventID", "EventId");
+                    if (string.IsNullOrWhiteSpace(idColumn))
+                        throw new InvalidOperationException("QualityEvents primary key column was not found.");
+
+                    string query = "INSERT INTO dbo.QualityEvents (" + string.Join(", ", columns) + ") OUTPUT INSERTED.[" + idColumn.Replace("]", "]]", StringComparison.Ordinal) + "] VALUES (" + string.Join(", ", values) + ");";
+
                     using (SqlCommand createCmd = new SqlCommand(query, conn, tx))
                     {
                         createCmd.CommandTimeout = AppConfig.CommandTimeoutSeconds;
@@ -177,7 +201,7 @@ namespace PharmaLIMS
                         createdQualityEventId = Convert.ToInt32(created, CultureInfo.InvariantCulture);
                     }
 
-                    int affectedResultCount = InsertEMQualityEventAffectedResults(createdQualityEventId, conn, tx);
+                    int affectedResultCount = InsertEMQualityEventAffectedResults(createdQualityEventId, conn, tx, savedEvidence);
                     if (affectedResultCount <= 0)
                         throw new InvalidOperationException("No EM ALERT/ACTION/OOS result was linked to the Quality Event. The Quality Event was not committed.");
 
@@ -202,10 +226,10 @@ namespace PharmaLIMS
                 });
 
                 currentQualityEventId = createdQualityEventId;
-                currentQualityEventNo = eventNumber;
+                currentQualityEventNo = createdQualityEventNo;
 
                 MessageBox.Show(
-                    "Quality Event Investigation created successfully.\n\nQuality Event No.: " + currentQualityEventNo,
+                    "Quality Event Investigation ready.\n\nQuality Event No.: " + currentQualityEventNo,
                     "Quality Event",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -249,13 +273,13 @@ namespace PharmaLIMS
             return "QE-EM-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmssfff", CultureInfo.InvariantCulture) + "-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
         }
 
-        private string GetCurrentEMInvestigationProfile()
+        private string GetCurrentEMInvestigationProfile(IEnumerable<EMPlateResultItem> evidence)
         {
-            bool hasActive = plateItems.Any(p => IsActiveAirSampling(p.Method));
-            bool hasSettle = plateItems.Any(p => IsSettlePlate(p.Method));
-            bool hasContact = plateItems.Any(p => IsContactPlate(p.Method));
-            bool hasSwab = plateItems.Any(p => IsSurfaceSwab(p.Method));
-            bool hasPersonnel = plateItems.Any(p => IsPersonnelMonitoring(p.Method));
+            bool hasActive = evidence.Any(p => IsActiveAirSampling(p.Method));
+            bool hasSettle = evidence.Any(p => IsSettlePlate(p.Method));
+            bool hasContact = evidence.Any(p => IsContactPlate(p.Method));
+            bool hasSwab = evidence.Any(p => IsSurfaceSwab(p.Method));
+            bool hasPersonnel = evidence.Any(p => IsPersonnelMonitoring(p.Method));
 
             int methodGroups = new[] { hasActive, hasSettle, hasContact, hasSwab, hasPersonnel }.Count(v => v);
             if (methodGroups > 1)
@@ -270,9 +294,9 @@ namespace PharmaLIMS
             return "Environmental Monitoring";
         }
 
-        private string BuildEMQualityEventDescription(string eventType, string profile)
+        private string BuildEMQualityEventDescription(string eventType, string profile, IEnumerable<EMPlateResultItem> evidence)
         {
-            List<string> affected = plateItems
+            List<string> affected = evidence
                 .Where(p => string.Equals(p.Status, "OOS", StringComparison.OrdinalIgnoreCase) || string.Equals(p.Status, "Alert", StringComparison.OrdinalIgnoreCase))
                 .Select(p => p.PlateCode + " (" + p.Method + ": " + FirstNonEmpty(p.ResultCFU, p.TotalCount?.ToString(CultureInfo.InvariantCulture)) + " " + GetReportUnitDisplay(p) + ", " + p.Status + ")")
                 .ToList();
@@ -283,13 +307,14 @@ namespace PharmaLIMS
         private int InsertEMQualityEventAffectedResults(
             int qualityEventId,
             SqlConnection conn,
-            SqlTransaction tx)
+            SqlTransaction tx,
+            IEnumerable<EMPlateResultItem> evidence)
         {
             if (!TableExists("QualityEventAffectedResults"))
                 throw new InvalidOperationException("QualityEventAffectedResults table is missing. Run System Preflight before EM workflow use.");
 
             int inserted = 0;
-            foreach (EMPlateResultItem item in plateItems)
+            foreach (EMPlateResultItem item in evidence)
             {
                 if (!string.Equals(item.Status, "OOS", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(item.Status, "Alert", StringComparison.OrdinalIgnoreCase))
@@ -301,6 +326,10 @@ namespace PharmaLIMS
 
                 AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "QualityEventID", "@QualityEventID", qualityEventId);
                 AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "QualityEventId", "@QualityEventID", qualityEventId);
+                if (!ColumnExists("QualityEventAffectedResults", "SourceModule") || !ColumnExists("QualityEventAffectedResults", "SourceResultID"))
+                    throw new InvalidOperationException("EM source-result evidence columns are required. Run System Preflight before creating investigations.");
+                AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "SourceModule", "@SourceModule", "EM");
+                AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "SourceResultID", "@SourceResultID", item.PlateId);
                 AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "SampleTestID", "@SampleTestID", DBNull.Value);
                 AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "TestID", "@TestID", DBNull.Value);
                 AddInsertValue(columns, values, pars, "QualityEventAffectedResults", "TestName", "@TestName", item.Method + " - " + item.PlateCode);

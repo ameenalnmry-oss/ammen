@@ -140,9 +140,9 @@ SELECT
 
                 if (!decimal.TryParse(RowString(row, "RecoveryPercent"), NumberStyles.Number, CultureInfo.InvariantCulture, out decimal recoveryPercent))
                     return false;
-                if (minimumRecovery.HasValue && recoveryPercent < minimumRecovery.Value)
-                    return false;
-                if (maximumRecovery.HasValue && recoveryPercent > maximumRecovery.Value)
+                if (!MediaGrowthPromotionEvaluator.Passes(RowString(row, "ControlCount"), RowString(row, "TestCount"), minimumRecovery, maximumRecovery) ||
+                    !MediaGrowthPromotionEvaluator.TryCalculate(RowString(row, "ControlCount"), RowString(row, "TestCount"), out decimal exactRecovery) ||
+                    recoveryPercent != decimal.Round(exactRecovery, 2, MidpointRounding.AwayFromZero))
                     return false;
 
                 return !string.IsNullOrWhiteSpace(RowString(row, "ATCCNumber")) &&
@@ -422,7 +422,7 @@ WHEN NOT MATCHED THEN
             }
             if (isGrowthPromotion && decimal.TryParse(recoveryPercent, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal recovery))
             {
-                testResult = recovery >= minimumRecovery && recovery <= maximumRecovery ? "Pass" : "Fail";
+                testResult = MediaGrowthPromotionEvaluator.Passes(controlCount, testCount, minimumRecovery, maximumRecovery) ? "Pass" : "Fail";
                 SetComboText(CmbTestResult, testResult);
             }
 
@@ -1165,11 +1165,10 @@ WHEN NOT MATCHED THEN
 
         private static string CalculateRecoveryPercent(string controlCount, string testCount)
         {
-            if (!decimal.TryParse(controlCount, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal control) || control <= 0 ||
-                !decimal.TryParse(testCount, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal test) || test < 0)
+            if (!MediaGrowthPromotionEvaluator.TryCalculate(controlCount, testCount, out decimal recovery))
                 return string.Empty;
 
-            return ((test / control) * 100m).ToString("0.00", CultureInfo.InvariantCulture);
+            return decimal.Round(recovery, 2, MidpointRounding.AwayFromZero).ToString("0.00", CultureInfo.InvariantCulture);
         }
 
         private static string CalculateQualificationResult(DataTable tests)

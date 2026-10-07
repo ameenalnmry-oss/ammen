@@ -780,7 +780,8 @@ SELECT CASE WHEN EXISTS
             return result;
         }
 
-        public static DataTable GetEffectiveWaterTestSpecification(string sampleType, int testId, string pointCode)
+        public static DataTable GetEffectiveWaterTestSpecification(string sampleType, int testId, string pointCode,
+            SqlConnection connection = null, SqlTransaction transaction = null)
         {
             DataTable empty = new DataTable();
             empty.Columns.Add("LowerLimit", typeof(decimal));
@@ -832,7 +833,18 @@ SELECT CASE WHEN EXISTS
                 new SqlParameter("@pointCode", cleanPointCode)
             };
 
-            return ExecuteQuery(query, pars);
+            if (connection == null && transaction == null) return ExecuteQuery(query, pars);
+            if (connection == null || transaction == null || transaction.Connection != connection)
+                throw new InvalidOperationException("Water specification capture requires the active registration transaction.");
+            query = query.Replace("FROM dbo.WaterTestProfiles profile", "FROM dbo.WaterTestProfiles profile WITH(UPDLOCK,HOLDLOCK)")
+                .Replace("INNER JOIN dbo.WaterSpecifications specification", "INNER JOIN dbo.WaterSpecifications specification WITH(UPDLOCK,HOLDLOCK)");
+            using SqlCommand command = new SqlCommand(query, connection, transaction);
+            command.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+            command.Parameters.AddRange(pars);
+            using SqlDataReader reader = command.ExecuteReader();
+            DataTable captured = new DataTable();
+            captured.Load(reader);
+            return captured;
         }
 
 

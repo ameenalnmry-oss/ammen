@@ -1,4 +1,4 @@
-#nullable disable
+﻿#nullable disable
 using Microsoft.Data.SqlClient;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -815,7 +815,7 @@ namespace PharmaLIMS
         {
             limit = 0d;
             string text = Convert.ToString(value, CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(text) || text.Contains(','))
                 return false;
 
             // Only an explicit upper-limit expression may become a chart limit.
@@ -823,10 +823,11 @@ namespace PharmaLIMS
             if (!Regex.IsMatch(text, @"\b(NMT|NOT\s+MORE\s+THAN|MAX(?:IMUM)?)\b|<=|≤", RegexOptions.IgnoreCase))
                 return false;
 
-            Match match = Regex.Match(text, @"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.CultureInvariant);
-            return match.Success &&
-                   double.TryParse(match.Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out limit) &&
-                   !double.IsNaN(limit) && !double.IsInfinity(limit);
+            Match match = Regex.Match(text, @"[-+]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", RegexOptions.CultureInvariant);
+            if (!match.Success || !ControlledNumericValue.TryParse(match.Value, out decimal exact) || exact < 0m)
+                return false;
+            limit = (double)exact;
+            return true;
         }
 
         private static string NormalizeWaterProfile(string sampleType, string pointCode)
@@ -926,15 +927,13 @@ namespace PharmaLIMS
             if (string.IsNullOrWhiteSpace(text))
                 return null;
 
-            text = text.Replace(",", ".");
-            return double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed) &&
-                   !double.IsNaN(parsed) && !double.IsInfinity(parsed)
-                ? parsed
+            return ControlledNumericValue.TryParse(text, out decimal parsed)
+                ? (double)parsed
                 : null;
         }
 
-        private static string EvaluateWaterTrendStatus(string storedStatus, string testName, double resultValue, double? alertLimit, double? actionLimit)
-            => TrendReportData.WaterStatus(storedStatus, testName, resultValue, alertLimit, actionLimit);
+        private static string EvaluateWaterTrendStatus(string storedStatus, string testName, decimal resultValue, decimal? alertLimit, decimal? actionLimit)
+            => TrendReportData.WaterStatusExact(storedStatus, testName, resultValue, alertLimit, actionLimit);
 
         private static void NormalizeInternalWaterRows(DataTable table)
         {
@@ -976,15 +975,21 @@ namespace PharmaLIMS
                 row["AlertLimit"] = alert.HasValue ? alert.Value : DBNull.Value;
                 row["ActionLimit"] = action.HasValue ? action.Value : DBNull.Value;
 
-                if (row["ResultValue"] == DBNull.Value || !TryGetNullableDouble(row["ResultValue"]).HasValue)
+                if (row["ResultValue"] == DBNull.Value || string.IsNullOrWhiteSpace(Convert.ToString(row["ResultValue"], CultureInfo.InvariantCulture)))
                 {
                     row["Status"] = "Pending";
                 }
                 else
                 {
-                    double resultValue = TryGetNullableDouble(row["ResultValue"])!.Value;
                     string storedStatus = Convert.ToString(row["_StoredStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
-                    row["Status"] = EvaluateWaterTrendStatus(storedStatus, testName, resultValue, alert, action);
+                    if (!ControlledNumericValue.TryParse(Convert.ToString(row["ResultValue"], CultureInfo.InvariantCulture), out decimal resultValue))
+                        row["Status"] = "NOT ASSESSED";
+                    else
+                    {
+                        decimal? exactAlert = ControlledNumericValue.TryParse(Convert.ToString(row["_SnapshotAlert"], CultureInfo.InvariantCulture), out decimal a) ? a : null;
+                        decimal? exactAction = ControlledNumericValue.TryParse(Convert.ToString(row["_SnapshotAction"], CultureInfo.InvariantCulture), out decimal b) ? b : null;
+                        row["Status"] = EvaluateWaterTrendStatus(storedStatus, testName, resultValue, exactAlert, exactAction);
+                    }
                 }
             }
 

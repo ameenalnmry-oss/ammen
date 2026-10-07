@@ -59,6 +59,7 @@ try {
     Assert-NativeExit 'Python source-control regression suite'
 
     ./scripts/Test-SourceManifest.ps1
+    ./tests/Test-CodeSigningReleaseGuard.ps1
 
     if ($SourceOnly) {
         Write-Host 'Source-only checks passed. No .NET build, SQL execution, WPF runtime execution or release approval is implied.'

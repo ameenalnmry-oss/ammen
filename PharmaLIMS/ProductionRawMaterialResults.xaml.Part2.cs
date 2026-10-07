@@ -276,44 +276,8 @@ ORDER BY S.SignatureID;",
             string testCode = "",
             string testName = "")
         {
-            if (string.IsNullOrWhiteSpace(result))
-                return "Not Tested";
-
-            string normalizedType = resultType ?? string.Empty;
-            string normalizedResult = result.Trim();
-
-            if (IsQualitativeAbsenceTest(normalizedType, specification))
-            {
-                if (IsNegativeQualitativeResult(normalizedResult))
-                    return "Conforms";
-
-                if (IsPositiveQualitativeResult(normalizedResult))
-                    return "Does Not Conform";
-
-                return "Check Required";
-            }
-
-            if (normalizedType.Contains("Numeric", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!PrmNumericSpecificationEvaluator.TryParseControlledDecimal(normalizedResult, out decimal value))
-                    return "Check Required";
-                if (value < 0m)
-                    return "Check Required";
-
-                return PrmNumericSpecificationEvaluator.Evaluate(
-                    value,
-                    specification,
-                    specificationLimit,
-                    testCode,
-                    testName);
-            }
-
-            if (normalizedResult.Equals("Pass", StringComparison.OrdinalIgnoreCase) || normalizedResult.Equals("Conforms", StringComparison.OrdinalIgnoreCase))
-                return "Conforms";
-            if (normalizedResult.Equals("Fail", StringComparison.OrdinalIgnoreCase) || normalizedResult.Equals("Does Not Conform", StringComparison.OrdinalIgnoreCase))
-                return "Does Not Conform";
-
-            return "Check Required";
+            return PrmResultInterpretationEvaluator.Evaluate(
+                resultType, specification, result, specificationLimit, testCode, testName);
         }
 
         private static void EnsureWorkflowInterpretationIsComplete(string overall, string action)
@@ -405,40 +369,6 @@ ORDER BY S.SignatureID;",
             if (!hasAnyQualityEvent)
                 throw new InvalidOperationException(
                     "A closed PRM Quality Event / Investigation is required before issuing a nonconforming In-Process or Stability report.");
-        }
-
-        private static bool IsQualitativeAbsenceTest(string resultType, string specification)
-        {
-            string normalizedType = resultType ?? string.Empty;
-            string normalizedSpecification = specification ?? string.Empty;
-
-            return normalizedType.Contains("Presence", StringComparison.OrdinalIgnoreCase) ||
-                   normalizedType.Contains("Qualitative", StringComparison.OrdinalIgnoreCase) ||
-                   normalizedSpecification.Contains("Absent", StringComparison.OrdinalIgnoreCase) ||
-                   normalizedSpecification.Contains("Absence", StringComparison.OrdinalIgnoreCase) ||
-                   normalizedSpecification.Contains("Not Detected", StringComparison.OrdinalIgnoreCase) ||
-                   normalizedSpecification.Contains("Negative", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsNegativeQualitativeResult(string result)
-        {
-            string value = (result ?? string.Empty).Trim();
-            return value.Equals("Absent", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Absence", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Negative", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Not Detected", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("No Growth", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Nil", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsPositiveQualitativeResult(string result)
-        {
-            string value = (result ?? string.Empty).Trim();
-            return value.Equals("Present", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Presence", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Positive", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Detected", StringComparison.OrdinalIgnoreCase) ||
-                   value.Equals("Growth", StringComparison.OrdinalIgnoreCase);
         }
 
         private static decimal ExtractFirstNumber(string text)

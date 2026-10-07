@@ -94,6 +94,8 @@ namespace PharmaLIMS
                 authoritative.ResultValue = Convert.ToString(resultValue, CultureInfo.InvariantCulture) ?? "";
                 authoritative.Remarks = (edited.Remarks ?? "").Trim();
                 string status = CalculatePassFail(authoritative);
+                if (status == "Invalid" || status == "NOT ASSESSED")
+                    throw new InvalidOperationException("The frozen result or numeric acceptance limits are invalid/incomplete for " + authoritative.TestName + ". No result, audit or signature was committed.");
                 if ((status == "OOS" || status == "ALERT") && authoritative.Remarks.Length == 0)
                     throw new InvalidOperationException("Remarks are required for " + status + " test " + authoritative.TestName + ".");
                 object remarks = authoritative.Remarks.Length == 0 ? DBNull.Value : authoritative.Remarks;
