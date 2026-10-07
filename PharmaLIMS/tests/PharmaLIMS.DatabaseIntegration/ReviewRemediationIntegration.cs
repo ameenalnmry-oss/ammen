@@ -24,6 +24,7 @@ internal static class ReviewRemediationIntegration
         await Merge262Integration.VerifyAsync(connectionString);
         await VerifyEvidenceAndVersionsAsync(connection);
         await EmPreparedMediaEligibilityIntegration.VerifyAsync(connection, projectRoot);
+        await VerifyWaterLimitDescriptionUpgradeAsync(projectRoot, masterConnectionString);
         await VerifyLegacyUpgradeAsync(projectRoot, masterConnectionString);
         Console.WriteLine("Review remediation SQL contracts PASS (WPF multi-session acceptance remains separate).");
     }
@@ -172,6 +173,56 @@ SELECT Id FROM @Affected;",tx,Id(id),new SqlParameter("@version",SqlDbType.Binar
         }
         finally { await tx.RollbackAsync(); }
         Console.WriteLine("PASS F02/F03/F09 SQL precision, stale rowversion and signed evidence contracts.");
+    }
+
+    private static async Task VerifyWaterLimitDescriptionUpgradeAsync(string projectRoot,string masterConnectionString)
+    {
+        string migration=await File.ReadAllTextAsync(Path.Combine(projectRoot,"Database","Migrations",
+            "20261007_001_Water_LimitDescription_Schema_Contract.sql"));
+        var masterBuilder=new SqlConnectionStringBuilder(masterConnectionString){InitialCatalog="master"};
+        await using var master=new SqlConnection(masterBuilder.ConnectionString);
+        await master.OpenAsync();
+        foreach(int width in new[]{200,250,300,500})
+        {
+            string name="PharmaLIMS_Integration_WaterWidth_"+width+"_"+Guid.NewGuid().ToString("N")[..8];
+            try
+            {
+                await ExecAsync(master,$"CREATE DATABASE [{name}];");
+                var builder=new SqlConnectionStringBuilder(masterConnectionString){InitialCatalog=name};
+                await using var c=new SqlConnection(builder.ConnectionString);
+                await c.OpenAsync();
+                string evidence="MQC-G-0018 v2.0 2.4.8: Burkholderia cepacia complex must be absent when the test is applicable under MQC-G-0034/risk evaluation. This controlled snapshot text deliberately exceeds legacy widths while remaining within the approved 500-character contract.";
+                await ExecAsync(c,$@"CREATE TABLE dbo.SampleTests
+(
+    SampleTestID int NOT NULL PRIMARY KEY,
+    LimitDescription nvarchar({width}) NULL
+);
+INSERT dbo.SampleTests(SampleTestID,LimitDescription) VALUES(1,@evidence);",null,
+                    new SqlParameter("@evidence",SqlDbType.NVarChar,width){Value=evidence[..Math.Min(evidence.Length,width)]});
+                string before=Convert.ToString((await QueryAsync(c,"SELECT LimitDescription FROM dbo.SampleTests WHERE SampleTestID=1;")).Rows[0][0]) ?? string.Empty;
+                await ExecAsync(c,migration);
+                await ExecAsync(c,migration);
+                DataTable contract=await QueryAsync(c,@"SELECT c.system_type_id,c.max_length,c.is_nullable,c.is_computed,st.LimitDescription
+FROM sys.columns c CROSS JOIN dbo.SampleTests st
+WHERE c.object_id=OBJECT_ID(N'dbo.SampleTests') AND c.name=N'LimitDescription' AND st.SampleTestID=1;");
+                DataRow row=contract.Rows[0];
+                Require(Convert.ToInt32(row["system_type_id"])==231,
+                    "water LimitDescription type changed unexpectedly");
+                Require(Convert.ToInt16(row["max_length"])==-1 || Convert.ToInt16(row["max_length"])>=1000,
+                    $"water LimitDescription legacy NVARCHAR({width}) was not widened to 500+");
+                Require(Convert.ToBoolean(row["is_nullable"]) && !Convert.ToBoolean(row["is_computed"]),
+                    "water LimitDescription nullability/computed contract is invalid");
+                Require(string.Equals(Convert.ToString(row["LimitDescription"]),before,StringComparison.Ordinal),
+                    "water LimitDescription widening changed existing evidence");
+            }
+            finally
+            {
+                await ExecAsync(master,$@"IF DB_ID(N'{name}') IS NOT NULL BEGIN
+ALTER DATABASE [{name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+DROP DATABASE [{name}]; END;");
+            }
+        }
+        Console.WriteLine("PASS v303 water LimitDescription legacy 200/250/300/500 widening, evidence preservation and idempotence.");
     }
 
     private static async Task VerifyLegacyUpgradeAsync(string projectRoot,string masterConnectionString)
