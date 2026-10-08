@@ -3,6 +3,7 @@ using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Repositories;
 using PharmaLIMS.Services;
 using System;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
@@ -25,6 +26,8 @@ namespace PharmaLIMS
     public partial class ProductionRawMaterialResults : Window
     {
         private readonly PrmSpecificationRepository _prmSpecificationRepository = new();
+        private readonly DatabaseConnection _equipmentDatabase = new();
+        public ObservableCollection<LabEquipmentChoice> AvailableEquipmentChoices { get; } = new();
         private int _selectedSampleId = 0;
         private readonly int _initialSampleId = 0;
         private readonly int _initialLegacyCertificateId = 0;
@@ -276,6 +279,13 @@ END;";
             Closed += (_, _) => _timingDisplayTimer.Stop();
         }
 
+        private void ReloadAvailableEquipmentChoices()
+        {
+            AvailableEquipmentChoices.Clear();
+            foreach (LabEquipmentChoice equipment in LabEquipmentUsageService.LoadAvailableEquipment(_equipmentDatabase))
+                AvailableEquipmentChoices.Add(equipment);
+        }
+
         public ProductionRawMaterialResults(int sampleId) : this()
         {
             _initialSampleId = sampleId;
@@ -314,6 +324,7 @@ END;";
                         "PRM Database Readiness", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+                ReloadAvailableEquipmentChoices();
                 ClearSampleInfo();
 
                 if (_initialSampleId > 0)
@@ -1042,13 +1053,17 @@ SELECT
     MinimumElapsedHours,
     Interpretation,
     Remarks,
-    EnteredBy,
-    EnteredDate,
-    CONVERT(NVARCHAR(20), EnteredDate, 120) AS EnteredDateText,
-    ISNULL(SortOrder, SampleTestID) AS SortOrder
-FROM dbo.PRM_SampleTests
-WHERE SampleID = @SampleID
-ORDER BY ISNULL(SortOrder, SampleTestID), SampleTestID;";
+    st.EnteredBy,
+    st.EnteredDate,
+    CONVERT(NVARCHAR(20), st.EnteredDate, 120) AS EnteredDateText,
+    usage.EquipmentID,
+    ISNULL(st.SortOrder, st.SampleTestID) AS SortOrder
+FROM dbo.PRM_SampleTests st
+LEFT JOIN dbo.LabEquipmentUsage usage
+  ON usage.Module=N'PRM'
+ AND usage.ResultRecordID=st.SampleTestID
+WHERE st.SampleID = @SampleID
+ORDER BY ISNULL(st.SortOrder, st.SampleTestID), st.SampleTestID;";
 
             _resultsTable = DatabaseHelper.ExecuteQuery(sql, new[]
             {
@@ -1579,6 +1594,20 @@ WHERE SampleID=@SampleID
                 EnsurePrmTimingResultEntryAllowed("Save Results", allowRequiredReentry: true);
                 ValidatePrmNumericResultFormatsBeforeSignature();
 
+                DataRow missingEquipmentRow = _resultsTable?.Rows.Cast<DataRow>()
+                    .FirstOrDefault(row =>
+                        row.RowState != DataRowState.Deleted &&
+                        row["ResultValue"] != DBNull.Value &&
+                        !string.IsNullOrWhiteSpace(Convert.ToString(row["ResultValue"], CultureInfo.InvariantCulture)) &&
+                        (!row.Table.Columns.Contains("EquipmentID") || row["EquipmentID"] == DBNull.Value));
+                if (missingEquipmentRow != null)
+                {
+                    string missingTestName = Convert.ToString(missingEquipmentRow["TestName"], CultureInfo.InvariantCulture) ?? "PRM test";
+                    throw new InvalidOperationException(
+                        "Select the laboratory equipment / instrument used for '" + missingTestName +
+                        "'. Only Active, qualified, and in-calibration equipment is available.");
+                }
+
                 ElectronicSignature signature = RequestPrmSignature("PRM Result Entry");
                 if (signature == null)
                     return;
@@ -1598,7 +1627,7 @@ WHERE SampleID=@SampleID
                     PrmSampleResultStateService.LockAndValidateLoadedSnapshot(
                         conn, tx, _selectedSampleId, _resultsTable);
 
-                    SaveResultsFromGrid(conn, tx, signature);
+                    SaveResultsFromGrid(conn, tx, signature, signerRole);
 
                     PrmAuthoritativeSampleResultState authoritative =
                         PrmSampleResultStateService.ReadAuthoritativeStateForUpdate(conn, tx, _selectedSampleId);
@@ -2442,7 +2471,11 @@ WHERE SampleID = @SampleID
             }
         }
 
-        private void SaveResultsFromGrid(SqlConnection conn, SqlTransaction tx, ElectronicSignature signature)
+        private void SaveResultsFromGrid(
+            SqlConnection conn,
+            SqlTransaction tx,
+            ElectronicSignature signature,
+            string signerRole)
         {
             if (_resultsTable == null)
                 LoadResultsForSample();
@@ -2473,6 +2506,20 @@ WHERE SampleID = @SampleID
                 string specificationLimit = row.Table.Columns.Contains("SpecificationLimit") && row["SpecificationLimit"] != DBNull.Value
                     ? Convert.ToString(row["SpecificationLimit"], CultureInfo.InvariantCulture)
                     : string.Empty;
+                int? equipmentId = row.Table.Columns.Contains("EquipmentID") && row["EquipmentID"] != DBNull.Value
+                    ? Convert.ToInt32(row["EquipmentID"], CultureInfo.InvariantCulture)
+                    : (int?)null;
+
+                if (!string.IsNullOrWhiteSpace(currentResult))
+                {
+                    if (!equipmentId.HasValue)
+                        throw new InvalidOperationException("Equipment / instrument is required for PRM test '" + testName + "'.");
+
+                    LabEquipmentUsageService.PersistAssignmentInTransaction(
+                        conn, tx, "PRM", _selectedSampleId, testId, equipmentId,
+                        signature.SignedBy, signerRole, signature.Meaning, signature.Reason,
+                        TxtSampleNo?.Text ?? string.Empty);
+                }
 
                 string interpretation = CalculateInterpretation(
                     resultType,

@@ -689,6 +689,9 @@ namespace PharmaLIMS
             };
 
             DataTable dt = DatabaseHelper.ExecuteQuery(platesQuery, pars);
+            ReloadAvailableEquipmentChoices();
+            Dictionary<int, int?> equipmentAssignments =
+                LabEquipmentUsageService.LoadCurrentAssignments(_equipmentDatabase, "EM", eventId);
 
             foreach (DataRow row in dt.Rows)
             {
@@ -728,6 +731,9 @@ namespace PharmaLIMS
                     HasLimitSnapshot = hasAlertSnapshot && hasActionSnapshot && !string.IsNullOrWhiteSpace(frozenUnit) && hasAirVolumeSnapshot,
                     LimitReconciliationId = row["ReconciliationID"] == DBNull.Value ? null : row.GetSafeInt("ReconciliationID"),
                     LimitEvidenceSource = row.GetSafeString("EvidenceSource"),
+                    EquipmentID = equipmentAssignments.TryGetValue(row.GetSafeInt("Id"), out int? assignedEquipment)
+                        ? assignedEquipment
+                        : null,
                     TotalCount = EmResultCalculator.ReadStoredCount(row["TotalCount"]),
                     AirVolumeLiters = effectiveAirVolume,
                     ResultCFU = row.GetSafeString("ResultCFU"),

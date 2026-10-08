@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using PharmaLIMS.Services;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -27,6 +28,8 @@ namespace PharmaLIMS
         private string currentPointCode = "";
         private string currentPointLocation = "";
         private readonly List<ResultItem> resultItems = new List<ResultItem>();
+        private readonly DatabaseConnection _equipmentDatabase = new();
+        public ObservableCollection<LabEquipmentChoice> AvailableEquipmentChoices { get; } = new();
         private bool _isSavingResults = false;
         private bool _isWorkflowBusy = false;
         private bool _legacyCertificateReissueRouteActive = false;
@@ -48,6 +51,7 @@ namespace PharmaLIMS
             public string ResultValue { get; set; } = "";
             public string PassFail { get; set; } = "";
             public string Remarks { get; set; } = "";
+            public int? EquipmentID { get; set; }
         }
 
         private sealed class WaterTimestampSnapshot
@@ -70,7 +74,15 @@ namespace PharmaLIMS
             dgResults.CellEditEnding += dgResults_CellEditEnding;
             SetSampleStatus("");
             UpdateWorkflowButtons();
+            ReloadAvailableEquipmentChoices();
             lblStatus.Text = "Ready";
+        }
+
+        private void ReloadAvailableEquipmentChoices()
+        {
+            AvailableEquipmentChoices.Clear();
+            foreach (LabEquipmentChoice equipment in LabEquipmentUsageService.LoadAvailableEquipment(_equipmentDatabase))
+                AvailableEquipmentChoices.Add(equipment);
         }
 
         public void ConfigureLegacyCertificateReissueContext(
@@ -1897,6 +1909,9 @@ WHERE st.SampleID=@SampleID
                 };
 
                 DataTable dt = DatabaseHelper.ExecuteQuery(query, pars);
+                ReloadAvailableEquipmentChoices();
+                Dictionary<int, int?> equipmentAssignments =
+                    LabEquipmentUsageService.LoadCurrentAssignments(_equipmentDatabase, "WATER", sampleId);
 
                 foreach (DataRow row in dt.Rows)
                 {
@@ -1908,6 +1923,8 @@ WHERE st.SampleID=@SampleID
                     ResultItem item = WaterItemFromEvidence(row);
                     item.ResultValue = FormatResultForDisplay(item);
                     item.PassFail = CalculatePassFail(item);
+                    if (equipmentAssignments.TryGetValue(item.SampleTestID, out int? assignedEquipment))
+                        item.EquipmentID = assignedEquipment;
 
                     resultItems.Add(item);
                     _loadedWaterDisplayValues[item.SampleTestID] = item.ResultValue ?? "";
@@ -2035,6 +2052,17 @@ WHERE st.SampleID=@SampleID
                     return;
                 }
 
+                if (!item.EquipmentID.HasValue)
+                {
+                    MessageBox.Show(
+                        "Select the laboratory equipment / instrument used for test: " + item.TestName +
+                        "\n\nOnly equipment that is currently Active, qualified, and within calibration is available.",
+                        "Equipment Required",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
                 if ((item.PassFail == "ALERT" || item.PassFail == "OOS") &&
                     string.IsNullOrWhiteSpace(item.Remarks))
                 {
@@ -2092,6 +2120,15 @@ WHERE st.SampleID=@SampleID
                         ValidateWaterIncubationCompleteBeforeResultsInTransaction(con, tran);
 
                     bool resultEvidenceChanged = PersistWaterEdits(con, tran, signatureWindow);
+
+                    foreach (ResultItem item in resultItems.Where(item => !string.IsNullOrWhiteSpace(item.ResultValue)))
+                    {
+                        LabEquipmentUsageService.PersistAssignmentInTransaction(
+                            con, tran, "WATER", currentSampleId, item.SampleTestID, item.EquipmentID,
+                            signatureWindow.SignedBy, signerRole, signatureWindow.Meaning, signatureWindow.Reason,
+                            GetSignatureRecordNumber());
+                    }
+
                     (completedTests, passedTests, alertTests, oosTests, pendingCount) = ReadWaterSummary(con, tran);
 
                     if (developmentTimingOverrideUsed)

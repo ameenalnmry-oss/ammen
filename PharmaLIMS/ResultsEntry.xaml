@@ -439,6 +439,22 @@
                                             MinWidth="100"
                                             IsReadOnly="True"/>
 
+                        <DataGridTemplateColumn Header="Equipment Used"
+                                                Width="1.8*"
+                                                MinWidth="230">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="EquipmentID"
+                                              SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              MinWidth="215"
+                                              IsTextSearchEnabled="True"
+                                              ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <DataGridTemplateColumn Header="Remarks"
                                                 Width="1.7*"
                                                 MinWidth="220">

@@ -133,6 +133,16 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                 object newValue = (object)calculated.Value ?? DBNull.Value;
                 object newRemarks = string.IsNullOrWhiteSpace(item.Remarks) ? DBNull.Value : item.Remarks.Trim();
 
+                if (item.TotalCount.HasValue && !item.EquipmentID.HasValue)
+                    throw new InvalidOperationException("Equipment / instrument is required for plate " + source["PlateCode"] + ".");
+
+                if (item.TotalCount.HasValue)
+                {
+                    LabEquipmentUsageService.PersistAssignmentInTransaction(
+                        connection, transaction, "EM", currentEventId, item.PlateId, item.EquipmentID,
+                        signature.SignedBy, signerRole, signature.Meaning, signature.Reason, currentEventNo);
+                }
+
                 bool unchanged = EmResultCalculator.ReadStoredCount(source["TotalCount"]) == item.TotalCount &&
                     ResultSnapshotGuard.Equivalent(source["ResultCFU"], newValue) &&
                     ResultSnapshotGuard.Equivalent(source["ColoniesObserved"], newRemarks) &&

@@ -573,6 +573,19 @@
                                             <DataGridTextColumn Header="Alert Limit" Binding="{Binding AlertLimit}" Width="115" IsReadOnly="True"/>
                                             <DataGridTextColumn Header="Action Limit" Binding="{Binding ActionLimit}" Width="120" IsReadOnly="True"/>
                                             <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="115" IsReadOnly="True" CellStyle="{StaticResource StatusCellStyle}"/>
+                                            <DataGridTemplateColumn Header="Equipment Used" Width="230">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValuePath="EquipmentID"
+                                                                  SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                  MinWidth="215"
+                                                                  IsTextSearchEnabled="True"
+                                                                  ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
                                             <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="240"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
@@ -599,6 +612,19 @@
                                         <DataGridTextColumn Header="Alert Limit" Binding="{Binding AlertLimit}" Width="115" IsReadOnly="True"/>
                                         <DataGridTextColumn Header="Action Limit" Binding="{Binding ActionLimit}" Width="125" IsReadOnly="True"/>
                                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="115" IsReadOnly="True" CellStyle="{StaticResource StatusCellStyle}"/>
+                                        <DataGridTemplateColumn Header="Equipment Used" Width="230">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
+                                                              DisplayMemberPath="DisplayName"
+                                                              SelectedValuePath="EquipmentID"
+                                                              SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              MinWidth="215"
+                                                              IsTextSearchEnabled="True"
+                                                              ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                         <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="280"/>
                                     </DataGrid.Columns>
                                 </DataGrid>

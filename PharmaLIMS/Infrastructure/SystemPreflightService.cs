@@ -300,6 +300,8 @@ SELECT
                     await CheckControlledMasterDataAsync(checks).ConfigureAwait(false);
                     verificationStage = "Laboratory equipment readiness";
                     await CheckEquipmentReadinessAsync(checks).ConfigureAwait(false);
+                    verificationStage = "Laboratory equipment usage traceability";
+                    await CheckEquipmentUsageTraceabilityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical EM evidence";
                     await CheckHistoricalEmSnapshotIntegrityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical Water evidence";
@@ -896,6 +898,13 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'LabEquipmentSignatures',N'ActionType'),(N'LabEquipmentSignatures',N'MeaningOfSignature'),
 (N'LabEquipmentSignatures',N'ActionReason'),(N'LabEquipmentSignatures',N'OldStateJson'),
 (N'LabEquipmentSignatures',N'NewStateJson'),(N'LabEquipmentSignatures',N'SignedBy'),(N'LabEquipmentSignatures',N'SignedAt'),
+(N'LabEquipmentUsage',N'UsageID'),(N'LabEquipmentUsage',N'Module'),(N'LabEquipmentUsage',N'ParentRecordID'),
+(N'LabEquipmentUsage',N'ResultRecordID'),(N'LabEquipmentUsage',N'EquipmentID'),(N'LabEquipmentUsage',N'AssignedBy'),(N'LabEquipmentUsage',N'AssignedAt'),
+(N'LabEquipmentUsageHistory',N'HistoryID'),(N'LabEquipmentUsageHistory',N'Module'),(N'LabEquipmentUsageHistory',N'ParentRecordID'),
+(N'LabEquipmentUsageHistory',N'ResultRecordID'),(N'LabEquipmentUsageHistory',N'PreviousEquipmentID'),(N'LabEquipmentUsageHistory',N'EquipmentID'),
+(N'LabEquipmentUsageHistory',N'EquipmentCodeSnapshot'),(N'LabEquipmentUsageHistory',N'EquipmentNameSnapshot'),(N'LabEquipmentUsageHistory',N'EquipmentTypeSnapshot'),
+(N'LabEquipmentUsageHistory',N'ChangeType'),(N'LabEquipmentUsageHistory',N'MeaningOfSignature'),(N'LabEquipmentUsageHistory',N'ActionReason'),
+(N'LabEquipmentUsageHistory',N'SignedBy'),(N'LabEquipmentUsageHistory',N'SignedAt'),
 -- EM schedule snapshots / excursions / approved limit snapshots / signatures
 (N'EM_Schedules',N'ScheduleID'),(N'EM_Schedules',N'ApprovalStatus'),(N'EM_Schedules',N'ApprovedPointCount'),
 (N'EM_SchedulePointSnapshots',N'ScheduleID'),(N'EM_SchedulePointSnapshots',N'SnapshotSequence'),
@@ -2064,6 +2073,89 @@ ORDER BY CASE
             Add(checks, "Laboratory Resources", "WARNING", "Equipment readiness",
                 $"Blocked equipment={blocked}; due within 30 days={dueSoon}. " + details +
                 (rows.Rows.Count > 20 ? " | Additional records omitted from this summary." : string.Empty));
+        }
+
+        private async Task CheckEquipmentUsageTraceabilityAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable findings = await _database.ExecuteQueryAsync(@"
+DECLARE @Cutover datetime2(0)=
+(
+    SELECT TOP(1) AppliedAt
+    FROM dbo.LIMS_SchemaVersions
+    WHERE VersionKey=N'20261008_002'
+    ORDER BY AppliedAt DESC
+);
+
+DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
+
+IF @Cutover IS NOT NULL
+BEGIN
+    INSERT @Findings(Details)
+    SELECT N'Water SampleTestID ' + CONVERT(nvarchar(20),st.SampleTestID) +
+           N' has a post-cutover entered result without equipment usage evidence.'
+    FROM dbo.SampleTests st
+    WHERE st.ResultEnteredDate>=@Cutover
+      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue,N''))),N'') IS NOT NULL
+      AND NOT EXISTS
+      (
+          SELECT 1 FROM dbo.LabEquipmentUsage u
+          WHERE u.Module=N'WATER' AND u.ResultRecordID=st.SampleTestID
+      );
+
+    INSERT @Findings(Details)
+    SELECT N'EM plate ' + CONVERT(nvarchar(20),p.Id) +
+           N' has a post-cutover entered result without equipment usage evidence.'
+    FROM dbo.EM_EventPlates p
+    JOIN dbo.EM_Events e ON e.Id=p.EventId
+    WHERE e.ResultsEnteredDate>=@Cutover
+      AND p.TotalCount IS NOT NULL
+      AND NOT EXISTS
+      (
+          SELECT 1 FROM dbo.LabEquipmentUsage u
+          WHERE u.Module=N'EM' AND u.ResultRecordID=p.Id
+      );
+
+    INSERT @Findings(Details)
+    SELECT N'PRM SampleTestID ' + CONVERT(nvarchar(20),st.SampleTestID) +
+           N' has a post-cutover entered result without equipment usage evidence.'
+    FROM dbo.PRM_SampleTests st
+    WHERE st.EnteredDate>=@Cutover
+      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue,N''))),N'') IS NOT NULL
+      AND NOT EXISTS
+      (
+          SELECT 1 FROM dbo.LabEquipmentUsage u
+          WHERE u.Module=N'PRM' AND u.ResultRecordID=st.SampleTestID
+      );
+END;
+
+INSERT @Findings(Details)
+SELECT N'Equipment usage ' + u.Module + N'/' + CONVERT(nvarchar(20),u.ResultRecordID) +
+       N' has no matching immutable signed usage-history evidence.'
+FROM dbo.LabEquipmentUsage u
+WHERE NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.LabEquipmentUsageHistory h
+    WHERE h.Module=u.Module
+      AND h.ResultRecordID=u.ResultRecordID
+      AND h.EquipmentID=u.EquipmentID
+      AND h.ChangeType IN(N'ASSIGN',N'REASSIGN')
+      AND NULLIF(LTRIM(RTRIM(h.SignedBy)),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(h.MeaningOfSignature)),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(h.ActionReason)),N'') IS NOT NULL
+);
+
+SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
+
+            if (findings.Rows.Count == 0)
+            {
+                Add(checks, "Laboratory Resources", "PASS", "Equipment usage traceability",
+                    "All post-cutover Water, EM, and PRM result evidence is linked to controlled equipment usage with signed immutable history.");
+                return;
+            }
+
+            Add(checks, "Laboratory Resources", "BLOCKER", "Equipment usage traceability",
+                JoinDetails(findings));
         }
 
         private async Task CheckHistoricalEmSnapshotIntegrityAsync(List<SystemPreflightCheck> checks)

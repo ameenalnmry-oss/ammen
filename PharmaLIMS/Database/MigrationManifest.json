@@ -551,6 +551,12 @@
       "description": "Laboratory equipment master, qualification/calibration readiness and signed history foundation",
       "file": "Migrations/20261008_001_Lab_Equipment_Foundation.sql",
       "sha256": "90a4fa19c72b331fe7c1583f4fcf918133c7841b81857ef6eb1a39a1ad54e749"
+    },
+    {
+      "versionKey": "20261008_002",
+      "description": "Signed equipment usage traceability for Water, EM and PRM result records",
+      "file": "Migrations/20261008_002_Lab_Equipment_Usage_Traceability.sql",
+      "sha256": "6985997061267206a27ec9f1b1499eed69a147a50d15f1c34cb2857b7a6c4a7d"
     }
   ]
 }

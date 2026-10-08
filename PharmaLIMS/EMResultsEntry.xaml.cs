@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Services;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Globalization;
 using System.IO;
@@ -22,6 +23,8 @@ namespace PharmaLIMS
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IAuthService _authService;
+        private readonly DatabaseConnection _equipmentDatabase = new();
+        public ObservableCollection<LabEquipmentChoice> AvailableEquipmentChoices { get; } = new();
 
         private int currentEventId = 0;
         private string currentEventNo = "";
@@ -199,6 +202,14 @@ namespace PharmaLIMS
             SetFinalResultStatus("");
             RefreshCounters();
             UpdateWorkflowButtons();
+            ReloadAvailableEquipmentChoices();
+        }
+
+        private void ReloadAvailableEquipmentChoices()
+        {
+            AvailableEquipmentChoices.Clear();
+            foreach (LabEquipmentChoice equipment in LabEquipmentUsageService.LoadAvailableEquipment(_equipmentDatabase))
+                AvailableEquipmentChoices.Add(equipment);
         }
 
         public void OpenEvent(string eventNo)
@@ -226,6 +237,7 @@ namespace PharmaLIMS
             public decimal? ActionLimit { get; set; }
             public bool HasLimitSnapshot { get; set; }
             public int? LimitReconciliationId { get; set; }
+            public int? EquipmentID { get; set; }
             public string LimitEvidenceSource { get; set; } = "Native Frozen Snapshot";
 
             public int? TotalCount
@@ -806,6 +818,19 @@ SELECT CASE
 
             if (!EnsureControlledEmPlanningProvenance("Result Entry"))
                 return;
+
+            EMPlateResultItem missingEquipment = plateItems.FirstOrDefault(item =>
+                item.TotalCount.HasValue && !item.EquipmentID.HasValue);
+            if (missingEquipment != null)
+            {
+                MessageBox.Show(
+                    "Select the laboratory equipment / instrument used for plate " + missingEquipment.PlateCode +
+                    "\n\nOnly equipment that is currently Active, qualified, and within calibration is available.",
+                    "Equipment Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
 
             await SaveResultsAsync();
         }
