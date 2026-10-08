@@ -14,7 +14,7 @@ class V289UserAdministrationHardeningTests(unittest.TestCase):
     def test_release_identity_and_new_signature_migration(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
         self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
-        self.assertEqual(87, len(manifest["migrations"]))
+        self.assertEqual(88, len(manifest["migrations"]))
         entry = next(x for x in manifest["migrations"] if x["versionKey"] == "20260917_001")
         path = ROOT / "Database" / entry["file"]
         self.assertTrue(path.is_file())

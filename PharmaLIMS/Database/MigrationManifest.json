@@ -545,6 +545,12 @@
       "description": "Water result immutable LimitDescription schema contract",
       "file": "Migrations/20261007_001_Water_LimitDescription_Schema_Contract.sql",
       "sha256": "28ef9333fac8e3da114c9c5b7c9023c24c18548185f6699744657dff8736e81b"
+    },
+    {
+      "versionKey": "20261008_001",
+      "description": "Laboratory equipment master, qualification/calibration readiness and signed history foundation",
+      "file": "Migrations/20261008_001_Lab_Equipment_Foundation.sql",
+      "sha256": "90a4fa19c72b331fe7c1583f4fcf918133c7841b81857ef6eb1a39a1ad54e749"
     }
   ]
 }

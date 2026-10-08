@@ -11,7 +11,7 @@ class V273PrmStandardProfileReadinessHistoricalTests(unittest.TestCase):
     def test_retired_v273_migration_is_checksum_preserved_and_superseded(self):
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))
         self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
-        self.assertEqual(87, len(manifest["migrations"]))
+        self.assertEqual(88, len(manifest["migrations"]))
 
         old = next(item for item in manifest["migrations"] if item["versionKey"] == "20260913_000")
         self.assertEqual("20260913_001", old.get("supersededBy"))

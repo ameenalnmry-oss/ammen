@@ -298,6 +298,8 @@ SELECT
 
                     verificationStage = "Controlled master data";
                     await CheckControlledMasterDataAsync(checks).ConfigureAwait(false);
+                    verificationStage = "Laboratory equipment readiness";
+                    await CheckEquipmentReadinessAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical EM evidence";
                     await CheckHistoricalEmSnapshotIntegrityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical Water evidence";
@@ -885,6 +887,15 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'Water_PlanSignatures',N'WaterPlanID'),(N'Water_PlanSignatures',N'ActionType'),(N'Water_PlanSignatures',N'ActionReason'),
 (N'Water_PlanSignatures',N'SignedBy'),(N'Water_PlanSignatures',N'UserRole'),(N'Water_PlanSignatures',N'MeaningOfSignature'),
 (N'SampleTests',N'ResultValue'),(N'SampleTests',N'ResultStatus'),(N'SampleTests',N'LimitDescription'),
+-- Laboratory equipment / instrument readiness
+(N'LabEquipment',N'EquipmentID'),(N'LabEquipment',N'EquipmentCode'),(N'LabEquipment',N'EquipmentName'),
+(N'LabEquipment',N'EquipmentType'),(N'LabEquipment',N'EquipmentStatus'),(N'LabEquipment',N'QualificationStatus'),
+(N'LabEquipment',N'CalibrationRequired'),(N'LabEquipment',N'CalibrationStatus'),(N'LabEquipment',N'NextCalibrationDate'),
+(N'LabEquipment',N'NextQualificationDate'),(N'LabEquipment',N'IsActive'),(N'LabEquipment',N'RowVersion'),
+(N'LabEquipmentSignatures',N'SignatureID'),(N'LabEquipmentSignatures',N'EquipmentID'),
+(N'LabEquipmentSignatures',N'ActionType'),(N'LabEquipmentSignatures',N'MeaningOfSignature'),
+(N'LabEquipmentSignatures',N'ActionReason'),(N'LabEquipmentSignatures',N'OldStateJson'),
+(N'LabEquipmentSignatures',N'NewStateJson'),(N'LabEquipmentSignatures',N'SignedBy'),(N'LabEquipmentSignatures',N'SignedAt'),
 -- EM schedule snapshots / excursions / approved limit snapshots / signatures
 (N'EM_Schedules',N'ScheduleID'),(N'EM_Schedules',N'ApprovalStatus'),(N'EM_Schedules',N'ApprovedPointCount'),
 (N'EM_SchedulePointSnapshots',N'ScheduleID'),(N'EM_SchedulePointSnapshots',N'SnapshotSequence'),
@@ -1978,6 +1989,82 @@ ORDER BY expected.ProfileCode;" ).ConfigureAwait(false);
             }
         }
 
+
+        private async Task CheckEquipmentReadinessAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable rows = await _database.ExecuteQueryAsync(@"
+IF OBJECT_ID(N'dbo.LabEquipment',N'U') IS NULL
+BEGIN
+    SELECT CAST(NULL AS nvarchar(50)) AS EquipmentCode,
+           CAST(NULL AS nvarchar(200)) AS EquipmentName,
+           CAST(NULL AS nvarchar(30)) AS Readiness,
+           CAST(NULL AS nvarchar(500)) AS Details
+    WHERE 1=0;
+    RETURN;
+END;
+
+SELECT
+    EquipmentCode,
+    EquipmentName,
+    CASE
+        WHEN IsActive=0 OR EquipmentStatus<>N'Active' THEN N'BLOCKED'
+        WHEN QualificationStatus NOT IN(N'Qualified',N'Due Soon',N'Not Required') THEN N'BLOCKED'
+        WHEN NextQualificationDate IS NOT NULL AND NextQualificationDate<CAST(SYSDATETIME() AS date) THEN N'BLOCKED'
+        WHEN CalibrationRequired=1 AND CalibrationStatus NOT IN(N'Calibrated',N'Due Soon',N'Not Required') THEN N'BLOCKED'
+        WHEN CalibrationRequired=1 AND NextCalibrationDate IS NOT NULL AND NextCalibrationDate<CAST(SYSDATETIME() AS date) THEN N'BLOCKED'
+        ELSE N'DUE SOON'
+    END AS Readiness,
+    CASE
+        WHEN IsActive=0 OR EquipmentStatus<>N'Active' THEN N'Equipment status=' + ISNULL(EquipmentStatus,N'(blank)')
+        WHEN QualificationStatus NOT IN(N'Qualified',N'Due Soon',N'Not Required') THEN N'Qualification status=' + ISNULL(QualificationStatus,N'(blank)')
+        WHEN NextQualificationDate IS NOT NULL AND NextQualificationDate<CAST(SYSDATETIME() AS date) THEN N'Qualification expired ' + CONVERT(nvarchar(10),NextQualificationDate,23)
+        WHEN CalibrationRequired=1 AND CalibrationStatus NOT IN(N'Calibrated',N'Due Soon',N'Not Required') THEN N'Calibration status=' + ISNULL(CalibrationStatus,N'(blank)')
+        WHEN CalibrationRequired=1 AND NextCalibrationDate IS NOT NULL AND NextCalibrationDate<CAST(SYSDATETIME() AS date) THEN N'Calibration expired ' + CONVERT(nvarchar(10),NextCalibrationDate,23)
+        WHEN NextQualificationDate IS NOT NULL AND NextQualificationDate<=DATEADD(day,30,CAST(SYSDATETIME() AS date)) THEN N'Qualification due ' + CONVERT(nvarchar(10),NextQualificationDate,23)
+        WHEN CalibrationRequired=1 AND NextCalibrationDate IS NOT NULL AND NextCalibrationDate<=DATEADD(day,30,CAST(SYSDATETIME() AS date)) THEN N'Calibration due ' + CONVERT(nvarchar(10),NextCalibrationDate,23)
+        ELSE N'Controlled status requires review'
+    END AS Details
+FROM dbo.LabEquipment
+WHERE
+    IsActive=0
+    OR EquipmentStatus<>N'Active'
+    OR QualificationStatus NOT IN(N'Qualified',N'Due Soon',N'Not Required')
+    OR (NextQualificationDate IS NOT NULL AND NextQualificationDate<CAST(SYSDATETIME() AS date))
+    OR (CalibrationRequired=1 AND CalibrationStatus NOT IN(N'Calibrated',N'Due Soon',N'Not Required'))
+    OR (CalibrationRequired=1 AND NextCalibrationDate IS NOT NULL AND NextCalibrationDate<CAST(SYSDATETIME() AS date))
+    OR (NextQualificationDate IS NOT NULL
+        AND NextQualificationDate>=CAST(SYSDATETIME() AS date)
+        AND NextQualificationDate<=DATEADD(day,30,CAST(SYSDATETIME() AS date)))
+    OR (CalibrationRequired=1
+        AND NextCalibrationDate IS NOT NULL
+        AND NextCalibrationDate>=CAST(SYSDATETIME() AS date)
+        AND NextCalibrationDate<=DATEADD(day,30,CAST(SYSDATETIME() AS date)))
+ORDER BY CASE
+    WHEN IsActive=0 OR EquipmentStatus<>N'Active' THEN 0
+    WHEN QualificationStatus NOT IN(N'Qualified',N'Due Soon',N'Not Required') THEN 0
+    WHEN NextQualificationDate IS NOT NULL AND NextQualificationDate<CAST(SYSDATETIME() AS date) THEN 0
+    WHEN CalibrationRequired=1 AND CalibrationStatus NOT IN(N'Calibrated',N'Due Soon',N'Not Required') THEN 0
+    WHEN CalibrationRequired=1 AND NextCalibrationDate IS NOT NULL AND NextCalibrationDate<CAST(SYSDATETIME() AS date) THEN 0
+    ELSE 1 END,
+    EquipmentCode;").ConfigureAwait(false);
+
+            if (rows.Rows.Count == 0)
+            {
+                Add(checks, "Laboratory Resources", "PASS", "Equipment readiness",
+                    "No equipment master record is blocked or due within 30 days.");
+                return;
+            }
+
+            int blocked = rows.Rows.Cast<DataRow>()
+                .Count(row => string.Equals(Convert.ToString(row["Readiness"]), "BLOCKED", StringComparison.OrdinalIgnoreCase));
+            int dueSoon = rows.Rows.Count - blocked;
+            string details = string.Join(" | ", rows.Rows.Cast<DataRow>().Take(20).Select(row =>
+                $"{Convert.ToString(row["EquipmentCode"])} {Convert.ToString(row["EquipmentName"])}: {Convert.ToString(row["Details"])}"));
+
+            Add(checks, "Laboratory Resources", "WARNING", "Equipment readiness",
+                $"Blocked equipment={blocked}; due within 30 days={dueSoon}. " + details +
+                (rows.Rows.Count > 20 ? " | Additional records omitted from this summary." : string.Empty));
+        }
 
         private async Task CheckHistoricalEmSnapshotIntegrityAsync(List<SystemPreflightCheck> checks)
         {

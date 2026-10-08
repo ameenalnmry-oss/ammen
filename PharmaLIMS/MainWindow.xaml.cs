@@ -341,6 +341,12 @@ SELECT @Result;");
                                         Login.CanReviewResults ||
                                         Login.CanApproveResults;
 
+            BtnLabResources.IsEnabled = Login.CanRegisterSamples ||
+                                        Login.CanEnterResults ||
+                                        Login.CanReviewResults ||
+                                        Login.CanApproveResults ||
+                                        Login.CanManageSettings;
+
             BtnPRMSamples.IsEnabled = Login.CanRegisterSamples ||
                                       Login.CanEnterResults ||
                                       Login.CanReviewResults ||
@@ -1105,6 +1111,35 @@ SELECT @Result;");
             {
                 MessageBox.Show($"Error opening Culture Media Preparation: {Infrastructure.UserFacingError.SafeMessage(ex)}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnLabResources_Click(object sender, RoutedEventArgs e)
+        {
+            if (!BtnLabResources.IsEnabled)
+            {
+                MessageBox.Show(
+                    "Access denied. You do not have permission to access laboratory resources.",
+                    "Permission Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!EnsureRuntimeReadyForWorkflow("Laboratory Resources"))
+                return;
+
+            try
+            {
+                ShowWorkspaceWindow(() => GetService<LabResources>());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error opening Laboratory Resources: {Infrastructure.UserFacingError.SafeMessage(ex)}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
