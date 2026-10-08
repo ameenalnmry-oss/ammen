@@ -304,6 +304,8 @@ SELECT
                     await CheckEquipmentUsageTraceabilityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Equipment compatibility rules";
                     await CheckEquipmentCompatibilityRulesAsync(checks).ConfigureAwait(false);
+                    verificationStage = "Microbiology equipment operational-use matrix";
+                    await CheckEquipmentOperationalUsesAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical EM evidence";
                     await CheckHistoricalEmSnapshotIntegrityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical Water evidence";
@@ -911,6 +913,11 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'LabEquipmentCompatibilityRules',N'MatchKey'),(N'LabEquipmentCompatibilityRules',N'EquipmentType'),
 (N'LabEquipmentCompatibilityRules',N'RuleDescription'),(N'LabEquipmentCompatibilityRules',N'IsActive'),
 (N'LabEquipmentCompatibilityRules',N'CreatedBy'),(N'LabEquipmentCompatibilityRules',N'CreatedAt'),
+(N'LabEquipmentOperationalUses',N'OperationalUseID'),(N'LabEquipmentOperationalUses',N'EquipmentID'),
+(N'LabEquipmentOperationalUses',N'UseCategory'),(N'LabEquipmentOperationalUses',N'UseCode'),
+(N'LabEquipmentOperationalUses',N'UseDescription'),(N'LabEquipmentOperationalUses',N'EvidenceSource'),
+(N'LabEquipmentOperationalUses',N'SortOrder'),(N'LabEquipmentOperationalUses',N'IsActive'),
+(N'LabEquipmentOperationalUses',N'CreatedBy'),(N'LabEquipmentOperationalUses',N'CreatedAt'),
 -- EM schedule snapshots / excursions / approved limit snapshots / signatures
 (N'EM_Schedules',N'ScheduleID'),(N'EM_Schedules',N'ApprovalStatus'),(N'EM_Schedules',N'ApprovedPointCount'),
 (N'EM_SchedulePointSnapshots',N'ScheduleID'),(N'EM_SchedulePointSnapshots',N'SnapshotSequence'),
@@ -2190,6 +2197,20 @@ IF NOT EXISTS
 )
     INSERT @Findings VALUES(N'Missing active EM Active Air Sampling -> Air Sampler compatibility rule.');
 
+IF NOT EXISTS
+(
+    SELECT 1 FROM dbo.LabEquipmentCompatibilityRules
+    WHERE Module=N'WATER' AND MatchKey=N'TESTID:23' AND EquipmentType=N'Air Sampler' AND IsActive=1
+)
+    INSERT @Findings VALUES(N'Missing active Total Microbial Count (Air Sampler) -> Air Sampler compatibility rule.');
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM dbo.LabEquipmentCompatibilityRules
+    WHERE Module=N'WATER' AND MatchKey=N'TESTID:25' AND EquipmentType=N'Air Sampler' AND IsActive=1
+)
+    INSERT @Findings VALUES(N'Missing active Fungal Count (Air Sampler) -> Air Sampler compatibility rule.');
+
 INSERT @Findings(Details)
 SELECT N'Compatibility rule references unsupported module/key/type: ' +
        ISNULL(Module,N'(null)') + N' / ' + ISNULL(MatchKey,N'(null)') + N' / ' + ISNULL(EquipmentType,N'(null)')
@@ -2207,11 +2228,65 @@ SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
             if (findings.Rows.Count == 0)
             {
                 Add(checks, "Laboratory Resources", "PASS", "Equipment compatibility rules",
-                    "Controlled compatibility rules are present for Water pH, Water conductivity, and EM Active Air Sampling.");
+                    "Controlled direct-result compatibility rules are present for Water pH, Water conductivity, Air Sampler count tests, and EM Active Air Sampling.");
                 return;
             }
 
             Add(checks, "Laboratory Resources", "BLOCKER", "Equipment compatibility rules",
+                JoinDetails(findings));
+        }
+
+        private async Task CheckEquipmentOperationalUsesAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable findings = await _database.ExecuteQueryAsync(@"
+DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
+
+INSERT @Findings(Details)
+SELECT N'Imported microbiology equipment has no active operational-use mapping: ' +
+       e.EquipmentCode + N' ' + e.EquipmentName
+FROM dbo.LabEquipment e
+WHERE e.EquipmentCode LIKE N'MIC-EQ-%'
+  AND NOT EXISTS
+  (
+      SELECT 1
+      FROM dbo.LabEquipmentOperationalUses u
+      WHERE u.EquipmentID=e.EquipmentID
+        AND u.IsActive=1
+  );
+
+INSERT @Findings(Details)
+SELECT N'Operational-use record has blank controlled evidence: ' +
+       e.EquipmentCode + N' / ' + ISNULL(u.UseCode,N'(blank)')
+FROM dbo.LabEquipmentOperationalUses u
+JOIN dbo.LabEquipment e ON e.EquipmentID=u.EquipmentID
+WHERE u.IsActive=1
+  AND
+  (
+      NULLIF(LTRIM(RTRIM(u.UseCategory)),N'') IS NULL
+      OR NULLIF(LTRIM(RTRIM(u.UseCode)),N'') IS NULL
+      OR NULLIF(LTRIM(RTRIM(u.UseDescription)),N'') IS NULL
+      OR NULLIF(LTRIM(RTRIM(u.EvidenceSource)),N'') IS NULL
+  );
+
+IF EXISTS(SELECT 1 FROM dbo.LabEquipment WHERE EquipmentCode=N'MIC-EQ-015' AND EquipmentType<>N'Incubator 55C')
+    INSERT @Findings VALUES(N'MIC-EQ-015 incubator role is not normalized to Incubator 55C.');
+IF EXISTS(SELECT 1 FROM dbo.LabEquipment WHERE EquipmentCode=N'MIC-EQ-016' AND EquipmentType<>N'Incubator 40-45C')
+    INSERT @Findings VALUES(N'MIC-EQ-016 incubator role is not normalized to Incubator 40-45C.');
+IF EXISTS(SELECT 1 FROM dbo.LabEquipment WHERE EquipmentCode=N'MIC-EQ-017' AND EquipmentType<>N'Incubator 20-25C')
+    INSERT @Findings VALUES(N'MIC-EQ-017 incubator role is not normalized to Incubator 20-25C.');
+IF EXISTS(SELECT 1 FROM dbo.LabEquipment WHERE EquipmentCode=N'MIC-EQ-018' AND EquipmentType<>N'Incubator 30-35C')
+    INSERT @Findings VALUES(N'MIC-EQ-018 incubator role is not normalized to Incubator 30-35C.');
+
+SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
+
+            if (findings.Rows.Count == 0)
+            {
+                Add(checks, "Laboratory Resources", "PASS", "Microbiology equipment operational uses",
+                    "All imported microbiology equipment records have controlled operational-use mappings; incubator temperature roles are normalized.");
+                return;
+            }
+
+            Add(checks, "Laboratory Resources", "BLOCKER", "Microbiology equipment operational uses",
                 JoinDetails(findings));
         }
 

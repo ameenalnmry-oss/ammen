@@ -66,6 +66,7 @@ SELECT
     e.Notes,
     e.IsActive,
     e.RowVersion,
+    ISNULL(uses.ControlledUses,N'No controlled operational use mapped.') AS ControlledUses,
     CASE
         WHEN e.QualificationStatus = N'Not Required' THEN N'Not Required'
         WHEN e.NextQualificationDate IS NOT NULL AND e.NextQualificationDate < CAST(SYSDATETIME() AS date) THEN N'Expired'
@@ -94,6 +95,16 @@ SELECT
         ELSE N'AVAILABLE'
     END AS UseReadiness
 FROM dbo.LabEquipment e
+OUTER APPLY
+(
+    SELECT STRING_AGG(
+               CONVERT(nvarchar(max),u.UseCategory + N': ' + u.UseDescription),
+               NCHAR(10)
+           ) WITHIN GROUP (ORDER BY u.SortOrder,u.OperationalUseID) AS ControlledUses
+    FROM dbo.LabEquipmentOperationalUses u
+    WHERE u.EquipmentID=e.EquipmentID
+      AND u.IsActive=1
+) uses
 ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
 
                 _allEquipment.Clear();
@@ -151,7 +162,8 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
                 Contains(row.SerialNumber, term) ||
                 Contains(row.Location, term) ||
                 Contains(row.EquipmentStatus, term) ||
-                Contains(row.UseReadiness, term));
+                Contains(row.UseReadiness, term) ||
+                Contains(row.ControlledUses, term));
 
             GridEquipment.ItemsSource = null;
             GridEquipment.ItemsSource = filtered;
@@ -188,6 +200,7 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
             DpLastCalibration.SelectedDate = row.LastCalibrationDate;
             DpNextCalibration.SelectedDate = row.NextCalibrationDate;
             TxtMethodReference.Text = row.MethodReference;
+            TxtControlledUses.Text = row.ControlledUses;
             TxtNotes.Text = row.Notes;
         }
 
@@ -212,6 +225,7 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
             DpLastCalibration.SelectedDate = null;
             DpNextCalibration.SelectedDate = null;
             TxtMethodReference.Clear();
+            TxtControlledUses.Text = "Controlled operational uses are assigned by the approved equipment-use matrix.";
             TxtNotes.Clear();
             CboStatus.SelectedIndex = 0;
             CboQualification.SelectedIndex = 3;
@@ -561,6 +575,7 @@ VALUES
             public DateTime? NextCalibrationDate { get; init; }
             public string MethodReference { get; init; } = string.Empty;
             public string Notes { get; init; } = string.Empty;
+            public string ControlledUses { get; init; } = string.Empty;
             public string EffectiveQualificationStatus { get; init; } = string.Empty;
             public string EffectiveCalibrationStatus { get; init; } = string.Empty;
             public string UseReadiness { get; init; } = string.Empty;
@@ -588,6 +603,7 @@ VALUES
                 NextCalibrationDate = Date(row, "NextCalibrationDate"),
                 MethodReference = Text(row, "MethodReference"),
                 Notes = Text(row, "Notes"),
+                ControlledUses = Text(row, "ControlledUses"),
                 EffectiveQualificationStatus = Text(row, "EffectiveQualificationStatus"),
                 EffectiveCalibrationStatus = Text(row, "EffectiveCalibrationStatus"),
                 UseReadiness = Text(row, "UseReadiness"),
