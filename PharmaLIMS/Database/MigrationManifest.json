@@ -563,6 +563,12 @@
       "description": "Controlled test and method equipment-type compatibility rules",
       "file": "Migrations/20261008_003_Equipment_Test_Compatibility.sql",
       "sha256": "2b0cc5e4cc768bc5a58c8cfb175173788e5d78035861530a663609ebc4bc9904"
+    },
+    {
+      "versionKey": "20261008_004",
+      "description": "Controlled microbiology equipment operational-use matrix and incubator role normalization",
+      "file": "Migrations/20261008_004_Microbiology_Equipment_Operational_Uses.sql",
+      "sha256": "89c8e39c433d533c89d9af24ed0b64db0d163a5e11fbffa5ec6ad7cab32cd532"
     }
   ]
 }
