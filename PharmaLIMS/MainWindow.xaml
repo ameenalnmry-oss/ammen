@@ -171,6 +171,13 @@
                         </Grid>
                     </Button>
 
+                    <Button x:Name="BtnLabResources" Style="{StaticResource NavButton}" Click="BtnLabResources_Click">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="7" Background="#0F766E"><TextBlock Text="LR" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Lab Resources" FontWeight="SemiBold"/><TextBlock Text="Equipment and readiness" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
+                        </Grid>
+                    </Button>
+
                     <Button x:Name="BtnPRMSamples" Style="{StaticResource NavButton}" Click="BtnPRMSamples_Click">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <Border Width="30" Height="30" CornerRadius="7" Background="#475569"><TextBlock Text="PS" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>

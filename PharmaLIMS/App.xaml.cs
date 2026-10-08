@@ -61,6 +61,7 @@ namespace PharmaLIMS
                 services.AddTransient<AISystemReview>();
                 services.AddTransient<SystemPreflight>();
                 services.AddTransient<UserManagement>();
+                services.AddTransient<LabResources>();
                 services.AddTransient<ChangePassword>();
 
                 _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions

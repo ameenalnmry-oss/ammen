@@ -46,6 +46,8 @@ VALUES
     (N'PRM_TimingGovernanceMigrationState', N'TR_PRM_TimingGovernanceMigrationState_AppendOnly_20260906', N'timing governance migration state is append-only'),
     (N'PRM_TimingQELegacyLinkCorrections', N'TR_PRM_TimingQELegacyLinkCorrections_AppendOnly_20260906', N'Quality Event legacy-link correction history is append-only'),
     (N'WaterTestProfileSignatures', N'TRG_WaterTestProfileSignatures_AppendOnly', N'signature evidence is append-only'),
+    (N'LabEquipmentSignatures', N'TRG_LabEquipmentSignatures_AppendOnly', N'laboratory equipment signature evidence is append-only and cannot be updated or deleted'),
+    (N'LabEquipmentUsageHistory', N'TRG_LabEquipmentUsageHistory_AppendOnly', N'laboratory equipment usage history is append-only and cannot be updated or deleted'),
     (N'LegacyCertificateEvidenceReconciliations', N'TRG_LegacyCertificateEvidenceReconciliations_AppendOnly_20260908', N'reconciliation evidence is append-only');
 
 SELECT

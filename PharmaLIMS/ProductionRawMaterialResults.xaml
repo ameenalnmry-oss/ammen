@@ -365,6 +365,19 @@
                                 <DataGridTextColumn Header="Eligible At" Binding="{Binding EligibleAtText}" Width="1.25*" MinWidth="130" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Timing" Binding="{Binding TimingStatus}" Width="0.9*" MinWidth="90" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Interpretation" Binding="{Binding Interpretation}" Width="1.2*" MinWidth="120" IsReadOnly="True"/>
+                                <DataGridTemplateColumn Header="Equipment Used" Width="1.7*" MinWidth="220">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
+                                                      DisplayMemberPath="DisplayName"
+                                                      SelectedValuePath="EquipmentID"
+                                                      SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      MinWidth="205"
+                                                      IsTextSearchEnabled="True"
+                                                      ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="1.4*" MinWidth="130"/>
                             </DataGrid.Columns>
                         </DataGrid>
