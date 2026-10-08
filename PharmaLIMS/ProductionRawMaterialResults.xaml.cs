@@ -2518,7 +2518,8 @@ WHERE SampleID = @SampleID
                     LabEquipmentUsageService.PersistAssignmentInTransaction(
                         conn, tx, "PRM", _selectedSampleId, testId, equipmentId,
                         signature.SignedBy, signerRole, signature.Meaning, signature.Reason,
-                        TxtSampleNo?.Text ?? string.Empty);
+                        TxtSampleNo?.Text ?? string.Empty,
+                        "TESTNAME:" + (testName ?? string.Empty));
                 }
 
                 string interpretation = CalculateInterpretation(

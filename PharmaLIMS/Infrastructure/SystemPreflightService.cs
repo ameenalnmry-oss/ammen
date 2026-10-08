@@ -302,6 +302,8 @@ SELECT
                     await CheckEquipmentReadinessAsync(checks).ConfigureAwait(false);
                     verificationStage = "Laboratory equipment usage traceability";
                     await CheckEquipmentUsageTraceabilityAsync(checks).ConfigureAwait(false);
+                    verificationStage = "Equipment compatibility rules";
+                    await CheckEquipmentCompatibilityRulesAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical EM evidence";
                     await CheckHistoricalEmSnapshotIntegrityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical Water evidence";
@@ -905,6 +907,10 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'LabEquipmentUsageHistory',N'EquipmentCodeSnapshot'),(N'LabEquipmentUsageHistory',N'EquipmentNameSnapshot'),(N'LabEquipmentUsageHistory',N'EquipmentTypeSnapshot'),
 (N'LabEquipmentUsageHistory',N'ChangeType'),(N'LabEquipmentUsageHistory',N'MeaningOfSignature'),(N'LabEquipmentUsageHistory',N'ActionReason'),
 (N'LabEquipmentUsageHistory',N'SignedBy'),(N'LabEquipmentUsageHistory',N'SignedAt'),
+(N'LabEquipmentCompatibilityRules',N'RuleID'),(N'LabEquipmentCompatibilityRules',N'Module'),
+(N'LabEquipmentCompatibilityRules',N'MatchKey'),(N'LabEquipmentCompatibilityRules',N'EquipmentType'),
+(N'LabEquipmentCompatibilityRules',N'RuleDescription'),(N'LabEquipmentCompatibilityRules',N'IsActive'),
+(N'LabEquipmentCompatibilityRules',N'CreatedBy'),(N'LabEquipmentCompatibilityRules',N'CreatedAt'),
 -- EM schedule snapshots / excursions / approved limit snapshots / signatures
 (N'EM_Schedules',N'ScheduleID'),(N'EM_Schedules',N'ApprovalStatus'),(N'EM_Schedules',N'ApprovedPointCount'),
 (N'EM_SchedulePointSnapshots',N'ScheduleID'),(N'EM_SchedulePointSnapshots',N'SnapshotSequence'),
@@ -2155,6 +2161,57 @@ SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
             }
 
             Add(checks, "Laboratory Resources", "BLOCKER", "Equipment usage traceability",
+                JoinDetails(findings));
+        }
+
+        private async Task CheckEquipmentCompatibilityRulesAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable findings = await _database.ExecuteQueryAsync(@"
+DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM dbo.LabEquipmentCompatibilityRules
+    WHERE Module=N'WATER' AND MatchKey=N'TESTID:2' AND EquipmentType=N'pH Meter' AND IsActive=1
+)
+    INSERT @Findings VALUES(N'Missing active Water pH -> pH Meter compatibility rule.');
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM dbo.LabEquipmentCompatibilityRules
+    WHERE Module=N'WATER' AND MatchKey=N'TESTID:3' AND EquipmentType=N'Conductivity Meter' AND IsActive=1
+)
+    INSERT @Findings VALUES(N'Missing active Water conductivity -> Conductivity Meter compatibility rule.');
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM dbo.LabEquipmentCompatibilityRules
+    WHERE Module=N'EM' AND MatchKey=N'METHOD:ACTIVE AIR SAMPLING' AND EquipmentType=N'Air Sampler' AND IsActive=1
+)
+    INSERT @Findings VALUES(N'Missing active EM Active Air Sampling -> Air Sampler compatibility rule.');
+
+INSERT @Findings(Details)
+SELECT N'Compatibility rule references unsupported module/key/type: ' +
+       ISNULL(Module,N'(null)') + N' / ' + ISNULL(MatchKey,N'(null)') + N' / ' + ISNULL(EquipmentType,N'(null)')
+FROM dbo.LabEquipmentCompatibilityRules
+WHERE IsActive=1
+  AND
+  (
+      NULLIF(LTRIM(RTRIM(Module)),N'') IS NULL
+      OR NULLIF(LTRIM(RTRIM(MatchKey)),N'') IS NULL
+      OR NULLIF(LTRIM(RTRIM(EquipmentType)),N'') IS NULL
+  );
+
+SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
+
+            if (findings.Rows.Count == 0)
+            {
+                Add(checks, "Laboratory Resources", "PASS", "Equipment compatibility rules",
+                    "Controlled compatibility rules are present for Water pH, Water conductivity, and EM Active Air Sampling.");
+                return;
+            }
+
+            Add(checks, "Laboratory Resources", "BLOCKER", "Equipment compatibility rules",
                 JoinDetails(findings));
         }
 

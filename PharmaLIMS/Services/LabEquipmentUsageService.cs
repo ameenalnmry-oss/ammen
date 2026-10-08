@@ -114,12 +114,15 @@ WHERE Module=@Module AND ParentRecordID=@ParentRecordID;",
             string userRole,
             string meaning,
             string reason,
-            string recordReference)
+            string recordReference,
+            string compatibilityKey)
         {
             if (parentRecordId <= 0 || resultRecordId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(resultRecordId));
             if (string.IsNullOrWhiteSpace(module))
                 throw new ArgumentException("Equipment usage module is required.", nameof(module));
+            string normalizedModule = module.Trim().ToUpperInvariant();
+            string normalizedCompatibilityKey = (compatibilityKey ?? string.Empty).Trim().ToUpperInvariant();
 
             int? currentEquipmentId = null;
             using (var current = new SqlCommand(@"
@@ -127,7 +130,7 @@ SELECT EquipmentID
 FROM dbo.LabEquipmentUsage WITH (UPDLOCK,HOLDLOCK)
 WHERE Module=@Module AND ResultRecordID=@ResultRecordID;", connection, transaction))
             {
-                current.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = module.Trim().ToUpperInvariant();
+                current.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = normalizedModule;
                 current.Parameters.Add("@ResultRecordID", SqlDbType.Int).Value = resultRecordId;
                 object? value = current.ExecuteScalar();
                 if (value != null && value != DBNull.Value)
@@ -189,6 +192,42 @@ WHERE EquipmentID=@EquipmentID;", connection, transaction);
                         "Selected equipment is not available for controlled use. " +
                         "Refresh the record and choose an Active, qualified, and in-calibration device.");
                 }
+
+                if (!string.IsNullOrWhiteSpace(normalizedCompatibilityKey))
+                {
+                    using var compatibility = new SqlCommand(@"
+DECLARE @RuleCount int=
+(
+    SELECT COUNT(1)
+    FROM dbo.LabEquipmentCompatibilityRules WITH (UPDLOCK,HOLDLOCK)
+    WHERE Module=@Module
+      AND MatchKey=@MatchKey
+      AND IsActive=1
+);
+SELECT CASE
+    WHEN @RuleCount=0 THEN 1
+    WHEN EXISTS
+    (
+        SELECT 1
+        FROM dbo.LabEquipmentCompatibilityRules WITH (UPDLOCK,HOLDLOCK)
+        WHERE Module=@Module
+          AND MatchKey=@MatchKey
+          AND IsActive=1
+          AND EquipmentType=@EquipmentType
+    ) THEN 1
+    ELSE 0
+END;", connection, transaction);
+                    compatibility.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = normalizedModule;
+                    compatibility.Parameters.Add("@MatchKey", SqlDbType.NVarChar, 220).Value = normalizedCompatibilityKey;
+                    compatibility.Parameters.Add("@EquipmentType", SqlDbType.NVarChar, 100).Value = equipmentType;
+                    bool compatible = Convert.ToInt32(compatibility.ExecuteScalar(), CultureInfo.InvariantCulture) == 1;
+                    if (!compatible)
+                    {
+                        throw new InvalidOperationException(
+                            "Selected equipment type '" + equipmentType +
+                            "' is not approved for this test/method. Choose a compatible controlled instrument.");
+                    }
+                }
             }
 
             if (currentEquipmentId == equipmentId)
@@ -207,7 +246,7 @@ WHEN NOT MATCHED THEN
   INSERT(Module,ParentRecordID,ResultRecordID,EquipmentID,AssignedBy,AssignedAt)
   VALUES(@Module,@ParentRecordID,@ResultRecordID,@EquipmentID,@AssignedBy,SYSUTCDATETIME());",
                     connection, transaction);
-                upsert.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = module.Trim().ToUpperInvariant();
+                upsert.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = normalizedModule;
                 upsert.Parameters.Add("@ParentRecordID", SqlDbType.Int).Value = parentRecordId;
                 upsert.Parameters.Add("@ResultRecordID", SqlDbType.Int).Value = resultRecordId;
                 upsert.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = equipmentId.Value;
@@ -219,7 +258,7 @@ WHEN NOT MATCHED THEN
                 using var clear = new SqlCommand(@"
 DELETE dbo.LabEquipmentUsage
 WHERE Module=@Module AND ResultRecordID=@ResultRecordID;", connection, transaction);
-                clear.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = module.Trim().ToUpperInvariant();
+                clear.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = normalizedModule;
                 clear.Parameters.Add("@ResultRecordID", SqlDbType.Int).Value = resultRecordId;
                 clear.ExecuteNonQuery();
             }
@@ -239,7 +278,7 @@ VALUES
  @ChangeType,@Meaning,@Reason,@SignedBy,@UserRole,SYSUTCDATETIME(),@Workstation);",
                 connection, transaction))
             {
-                history.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = module.Trim().ToUpperInvariant();
+                history.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = normalizedModule;
                 history.Parameters.Add("@ParentRecordID", SqlDbType.Int).Value = parentRecordId;
                 history.Parameters.Add("@ResultRecordID", SqlDbType.Int).Value = resultRecordId;
                 history.Parameters.Add("@PreviousEquipmentID", SqlDbType.Int).Value =
@@ -286,7 +325,7 @@ VALUES
                 "EquipmentID",
                 null,
                 recordReference,
-                module.Trim().ToUpperInvariant());
+                normalizedModule);
         }
     }
 }

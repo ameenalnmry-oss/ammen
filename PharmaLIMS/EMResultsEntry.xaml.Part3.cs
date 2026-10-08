@@ -140,7 +140,8 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                 {
                     LabEquipmentUsageService.PersistAssignmentInTransaction(
                         connection, transaction, "EM", currentEventId, item.PlateId, item.EquipmentID,
-                        signature.SignedBy, signerRole, signature.Meaning, signature.Reason, currentEventNo);
+                        signature.SignedBy, signerRole, signature.Meaning, signature.Reason, currentEventNo,
+                        "METHOD:" + (item.Method ?? string.Empty));
                 }
 
                 bool unchanged = EmResultCalculator.ReadStoredCount(source["TotalCount"]) == item.TotalCount &&
