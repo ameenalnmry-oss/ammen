@@ -2126,7 +2126,8 @@ WHERE st.SampleID=@SampleID
                         LabEquipmentUsageService.PersistAssignmentInTransaction(
                             con, tran, "WATER", currentSampleId, item.SampleTestID, item.EquipmentID,
                             signatureWindow.SignedBy, signerRole, signatureWindow.Meaning, signatureWindow.Reason,
-                            GetSignatureRecordNumber());
+                            GetSignatureRecordNumber(),
+                            "TESTID:" + item.TestID.ToString(CultureInfo.InvariantCulture));
                     }
 
                     (completedTests, passedTests, alertTests, oosTests, pendingCount) = ReadWaterSummary(con, tran);
