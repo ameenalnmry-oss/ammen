@@ -401,19 +401,13 @@
                                     BorderBrush="#CBD5E1"
                                     BorderThickness="1"
                                     CornerRadius="8">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasStructuredLes}" Value="False">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-
+                                <Border.Resources>
+                                    <BooleanToVisibilityConverter x:Key="WaterLesVisibility"/>
+                                </Border.Resources>
                                 <Grid>
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
@@ -425,18 +419,20 @@
                                     </Grid.ColumnDefinitions>
 
                                     <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,10">
-                                        <TextBlock Text="LES Execution Evidence"
+                                        <TextBlock Text="Water Resources | LES Execution Evidence"
                                                    FontWeight="Bold"
                                                    FontSize="13"
                                                    Foreground="#0F172A"/>
                                         <TextBlock Text="{Binding LesGuidance}"
+                                                   Visibility="{Binding HasStructuredLes, Converter={StaticResource WaterLesVisibility}}"
                                                    Margin="0,4,0,0"
                                                    TextWrapping="Wrap"
                                                    Foreground="#475569"
                                                    FontSize="11"/>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8">
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"
+                                                Visibility="{Binding HasStructuredLes, Converter={StaticResource WaterLesVisibility}}">
                                         <TextBlock Text="Procedure Reference" FontSize="11" Foreground="#64748B"/>
                                         <TextBox Text="{Binding LesProcedureReference}"
                                                  Height="30"
@@ -444,33 +440,53 @@
                                                  Background="#F1F5F9"/>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8">
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"
+                                                Visibility="{Binding HasStructuredLes, Converter={StaticResource WaterLesVisibility}}">
                                         <TextBlock Text="Sample Temperature (C)" FontSize="11" Foreground="#64748B"/>
                                         <TextBox Text="{Binding LesSampleTemperatureC, UpdateSourceTrigger=PropertyChanged}"
                                                  Height="30"
                                                  ToolTip="Required for conductivity. Enter decimal values using '.'."/>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,8">
+                                    <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,8"
+                                                Visibility="{Binding HasStructuredLes, Converter={StaticResource WaterLesVisibility}}">
                                         <TextBlock Text="Calibration / Verification Reference" FontSize="11" Foreground="#64748B"/>
                                         <TextBox Text="{Binding LesVerificationReference, UpdateSourceTrigger=PropertyChanged}"
                                                  Height="30"/>
                                     </StackPanel>
 
                                     <CheckBox Grid.Row="2"
+                                              Visibility="{Binding HasStructuredLes, Converter={StaticResource WaterLesVisibility}}"
                                               Grid.Column="0"
                                               Margin="0,4,12,0"
                                               Content="Instrument verification confirmed"
                                               IsChecked="{Binding LesVerificationConfirmed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               VerticalAlignment="Top"/>
 
-                                    <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                                Visibility="{Binding HasStructuredLes, Converter={StaticResource WaterLesVisibility}}">
                                         <TextBlock Text="Execution Remarks" FontSize="11" Foreground="#64748B"/>
                                         <TextBox Text="{Binding LesExecutionRemarks, UpdateSourceTrigger=PropertyChanged}"
                                                  Height="50"
                                                  AcceptsReturn="True"
                                                  TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,8,12,0">
+                                        <TextBlock Text="Supporting equipment codes (comma separated)" FontSize="11"/>
+                                        <TextBox Text="{Binding SupportingEquipmentCodes, UpdateSourceTrigger=PropertyChanged}" Height="30"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,8,12,0">
+                                        <TextBlock Text="Test kit identification" FontSize="11"/>
+                                        <TextBox Text="{Binding TestKitCode, UpdateSourceTrigger=PropertyChanged}" Height="30"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,8,0,0">
+                                        <TextBlock Text="Test kit lot" FontSize="11"/>
+                                        <TextBox Text="{Binding TestKitLot, UpdateSourceTrigger=PropertyChanged}" Height="30"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,8,12,0">
+                                        <TextBlock Text="Test kit expiry" FontSize="11"/>
+                                        <DatePicker SelectedDate="{Binding TestKitExpiry, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="30"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -529,13 +545,13 @@
                                                 MinWidth="230">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
+                                    <ComboBox ItemsSource="{Binding EquipmentChoices}"
                                               DisplayMemberPath="DisplayName"
                                               SelectedValuePath="EquipmentID"
                                               SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               MinWidth="215"
                                               IsTextSearchEnabled="True"
-                                              ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
+                                              ToolTip="Choose the approved primary instrument; supporting devices and kits are captured in the row details."/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

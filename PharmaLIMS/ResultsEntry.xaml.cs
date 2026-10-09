@@ -39,7 +39,7 @@ namespace PharmaLIMS
         private string _legacyCertificateNumber = "";
         private string _legacyReissueReason = "";
 
-        public class ResultItem
+        public partial class ResultItem
         {
             public int SampleTestID { get; set; }
             public int TestID { get; set; }
@@ -52,6 +52,7 @@ namespace PharmaLIMS
             public string PassFail { get; set; } = "";
             public string Remarks { get; set; } = "";
             public int? EquipmentID { get; set; }
+            public IReadOnlyList<LabEquipmentChoice> EquipmentChoices { get; set; } = Array.Empty<LabEquipmentChoice>();
             public bool HasStructuredLes { get; set; }
             public string LesProcedureReference { get; set; } = "";
             public string LesGuidance { get; set; } = "";
@@ -1921,6 +1922,8 @@ WHERE st.SampleID=@SampleID
                     LabEquipmentUsageService.LoadCurrentAssignments(_equipmentDatabase, "WATER", sampleId);
                 Dictionary<int, WaterLesExecutionSnapshot> lesSnapshots =
                     WaterLesExecutionService.LoadLatest(_equipmentDatabase, sampleId);
+                Dictionary<int, WaterResourceSnapshot> resourceSnapshots =
+                    WaterResourceEvidenceService.LoadLatest(_equipmentDatabase, sampleId);
 
                 foreach (DataRow row in dt.Rows)
                 {
@@ -1935,6 +1938,8 @@ WHERE st.SampleID=@SampleID
                     if (equipmentAssignments.TryGetValue(item.SampleTestID, out int? assignedEquipment))
                         item.EquipmentID = assignedEquipment;
 
+                    PopulateResourceEvidence(item, resourceSnapshots);
+                    item.EquipmentChoices = WaterTestResourcePolicy.FilterEquipment(item.TestName, AvailableEquipmentChoices);
                     PopulateLesExecutionFields(item, lesSnapshots);
 
                     resultItems.Add(item);
@@ -2063,7 +2068,7 @@ WHERE st.SampleID=@SampleID
                     return;
                 }
 
-                if (!item.EquipmentID.HasValue)
+                if (!WaterResourceSelectionValid(item))
                 {
                     MessageBox.Show(
                         "Select the laboratory equipment / instrument used for test: " + item.TestName +
@@ -2142,6 +2147,12 @@ WHERE st.SampleID=@SampleID
                             signatureWindow.SignedBy, signerRole, signatureWindow.Meaning, signatureWindow.Reason,
                             GetSignatureRecordNumber(),
                             "TESTID:" + item.TestID.ToString(CultureInfo.InvariantCulture));
+
+                        WaterResourceEvidenceService.Append(con, tran, currentSampleId,
+                            item.SampleTestID, item.TestID, item.TestName, item.ResultValue,
+                            item.EquipmentID, item.SupportingEquipmentCodes,
+                            item.TestKitCode, item.TestKitLot, item.TestKitExpiry,
+                            signatureWindow.SignedBy, AvailableEquipmentChoices.ToList());
 
                         AppendLesExecutionEvidenceInTransaction(
                             con,
