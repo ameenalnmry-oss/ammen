@@ -569,6 +569,12 @@
       "description": "Controlled microbiology equipment operational-use matrix and incubator role normalization",
       "file": "Migrations/20261008_004_Microbiology_Equipment_Operational_Uses.sql",
       "sha256": "89c8e39c433d533c89d9af24ed0b64db0d163a5e11fbffa5ec6ad7cab32cd532"
+    },
+    {
+      "versionKey": "20261009_001",
+      "description": "Append-only Water LES execution evidence for structured pH and conductivity execution",
+      "file": "Migrations/20261009_001_Water_LES_Execution_Evidence.sql",
+      "sha256": "3c722b66e625faa0a9f5cd48ef085944fba71c25f762c203c1ea306f2176635b"
     }
   ]
 }

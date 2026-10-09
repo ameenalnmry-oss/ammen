@@ -52,6 +52,13 @@ namespace PharmaLIMS
             public string PassFail { get; set; } = "";
             public string Remarks { get; set; } = "";
             public int? EquipmentID { get; set; }
+            public bool HasStructuredLes { get; set; }
+            public string LesProcedureReference { get; set; } = "";
+            public string LesGuidance { get; set; } = "";
+            public string LesSampleTemperatureC { get; set; } = "";
+            public string LesVerificationReference { get; set; } = "";
+            public bool LesVerificationConfirmed { get; set; }
+            public string LesExecutionRemarks { get; set; } = "";
         }
 
         private sealed class WaterTimestampSnapshot
@@ -1912,6 +1919,8 @@ WHERE st.SampleID=@SampleID
                 ReloadAvailableEquipmentChoices();
                 Dictionary<int, int?> equipmentAssignments =
                     LabEquipmentUsageService.LoadCurrentAssignments(_equipmentDatabase, "WATER", sampleId);
+                Dictionary<int, WaterLesExecutionSnapshot> lesSnapshots =
+                    WaterLesExecutionService.LoadLatest(_equipmentDatabase, sampleId);
 
                 foreach (DataRow row in dt.Rows)
                 {
@@ -1925,6 +1934,8 @@ WHERE st.SampleID=@SampleID
                     item.PassFail = CalculatePassFail(item);
                     if (equipmentAssignments.TryGetValue(item.SampleTestID, out int? assignedEquipment))
                         item.EquipmentID = assignedEquipment;
+
+                    PopulateLesExecutionFields(item, lesSnapshots);
 
                     resultItems.Add(item);
                     _loadedWaterDisplayValues[item.SampleTestID] = item.ResultValue ?? "";
@@ -2063,6 +2074,9 @@ WHERE st.SampleID=@SampleID
                     return;
                 }
 
+                if (!ValidateLesExecutionBeforeSave(item))
+                    return;
+
                 if ((item.PassFail == "ALERT" || item.PassFail == "OOS") &&
                     string.IsNullOrWhiteSpace(item.Remarks))
                 {
@@ -2128,6 +2142,15 @@ WHERE st.SampleID=@SampleID
                             signatureWindow.SignedBy, signerRole, signatureWindow.Meaning, signatureWindow.Reason,
                             GetSignatureRecordNumber(),
                             "TESTID:" + item.TestID.ToString(CultureInfo.InvariantCulture));
+
+                        AppendLesExecutionEvidenceInTransaction(
+                            con,
+                            tran,
+                            item,
+                            signatureWindow.SignedBy,
+                            signerRole,
+                            signatureWindow.Meaning,
+                            signatureWindow.Reason);
                     }
 
                     (completedTests, passedTests, alertTests, oosTests, pendingCount) = ReadWaterSummary(con, tran);
