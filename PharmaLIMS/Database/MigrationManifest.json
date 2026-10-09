@@ -575,6 +575,12 @@
       "description": "Append-only Water LES execution evidence for structured pH and conductivity execution",
       "file": "Migrations/20261009_001_Water_LES_Execution_Evidence.sql",
       "sha256": "3c722b66e625faa0a9f5cd48ef085944fba71c25f762c203c1ea306f2176635b"
+    },
+    {
+      "versionKey": "20261009_002",
+      "description": "Append-only controlled Water equipment and test kit resource evidence",
+      "file": "Migrations/20261009_002_Water_Resources_Traceability.sql",
+      "sha256": "4f246f168f8ce835f7eb83f4d0969049b7540783c65a7c7c3f7ea235cfa7bde8"
     }
   ]
 }
