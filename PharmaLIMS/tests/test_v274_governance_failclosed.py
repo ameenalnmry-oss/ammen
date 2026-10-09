@@ -101,6 +101,7 @@ class V274GovernanceFailClosedTests(unittest.TestCase):
     def test_development_example_is_portable(self):
         config = json.loads((ROOT / "appsettings.Development.example.json").read_text(encoding="utf-8-sig"))
         self.assertEqual(r".\SQLEXPRESS", config["Database"]["Server"])
+        self.assertEqual("PharmaLIMS_UAT_20261001", config["Database"]["Database"])
         self.assertNotIn("Ameen", config["Database"]["Server"])
 
     def test_current_version_and_migration_count(self):
