@@ -540,7 +540,10 @@ class ReleaseControlsTests(unittest.TestCase):
         migration = (ROOT / "Database/Migrations/20261009_001_Water_LES_Execution_Evidence.sql").read_text(encoding="utf-8-sig")
         service = (ROOT / "Services/WaterLesExecutionService.cs").read_text(encoding="utf-8-sig")
         water_xaml = (ROOT / "ResultsEntry.xaml").read_text(encoding="utf-8-sig")
-        water_code = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig")
+        water_code = (
+            (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig")
+            + (ROOT / "ResultsEntry.xaml.Part5.cs").read_text(encoding="utf-8-sig")
+        )
         preflight = (ROOT / "Infrastructure/SystemPreflightService.cs").read_text(encoding="utf-8-sig")
         compliance = (ROOT / "Infrastructure/ComplianceRecordProtectionContract.cs").read_text(encoding="utf-8-sig")
         manifest = json.loads((ROOT / "Database/MigrationManifest.json").read_text(encoding="utf-8-sig"))

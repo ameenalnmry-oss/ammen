@@ -1935,18 +1935,7 @@ WHERE st.SampleID=@SampleID
                     if (equipmentAssignments.TryGetValue(item.SampleTestID, out int? assignedEquipment))
                         item.EquipmentID = assignedEquipment;
 
-                    item.HasStructuredLes = WaterLesExecutionService.IsStructuredLesTest(item.TestID);
-                    item.LesProcedureReference = WaterLesExecutionService.GetProcedureReference(item.TestID);
-                    item.LesGuidance = WaterLesExecutionService.GetGuidance(item.TestID);
-                    if (lesSnapshots.TryGetValue(item.SampleTestID, out WaterLesExecutionSnapshot les))
-                    {
-                        item.LesSampleTemperatureC = les.SampleTemperatureC.HasValue
-                            ? les.SampleTemperatureC.Value.ToString("0.##", CultureInfo.InvariantCulture)
-                            : "";
-                        item.LesVerificationReference = les.VerificationReference;
-                        item.LesVerificationConfirmed = les.VerificationConfirmed;
-                        item.LesExecutionRemarks = les.ExecutionRemarks;
-                    }
+                    PopulateLesExecutionFields(item, lesSnapshots);
 
                     resultItems.Add(item);
                     _loadedWaterDisplayValues[item.SampleTestID] = item.ResultValue ?? "";
@@ -2085,25 +2074,8 @@ WHERE st.SampleID=@SampleID
                     return;
                 }
 
-                try
-                {
-                    WaterLesExecutionService.ValidateForSave(
-                        item.TestID,
-                        item.TestName,
-                        item.ResultValue,
-                        item.LesSampleTemperatureC,
-                        item.LesVerificationReference,
-                        item.LesVerificationConfirmed);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    MessageBox.Show(
-                        ex.Message,
-                        "LES Execution Evidence",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                if (!ValidateLesExecutionBeforeSave(item))
                     return;
-                }
 
                 if ((item.PassFail == "ALERT" || item.PassFail == "OOS") &&
                     string.IsNullOrWhiteSpace(item.Remarks))
@@ -2171,18 +2143,10 @@ WHERE st.SampleID=@SampleID
                             GetSignatureRecordNumber(),
                             "TESTID:" + item.TestID.ToString(CultureInfo.InvariantCulture));
 
-                        WaterLesExecutionService.AppendEvidenceInTransaction(
+                        AppendLesExecutionEvidenceInTransaction(
                             con,
                             tran,
-                            currentSampleId,
-                            item.SampleTestID,
-                            item.TestID,
-                            item.ResultValue,
-                            item.EquipmentID.Value,
-                            item.LesSampleTemperatureC,
-                            item.LesVerificationReference,
-                            item.LesVerificationConfirmed,
-                            item.LesExecutionRemarks,
+                            item,
                             signatureWindow.SignedBy,
                             signerRole,
                             signatureWindow.Meaning,
