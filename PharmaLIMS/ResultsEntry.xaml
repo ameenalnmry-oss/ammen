@@ -390,7 +390,92 @@
                           BorderBrush="#E2E8F0"
                           BorderThickness="1"
                           HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Auto">
+                          VerticalScrollBarVisibility="Auto"
+                          RowDetailsVisibilityMode="VisibleWhenSelected">
+
+                    <DataGrid.RowDetailsTemplate>
+                        <DataTemplate>
+                            <Border Margin="10,4,10,10"
+                                    Padding="12"
+                                    Background="#F8FAFC"
+                                    BorderBrush="#CBD5E1"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasStructuredLes}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.1*"/>
+                                        <ColumnDefinition Width="1.2*"/>
+                                        <ColumnDefinition Width="1.5*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,10">
+                                        <TextBlock Text="LES Execution Evidence"
+                                                   FontWeight="Bold"
+                                                   FontSize="13"
+                                                   Foreground="#0F172A"/>
+                                        <TextBlock Text="{Binding LesGuidance}"
+                                                   Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="#475569"
+                                                   FontSize="11"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8">
+                                        <TextBlock Text="Procedure Reference" FontSize="11" Foreground="#64748B"/>
+                                        <TextBox Text="{Binding LesProcedureReference}"
+                                                 Height="30"
+                                                 IsReadOnly="True"
+                                                 Background="#F1F5F9"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8">
+                                        <TextBlock Text="Sample Temperature (C)" FontSize="11" Foreground="#64748B"/>
+                                        <TextBox Text="{Binding LesSampleTemperatureC, UpdateSourceTrigger=PropertyChanged}"
+                                                 Height="30"
+                                                 ToolTip="Required for conductivity. Enter decimal values using '.'."/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,8">
+                                        <TextBlock Text="Calibration / Verification Reference" FontSize="11" Foreground="#64748B"/>
+                                        <TextBox Text="{Binding LesVerificationReference, UpdateSourceTrigger=PropertyChanged}"
+                                                 Height="30"/>
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Row="2"
+                                              Grid.Column="0"
+                                              Margin="0,4,12,0"
+                                              Content="Instrument verification confirmed"
+                                              IsChecked="{Binding LesVerificationConfirmed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              VerticalAlignment="Top"/>
+
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+                                        <TextBlock Text="Execution Remarks" FontSize="11" Foreground="#64748B"/>
+                                        <TextBox Text="{Binding LesExecutionRemarks, UpdateSourceTrigger=PropertyChanged}"
+                                                 Height="50"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 VerticalScrollBarVisibility="Auto"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </DataGrid.RowDetailsTemplate>
 
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Test Name"

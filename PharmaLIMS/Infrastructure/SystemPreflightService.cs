@@ -306,6 +306,8 @@ SELECT
                     await CheckEquipmentCompatibilityRulesAsync(checks).ConfigureAwait(false);
                     verificationStage = "Microbiology equipment operational-use matrix";
                     await CheckEquipmentOperationalUsesAsync(checks).ConfigureAwait(false);
+                    verificationStage = "Water LES execution evidence";
+                    await CheckWaterLesExecutionEvidenceAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical EM evidence";
                     await CheckHistoricalEmSnapshotIntegrityAsync(checks).ConfigureAwait(false);
                     verificationStage = "Historical Water evidence";
@@ -918,6 +920,16 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'LabEquipmentOperationalUses',N'UseDescription'),(N'LabEquipmentOperationalUses',N'EvidenceSource'),
 (N'LabEquipmentOperationalUses',N'SortOrder'),(N'LabEquipmentOperationalUses',N'IsActive'),
 (N'LabEquipmentOperationalUses',N'CreatedBy'),(N'LabEquipmentOperationalUses',N'CreatedAt'),
+(N'WaterResultExecutionEvidence',N'EvidenceID'),(N'WaterResultExecutionEvidence',N'SampleID'),
+(N'WaterResultExecutionEvidence',N'SampleTestID'),(N'WaterResultExecutionEvidence',N'TestID'),
+(N'WaterResultExecutionEvidence',N'ProcedureReference'),(N'WaterResultExecutionEvidence',N'MethodGuidanceSnapshot'),
+(N'WaterResultExecutionEvidence',N'SampleTemperatureC'),(N'WaterResultExecutionEvidence',N'VerificationReference'),
+(N'WaterResultExecutionEvidence',N'VerificationConfirmed'),(N'WaterResultExecutionEvidence',N'ExecutionRemarks'),
+(N'WaterResultExecutionEvidence',N'RawResultSnapshot'),(N'WaterResultExecutionEvidence',N'EquipmentID'),
+(N'WaterResultExecutionEvidence',N'EquipmentCodeSnapshot'),(N'WaterResultExecutionEvidence',N'EquipmentNameSnapshot'),
+(N'WaterResultExecutionEvidence',N'EquipmentTypeSnapshot'),(N'WaterResultExecutionEvidence',N'SignedBy'),
+(N'WaterResultExecutionEvidence',N'MeaningOfSignature'),(N'WaterResultExecutionEvidence',N'ActionReason'),
+(N'WaterResultExecutionEvidence',N'SignedAt'),
 -- EM schedule snapshots / excursions / approved limit snapshots / signatures
 (N'EM_Schedules',N'ScheduleID'),(N'EM_Schedules',N'ApprovalStatus'),(N'EM_Schedules',N'ApprovedPointCount'),
 (N'EM_SchedulePointSnapshots',N'ScheduleID'),(N'EM_SchedulePointSnapshots',N'SnapshotSequence'),
@@ -2287,6 +2299,78 @@ SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
             }
 
             Add(checks, "Laboratory Resources", "BLOCKER", "Microbiology equipment operational uses",
+                JoinDetails(findings));
+        }
+
+        private async Task CheckWaterLesExecutionEvidenceAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable findings = await _database.ExecuteQueryAsync(@"
+DECLARE @Cutover datetime2(0)=
+(
+    SELECT TOP(1) AppliedAt
+    FROM dbo.LIMS_SchemaVersions
+    WHERE VersionKey=N'20261009_001'
+    ORDER BY AppliedAt DESC
+);
+
+DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
+
+IF @Cutover IS NOT NULL
+BEGIN
+    INSERT @Findings(Details)
+    SELECT N'Water SampleTestID ' + CONVERT(nvarchar(20),st.SampleTestID) +
+           N' (' + ISNULL(st.TestNameSnapshot,N'Unknown test') +
+           N') has a post-LES-cutover result without signed execution evidence.'
+    FROM dbo.SampleTests st
+    WHERE st.TestID IN(2,3)
+      AND st.ResultEnteredDate>=@Cutover
+      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue,N''))),N'') IS NOT NULL
+      AND NOT EXISTS
+      (
+          SELECT 1
+          FROM dbo.WaterResultExecutionEvidence e
+          WHERE e.SampleTestID=st.SampleTestID
+            AND e.SampleID=st.SampleID
+            AND e.TestID=st.TestID
+            AND NULLIF(LTRIM(RTRIM(e.ProcedureReference)),N'') IS NOT NULL
+            AND NULLIF(LTRIM(RTRIM(e.VerificationReference)),N'') IS NOT NULL
+            AND e.VerificationConfirmed=1
+            AND NULLIF(LTRIM(RTRIM(e.SignedBy)),N'') IS NOT NULL
+            AND NULLIF(LTRIM(RTRIM(e.MeaningOfSignature)),N'') IS NOT NULL
+            AND NULLIF(LTRIM(RTRIM(e.ActionReason)),N'') IS NOT NULL
+      );
+
+    INSERT @Findings(Details)
+    SELECT N'Conductivity LES evidence ' + CONVERT(nvarchar(20),e.EvidenceID) +
+           N' has sample temperature outside 25 C +/- 1 C or no temperature.'
+    FROM dbo.WaterResultExecutionEvidence e
+    WHERE e.TestID=3
+      AND (e.SampleTemperatureC IS NULL OR e.SampleTemperatureC<24 OR e.SampleTemperatureC>26);
+
+    INSERT @Findings(Details)
+    SELECT N'Water LES evidence ' + CONVERT(nvarchar(20),e.EvidenceID) +
+           N' is not tied to the same controlled equipment assignment as the result.'
+    FROM dbo.WaterResultExecutionEvidence e
+    WHERE NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.LabEquipmentUsage u
+        WHERE u.Module=N'WATER'
+          AND u.ResultRecordID=e.SampleTestID
+          AND u.EquipmentID=e.EquipmentID
+    );
+END;
+
+SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
+
+            if (findings.Rows.Count == 0)
+            {
+                Add(checks, "Water / Results", "PASS", "LES execution evidence",
+                    "Post-cutover structured pH and conductivity results have signed LES evidence linked to the controlled equipment assignment.");
+                return;
+            }
+
+            Add(checks, "Water / Results", "BLOCKER", "LES execution evidence",
                 JoinDetails(findings));
         }
 
