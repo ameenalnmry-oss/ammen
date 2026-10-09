@@ -148,26 +148,30 @@ WHERE Module=@Module AND ResultRecordID=@ResultRecordID;", connection, transacti
 
             if (equipmentId.HasValue)
             {
-                using var equipment = new SqlCommand(@"
+                bool calibrationRequired;
+                bool isActive;
+                using (var equipment = new SqlCommand(@"
 SELECT EquipmentCode,EquipmentName,EquipmentType,EquipmentStatus,QualificationStatus,
        CalibrationRequired,CalibrationStatus,NextCalibrationDate,NextQualificationDate,IsActive
 FROM dbo.LabEquipment WITH (UPDLOCK,HOLDLOCK)
-WHERE EquipmentID=@EquipmentID;", connection, transaction);
-                equipment.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = equipmentId.Value;
-                using SqlDataReader reader = equipment.ExecuteReader();
-                if (!reader.Read())
-                    throw new InvalidOperationException("The selected laboratory equipment no longer exists.");
+WHERE EquipmentID=@EquipmentID;", connection, transaction))
+                {
+                    equipment.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = equipmentId.Value;
+                    using SqlDataReader reader = equipment.ExecuteReader();
+                    if (!reader.Read())
+                        throw new InvalidOperationException("The selected laboratory equipment no longer exists.");
 
-                equipmentCode = reader.GetString(0);
-                equipmentName = reader.GetString(1);
-                equipmentType = reader.GetString(2);
-                equipmentStatus = reader.GetString(3);
-                qualificationStatus = reader.GetString(4);
-                bool calibrationRequired = reader.GetBoolean(5);
-                calibrationStatus = reader.GetString(6);
-                nextCalibration = reader.IsDBNull(7) ? null : reader.GetDateTime(7);
-                nextQualification = reader.IsDBNull(8) ? null : reader.GetDateTime(8);
-                bool isActive = reader.GetBoolean(9);
+                    equipmentCode = reader.GetString(0);
+                    equipmentName = reader.GetString(1);
+                    equipmentType = reader.GetString(2);
+                    equipmentStatus = reader.GetString(3);
+                    qualificationStatus = reader.GetString(4);
+                    calibrationRequired = reader.GetBoolean(5);
+                    calibrationStatus = reader.GetString(6);
+                    nextCalibration = reader.IsDBNull(7) ? null : reader.GetDateTime(7);
+                    nextQualification = reader.IsDBNull(8) ? null : reader.GetDateTime(8);
+                    isActive = reader.GetBoolean(9);
+                }
 
                 DateTime today;
                 using (var clock = new SqlCommand("SELECT CAST(SYSDATETIME() AS date);", connection, transaction))
