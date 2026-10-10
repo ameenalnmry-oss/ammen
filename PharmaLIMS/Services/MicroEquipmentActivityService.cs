@@ -45,6 +45,27 @@ WHERE e.EquipmentID=@EquipmentID AND e.IsActive=1 AND e.EquipmentCode LIKE N'MIC
         DatabaseHelper.EnsureUserPermissionInTransaction(connection,transaction,actor,"CanEnterResults","link microbiology equipment activity");
         string normalized=(module??string.Empty).Trim().ToUpperInvariant();
         if(normalized is not ("PRM" or "EM" or "WATER")) throw new ArgumentException("Unsupported laboratory module.");
+        // Source membership must be checked under the same transaction as the link insertion.
+        string sourceSql=normalized switch
+        {
+            "PRM" => @"SELECT 1 FROM dbo.PRM_SampleTests t WITH(UPDLOCK,HOLDLOCK)
+ JOIN dbo.PRM_Samples p WITH(UPDLOCK,HOLDLOCK) ON p.SampleID=t.SampleID
+ WHERE p.SampleID=@Parent AND t.SampleTestID=@Result",
+            "EM" => @"SELECT 1 FROM dbo.EM_EventPlates t WITH(UPDLOCK,HOLDLOCK)
+ JOIN dbo.EM_Events p WITH(UPDLOCK,HOLDLOCK) ON p.Id=t.EventId
+ WHERE p.Id=@Parent AND t.Id=@Result",
+            "WATER" => @"SELECT 1 FROM dbo.SampleTests t WITH(UPDLOCK,HOLDLOCK)
+ JOIN dbo.Samples p WITH(UPDLOCK,HOLDLOCK) ON p.SampleID=t.SampleID
+ WHERE p.SampleID=@Parent AND t.SampleTestID=@Result",
+            _ => throw new ArgumentException("Unsupported source module.")
+        };
+        using(var source=new SqlCommand(sourceSql,connection,transaction))
+        {
+            source.Parameters.Add("@Parent",SqlDbType.Int).Value=parentId;
+            source.Parameters.Add("@Result",SqlDbType.Int).Value=resultId!.Value;
+            if(source.ExecuteScalar() is null)
+                throw new InvalidOperationException("Selected test does not belong to the specified sample/event.");
+        }
         using var command=new SqlCommand(@"
 IF NOT EXISTS(SELECT 1 FROM dbo.MicroEquipmentActivities WITH(UPDLOCK,HOLDLOCK)
  WHERE ActivityID=@Activity AND ActivityStatus=N'Draft')
