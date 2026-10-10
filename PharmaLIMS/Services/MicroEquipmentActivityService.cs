@@ -25,7 +25,8 @@ SELECT e.EquipmentID,@Type,@Actor,@Method,e.EquipmentCode,e.EquipmentName,
 FROM dbo.LabEquipment e WITH (UPDLOCK,HOLDLOCK)
 WHERE e.EquipmentID=@EquipmentID AND e.IsActive=1 AND e.EquipmentCode LIKE N'MIC-EQ-[0-9][0-9][0-9]'
  AND LEN(e.EquipmentCode)=10
- AND TRY_CONVERT(int,SUBSTRING(e.EquipmentCode,8,3)) BETWEEN 1 AND 34;
+ AND TRY_CONVERT(int,SUBSTRING(e.EquipmentCode,8,3)) >= 1
+ AND UPPER(LTRIM(RTRIM(e.Department)))=N'MICROBIOLOGY';
 ",connection,transaction);
         command.Parameters.Add("@EquipmentID",SqlDbType.Int).Value=equipmentId;
         command.Parameters.Add("@Type",SqlDbType.NVarChar,60).Value=activityType;
