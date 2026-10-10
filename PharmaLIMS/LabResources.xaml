@@ -176,6 +176,20 @@
                                  Background="#F8FAFC"
                                  ToolTip="Read-only controlled use matrix. Result-level compatibility is enforced separately where a direct one-to-one rule is approved."/>
 
+                        <Separator Margin="0,8,0,12"/>
+                        <TextBlock Text="Equipment Activity History" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
+                        <TextBlock x:Name="LblActivityHistory" Text="Select an equipment record to view its activity history." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <DataGrid x:Name="GridActivityHistory" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  HeadersVisibility="Column" MinHeight="125" MaxHeight="220" Margin="0,0,0,14">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Activity ID" Binding="{Binding ActivityID}" Width="80"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding ActivityType}" Width="*"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding ActivityStatus}" Width="92"/>
+                                <DataGridTextColumn Header="Performed By" Binding="{Binding PerformedBy}" Width="110"/>
+                                <DataGridTextColumn Header="Created (UTC)" Binding="{Binding CreatedAt}" Width="130"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
                         <TextBlock Text="Notes" Style="{StaticResource FieldLabel}"/>
                         <TextBox x:Name="TxtNotes" Height="64" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,12"/>
 
