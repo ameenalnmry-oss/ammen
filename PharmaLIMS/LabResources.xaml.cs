@@ -267,6 +267,36 @@ ORDER BY ActivityID DESC;",
             }
         }
 
+        private void BtnLinkActivity_Click(object sender, RoutedEventArgs e)
+        {
+            if (!long.TryParse(TxtActivityId.Text.Trim(), out long activityId) || activityId <= 0 ||
+                !int.TryParse(TxtSourceParentId.Text.Trim(), out int parentId) || parentId <= 0 ||
+                !int.TryParse(TxtSourceResultId.Text.Trim(), out int resultId) || resultId <= 0)
+            {
+                MessageBox.Show("Enter valid positive Activity, Sample/Event and Test/Plate IDs.", "Activity Link");
+                return;
+            }
+            string module = (CboSourceModule.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+            if (module is not ("PRM" or "EM" or "WATER"))
+            {
+                MessageBox.Show("Select PRM, EM, or WATER.", "Activity Link");
+                return;
+            }
+            try
+            {
+                _database.ExecuteInTransaction((connection, transaction) =>
+                    Services.MicroEquipmentActivityService.AddLink(connection, transaction,
+                        activityId, module, parentId, resultId, Login.CurrentUser));
+                if (_selectedEquipmentId.HasValue) LoadEquipmentActivityHistory(_selectedEquipmentId.Value);
+                LblStatus.Text = $"Activity {activityId} linked to verified {module} test {resultId}. Actual use is not yet confirmed.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Link equipment activity"), "Activity Link",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void BtnNew_Click(object sender, RoutedEventArgs e) => ClearForm();
 
         private void ClearForm()
