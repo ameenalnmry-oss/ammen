@@ -13,7 +13,8 @@ namespace PharmaLIMS.Services
         private static readonly HashSet<string> NoInstrumentTests = new(StringComparer.OrdinalIgnoreCase)
         {
             "Appearance", "Appearance (Color & Clarity)", "Color & Clarity",
-            "Colour & Clarity", "Description", "Odor", "Odour", "Taste"
+            "Colour & Clarity", "Description", "Odor", "Odour", "Taste",
+            "Turbidity"
         };
 
         public static bool IsNoInstrumentRequired(string? testName)
