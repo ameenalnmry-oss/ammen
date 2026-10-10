@@ -234,6 +234,39 @@ ORDER BY ActivityID DESC;",
             }
         }
 
+        private void BtnCreateActivityDraft_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_selectedEquipmentId.HasValue)
+            {
+                MessageBox.Show("Select and save an equipment record first.", "Activity draft");
+                return;
+            }
+            string type = (CboActivityType.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+            string method = TxtActivityMethod.Text.Trim();
+            if (string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(method))
+            {
+                MessageBox.Show("Choose activity type and provide an approved method / SOP reference.", "Activity draft");
+                return;
+            }
+            try
+            {
+                long activityId = 0;
+                _database.ExecuteInTransaction((connection, transaction) =>
+                {
+                    activityId = Services.MicroEquipmentActivityService.CreateDraft(connection, transaction,
+                        _selectedEquipmentId.Value, type, Login.CurrentUser, method);
+                });
+                LoadEquipmentActivityHistory(_selectedEquipmentId.Value);
+                LblStatus.Text = $"Activity draft {activityId} created. No actual use or approval has been recorded.";
+                TxtActivityMethod.Clear();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Create equipment activity draft"),
+                    "Activity draft", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void BtnNew_Click(object sender, RoutedEventArgs e) => ClearForm();
 
         private void ClearForm()
