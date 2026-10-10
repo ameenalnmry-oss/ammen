@@ -199,6 +199,18 @@
                         </UniformGrid>
                         <Button Content="Create Activity Draft" Style="{StaticResource PrimaryButton}"
                                 HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnCreateActivityDraft_Click"/>
+                        <TextBlock Text="Link Draft to Actual Laboratory Test" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Activity ID" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtActivityId" Height="32" Margin="0,0,8,8"/></StackPanel>
+                            <StackPanel><TextBlock Text="Source Module" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox x:Name="CboSourceModule" Height="32" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="PRM"/><ComboBoxItem Content="EM"/><ComboBoxItem Content="WATER"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel><TextBlock Text="Sample / Event ID" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtSourceParentId" Height="32" Margin="0,0,8,8"/></StackPanel>
+                            <StackPanel><TextBlock Text="Test / Plate ID" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtSourceResultId" Height="32" Margin="0,0,0,8"/></StackPanel>
+                        </UniformGrid>
+                        <Button Content="Link to Test" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnLinkActivity_Click"/>
                         <Separator Margin="0,8,0,12"/>
                         <TextBlock Text="Equipment Activity History" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
                         <TextBlock x:Name="LblActivityHistory" Text="Select an equipment record to view its activity history." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,8"/>
