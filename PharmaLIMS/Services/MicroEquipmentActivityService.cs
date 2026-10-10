@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
 using System.Globalization;
+using PharmaLIMS;
 
 namespace PharmaLIMS.Services;
 
@@ -41,6 +42,7 @@ WHERE e.EquipmentID=@EquipmentID AND e.IsActive=1 AND e.EquipmentCode LIKE N'MIC
     {
         if(activityId<=0 || parentId<=0 || resultId<=0 || string.IsNullOrWhiteSpace(actor))
             throw new ArgumentException("Valid activity, source record and actor are required.");
+        DatabaseHelper.EnsureUserPermissionInTransaction(connection,transaction,actor,"CanEnterResults","link microbiology equipment activity");
         string normalized=(module??string.Empty).Trim().ToUpperInvariant();
         if(normalized is not ("PRM" or "EM" or "WATER")) throw new ArgumentException("Unsupported laboratory module.");
         using var command=new SqlCommand(@"
@@ -65,14 +67,16 @@ IF NOT EXISTS(SELECT 1 FROM dbo.MicroEquipmentActivityLinks WITH(UPDLOCK,HOLDLOC
         if(activityId<=0 || expectedRowVersion is null || expectedRowVersion.Length!=8 || string.IsNullOrWhiteSpace(actor))
             throw new ArgumentException("Activity, baseline and authenticated performer are required.");
         if(actualEnd<actualStart) throw new ArgumentException("Use end must not precede the start.");
+        DatabaseHelper.EnsureUserPermissionInTransaction(connection,transaction,actor,"CanEnterResults","confirm microbiology equipment use");
         using var command=new SqlCommand(@"
 UPDATE dbo.MicroEquipmentActivities WITH(UPDLOCK,HOLDLOCK)
 SET ActivityStatus=N'Submitted', ActualStartAt=@Start, ActualEndAt=@End
-WHERE ActivityID=@Activity AND ActivityStatus=N'Draft' AND VersionToken=@Version
+WHERE ActivityID=@Activity AND ActivityStatus=N'Draft' AND PerformedBy=@Actor AND VersionToken=@Version
  AND EXISTS(SELECT 1 FROM dbo.MicroEquipmentActivityLinks WHERE ActivityID=@Activity);
 IF @@ROWCOUNT<>1 THROW 56511,'Stale or unlinked activity: reload and confirm actual use.',1;",connection,transaction);
         command.Parameters.Add("@Activity",SqlDbType.BigInt).Value=activityId;
         command.Parameters.Add("@Version",SqlDbType.Binary,8).Value=expectedRowVersion;
+        command.Parameters.Add("@Actor",SqlDbType.NVarChar,100).Value=actor;
         command.Parameters.Add("@Start",SqlDbType.DateTimeOffset).Value=actualStart;
         command.Parameters.Add("@End",SqlDbType.DateTimeOffset).Value=actualEnd;
         command.ExecuteNonQuery();
