@@ -162,11 +162,11 @@ class V284DeepReviewClosureTests(unittest.TestCase):
 
     def test_release_identity_is_v285(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.10.6.303</Version>", text("PharmaLIMS.csproj"))
-        self.assertIn('AssemblyVersion("2026.10.6.303")', text("AssemblyInfo.cs"))
-        self.assertTrue((ROOT / "RELEASE_NOTES_2026.10.6.303.md").is_file())
-        self.assertTrue((ROOT / "SBOM_2026.10.6.303.cdx.json").is_file())
+        self.assertEqual("2026.10.10.304", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.10.10.304</Version>", text("PharmaLIMS.csproj"))
+        self.assertIn('AssemblyVersion("2026.10.10.304")', text("AssemblyInfo.cs"))
+        self.assertTrue((ROOT / "RELEASE_NOTES_2026.10.10.304.md").is_file())
+        self.assertTrue((ROOT / "SBOM_2026.10.10.304.cdx.json").is_file())
 
 
 if __name__ == "__main__":

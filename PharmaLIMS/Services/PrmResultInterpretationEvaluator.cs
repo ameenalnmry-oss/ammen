@@ -20,6 +20,19 @@ namespace PharmaLIMS.Services
             string normalizedSpecification = specification ?? string.Empty;
             string normalizedResult = result.Trim();
 
+            if (normalizedType.Contains("Numeric", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!PrmNumericSpecificationEvaluator.TryParseControlledDecimal(normalizedResult, out decimal value) || value < 0m)
+                    return "Check Required";
+
+                return PrmNumericSpecificationEvaluator.Evaluate(
+                    value,
+                    normalizedSpecification,
+                    specificationLimit,
+                    testCode,
+                    testName);
+            }
+
             bool hasRequiredPresence = TryGetRequiredPresence(normalizedSpecification, out bool requiredPresence);
             if (normalizedType.Contains("Presence", StringComparison.OrdinalIgnoreCase) ||
                 normalizedType.Contains("Qualitative", StringComparison.OrdinalIgnoreCase) || hasRequiredPresence)
@@ -34,18 +47,6 @@ namespace PharmaLIMS.Services
                 return "Check Required";
             }
 
-            if (normalizedType.Contains("Numeric", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!PrmNumericSpecificationEvaluator.TryParseControlledDecimal(normalizedResult, out decimal value) || value < 0m)
-                    return "Check Required";
-
-                return PrmNumericSpecificationEvaluator.Evaluate(
-                    value,
-                    normalizedSpecification,
-                    specificationLimit,
-                    testCode,
-                    testName);
-            }
 
             if (normalizedResult.Equals("Pass", StringComparison.OrdinalIgnoreCase) ||
                 normalizedResult.Equals("Conforms", StringComparison.OrdinalIgnoreCase))

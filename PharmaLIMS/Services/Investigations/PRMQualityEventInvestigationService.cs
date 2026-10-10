@@ -3,47 +3,18 @@
 using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
+using System.Globalization;
 
 namespace PharmaLIMS.Services.Investigations
 {
-    public static class PRMQualityEventInvestigationService
+    public static partial class PRMQualityEventInvestigationService
     {
-        public static DataTable GetPRMQualityEventHeader(int qualityEventId)
+        public static DataTable GetPRMQualityEventHeader(int qualityEventId) => LoadDisplayHeader(qualityEventId, (sql, parameters) => DatabaseHelper.ExecuteQuery(sql, parameters));
+        public static DataTable GetPRMQualityEventHeader(SqlConnection connection, SqlTransaction transaction, int qualityEventId) =>
+            LoadDisplayHeader(qualityEventId, (sql, parameters) => QueryInTransaction(connection, transaction, sql, parameters));
+        private static DataTable LoadDisplayHeader(int qualityEventId, Func<string, SqlParameter[], DataTable> query)
         {
-            DataTable eventTable = DatabaseHelper.ExecuteQuery(@"
-SELECT TOP 1
-    QualityEventID,
-    EventNumber,
-    EventType,
-    Severity,
-    SampleID,
-    SampleNumber,
-    CurrentStatus,
-    DetectedBy,
-    DetectedDate,
-    DetectionSource,
-    InitialDescription,
-    ImmediateAction,
-    RootCauseCategory,
-    RootCauseDetails,
-    ImpactAssessment,
-    CAPARequired,
-    QAConclusion,
-    FinalDisposition,
-    ClosedBy,
-    ClosedDate,
-    CreatedDate,
-    ModifiedBy,
-    ModifiedDate,
-    SourceModule,
-    SourceRecordID
-FROM dbo.QualityEvents
-WHERE QualityEventID = @QualityEventID
-  AND UPPER(LTRIM(RTRIM(ISNULL(SourceModule, N'')))) = N'PRM';",
-                new[]
-                {
-                    new SqlParameter("@QualityEventID", SqlDbType.Int) { Value = qualityEventId }
-                });
+            DataTable eventTable = query(RawHeaderSql, new[] { new SqlParameter("@QualityEventID", SqlDbType.Int) { Value = qualityEventId } });
 
             DataTable result = CreateHeaderSchema();
 
@@ -56,7 +27,7 @@ WHERE QualityEventID = @QualityEventID
             int sampleId = GetSafeInt(qe, "SampleID");
             string sampleNumber = GetSafeString(qe, "SampleNumber");
 
-            DataTable sampleTable = GetPRMSampleFast(sourceRecordId, sampleId, sampleNumber);
+            DataTable sampleTable = GetPRMSampleFast(sourceRecordId, sampleId, sampleNumber, query);
             DataRow ps = sampleTable != null && sampleTable.Rows.Count > 0 ? sampleTable.Rows[0] : null;
 
             DataRow row = result.NewRow();
@@ -125,13 +96,13 @@ WHERE QualityEventID = @QualityEventID
             return result;
         }
 
-        private static DataTable GetPRMSampleFast(int sourceRecordId, int sampleId, string sampleNumber)
+        private static DataTable GetPRMSampleFast(int sourceRecordId, int sampleId, string sampleNumber, Func<string, SqlParameter[], DataTable> query)
         {
             if (sourceRecordId > 0)
             {
-                DataTable table = DatabaseHelper.ExecuteQuery(@"
+                DataTable table = query(@"
 SELECT TOP 1 *
-FROM dbo.PRM_Samples
+FROM dbo.PRM_Samples WITH(HOLDLOCK)
 WHERE SampleID = @SampleID;",
                     new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = sourceRecordId } });
 
@@ -141,9 +112,9 @@ WHERE SampleID = @SampleID;",
 
             if (sampleId > 0 && sampleId != sourceRecordId)
             {
-                DataTable table = DatabaseHelper.ExecuteQuery(@"
+                DataTable table = query(@"
 SELECT TOP 1 *
-FROM dbo.PRM_Samples
+FROM dbo.PRM_Samples WITH(HOLDLOCK)
 WHERE SampleID = @SampleID;",
                     new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = sampleId } });
 
@@ -153,9 +124,9 @@ WHERE SampleID = @SampleID;",
 
             if (!string.IsNullOrWhiteSpace(sampleNumber))
             {
-                return DatabaseHelper.ExecuteQuery(@"
+                return query(@"
 SELECT TOP 1 *
-FROM dbo.PRM_Samples
+FROM dbo.PRM_Samples WITH(HOLDLOCK)
 WHERE SampleNumber = @SampleNumber;",
                     new[] { new SqlParameter("@SampleNumber", SqlDbType.NVarChar, 80) { Value = sampleNumber } });
             }
@@ -327,50 +298,7 @@ WHERE SampleNumber = @SampleNumber;",
         {
             string checklistCategory = ResolvePRMChecklistCategory(categoryText);
 
-            DataTable table = DatabaseHelper.ExecuteQuery(@"
-SELECT
-    q.QuestionID,
-    q.SectionName,
-    q.QuestionText,
-    q.AppliesToEventType,
-    q.AppliesToSampleType,
-    q.AppliesToTestCategory,
-    q.AppliesToTestNameKeyword,
-    q.AnswerType,
-    q.IsRequired,
-    q.ExpectedAnswer,
-    q.QuestionLogic,
-    ISNULL(a.AnswerValue, '') AS AnswerValue,
-    ISNULL(a.Comments, '') AS Comments,
-    CAST(N'' AS nvarchar(120)) AS NAJustification,
-    a.AnsweredBy,
-    a.AnsweredDate
-FROM dbo.QualityEventChecklistQuestions q
-LEFT JOIN dbo.QualityEventChecklistAnswers a
-    ON a.QuestionID = q.QuestionID
-   AND a.QualityEventID = @QualityEventID
-WHERE q.IsActive = 1
-  AND EXISTS
-  (
-      SELECT 1
-      FROM dbo.QualityEvents qualityEvent
-      WHERE qualityEvent.QualityEventID = @QualityEventID
-        AND UPPER(LTRIM(RTRIM(ISNULL(qualityEvent.SourceModule, N'')))) = N'PRM'
-  )
-  AND
-  (
-        (q.AppliesToSampleType = 'ALL' AND q.AppliesToTestCategory = 'General Phase I')
-     OR (q.AppliesToSampleType = 'PRM' AND q.AppliesToTestCategory = 'PRM General')
-     OR (q.AppliesToSampleType = 'PRM' AND q.AppliesToTestCategory = @ChecklistCategory)
-  )
-ORDER BY
-    CASE
-        WHEN q.AppliesToTestCategory = 'General Phase I' THEN 0
-        WHEN q.AppliesToTestCategory = 'PRM General' THEN 1
-        ELSE 2
-    END,
-    q.SortOrder,
-    q.QuestionID;",
+            DataTable table = DatabaseHelper.ExecuteQuery(RawChecklistSql,
                 new[]
                 {
                     new SqlParameter("@QualityEventID", SqlDbType.Int) { Value = qualityEventId },
@@ -390,88 +318,6 @@ ORDER BY
                     qualityEventId,
                     checklistTable,
                     currentUser));
-        }
-
-        public static void SavePRMQualityEventChecklistAnswers(
-            SqlConnection connection,
-            SqlTransaction transaction,
-            int qualityEventId,
-            DataTable checklistTable,
-            string currentUser)
-        {
-            if (connection == null) throw new ArgumentNullException(nameof(connection));
-            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
-            if (qualityEventId <= 0 || checklistTable == null)
-                return;
-
-            using (SqlCommand eventGuard = new SqlCommand(@"
-SELECT CASE WHEN EXISTS
-(
-    SELECT 1
-    FROM dbo.QualityEvents WITH (UPDLOCK, HOLDLOCK)
-    WHERE QualityEventID = @QualityEventID
-      AND UPPER(LTRIM(RTRIM(ISNULL(SourceModule, N'')))) = N'PRM'
-) THEN 1 ELSE 0 END;", connection, transaction))
-            {
-                eventGuard.CommandTimeout = AppConfig.CommandTimeoutSeconds;
-                eventGuard.Parameters.Add("@QualityEventID", SqlDbType.Int).Value = qualityEventId;
-                if (Convert.ToInt32(eventGuard.ExecuteScalar()) != 1)
-                    throw new InvalidOperationException("The selected Quality Event is not a PRM investigation.");
-            }
-
-            foreach (DataRow row in checklistTable.Rows)
-            {
-                if (row.RowState == DataRowState.Deleted)
-                    continue;
-
-                int questionId = GetSafeInt(row, "QuestionID");
-                if (questionId <= 0)
-                    continue;
-
-                string answerValue = GetSafeString(row, "AnswerValue");
-                string comments = GetSafeString(row, "Comments");
-                string naJustification = GetSafeString(row, "NAJustification");
-
-                if (answerValue.Equals("N/A", StringComparison.OrdinalIgnoreCase) &&
-                    !string.IsNullOrWhiteSpace(naJustification))
-                {
-                    string prefix = "[N/A: " + naJustification.Trim() + "]";
-                    if (!comments.TrimStart().StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        comments = prefix + (string.IsNullOrWhiteSpace(comments) ? "" : " " + comments.Trim());
-                }
-
-                if (string.IsNullOrWhiteSpace(answerValue) && string.IsNullOrWhiteSpace(comments))
-                    continue;
-
-                DatabaseHelper.ExecuteNonQueryWithTransaction(@"
-UPDATE dbo.QualityEventChecklistAnswers
-SET AnswerValue = @AnswerValue,
-    Comments = @Comments,
-    AnsweredBy = @AnsweredBy,
-    AnsweredDate = SYSDATETIME()
-WHERE QualityEventID = @QualityEventID
-  AND QuestionID = @QuestionID;
-
-IF @@ROWCOUNT = 0
-BEGIN
-    INSERT dbo.QualityEventChecklistAnswers
-    (
-        QualityEventID, QuestionID, AnswerValue, Comments, AnsweredBy, AnsweredDate
-    )
-    VALUES
-    (
-        @QualityEventID, @QuestionID, @AnswerValue, @Comments, @AnsweredBy, SYSDATETIME()
-    );
-END;",
-                    new[]
-                    {
-                        new SqlParameter("@QualityEventID", SqlDbType.Int) { Value = qualityEventId },
-                        new SqlParameter("@QuestionID", SqlDbType.Int) { Value = questionId },
-                        new SqlParameter("@AnswerValue", SqlDbType.NVarChar, 250) { Value = string.IsNullOrWhiteSpace(answerValue) ? (object)DBNull.Value : answerValue },
-                        new SqlParameter("@Comments", SqlDbType.NVarChar, -1) { Value = string.IsNullOrWhiteSpace(comments) ? (object)DBNull.Value : comments },
-                        new SqlParameter("@AnsweredBy", SqlDbType.NVarChar, 100) { Value = string.IsNullOrWhiteSpace(currentUser) ? (object)DBNull.Value : currentUser }
-                    }, connection, transaction);
-            }
         }
 
         public static DataTable GetPRMAffectedResults(int qualityEventId)

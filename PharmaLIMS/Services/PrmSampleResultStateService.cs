@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -46,8 +46,10 @@ SELECT
     Remarks,
     EnteredBy,
     EnteredDate,
-    ISNULL(SortOrder, SampleTestID) AS SortOrder
-FROM dbo.PRM_SampleTests WITH (UPDLOCK, HOLDLOCK)
+    ISNULL(SortOrder, SampleTestID) AS SortOrder,
+    (SELECT u.EquipmentID FROM dbo.LabEquipmentUsage u WITH(UPDLOCK,HOLDLOCK) WHERE u.Module=N'PRM' AND u.ParentRecordID=st.SampleID AND u.ResultRecordID=st.SampleTestID) AS EquipmentID,
+    (SELECT MAX(h.HistoryID) FROM dbo.LabEquipmentUsageHistory h WITH(UPDLOCK,HOLDLOCK) WHERE h.Module=N'PRM' AND h.ParentRecordID=st.SampleID AND h.ResultRecordID=st.SampleTestID) AS EquipmentHistoryID
+FROM dbo.PRM_SampleTests st WITH (UPDLOCK, HOLDLOCK)
 WHERE SampleID = @SampleID
 ORDER BY ISNULL(SortOrder, SampleTestID), SampleTestID;";
 
@@ -67,7 +69,7 @@ ORDER BY ISNULL(SortOrder, SampleTestID), SampleTestID;";
             "Remarks",
             "EnteredBy",
             "EnteredDate",
-            "SortOrder"
+            "SortOrder", "EquipmentID", "EquipmentHistoryID"
         };
 
         internal static DataTable LockAndValidateLoadedSnapshot(

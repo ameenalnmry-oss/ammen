@@ -736,7 +736,10 @@ else:
 
     em_results_source = source_family(ROOT / "EMResultsEntry.xaml.cs")
     em_evidence_source = text(ROOT / "Services/EmLimitEvidenceSql.cs")
-    if "EmLimitEvidenceSql.Joins(forUpdate)" not in em_results_source:
+    em_plate_query = text(ROOT / "DatabaseHelper.EmSourcePlan.cs")
+    if ("DatabaseHelper.GetEmPlateSnapshotSql(forUpdate)" not in em_results_source
+            or "EmLimitEvidenceSql.Joins(forUpdate)" not in em_plate_query
+            or "WITH(UPDLOCK,HOLDLOCK)" not in em_plate_query):
         error("EM result save/load must use the shared effective historical evidence query.")
     em_load_plates = em_results_source.split("private void LoadPlates(int eventId)", 1)[1].split(
         "private bool HasEnteredResult", 1

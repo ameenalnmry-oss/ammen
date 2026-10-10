@@ -69,7 +69,8 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         print_end = code.index("public static DataTable GetEMEventSignatures", print_start)
         print_gate = code[print_start:print_end]
         self.assertIn('"CanAccessReports"', print_gate)
-        self.assertIn("UPDLOCK, HOLDLOCK", print_gate)
+        self.assertIn("GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId)", print_gate)
+        self.assertIn("ReadEmPlateSnapshotInTransaction(conn, tx, eventId)", print_gate)
 
     def test_legacy_em_result_helper_cannot_regress_locked_status(self):
         code = source("DatabaseHelper.EnvironmentalMonitoring.cs")

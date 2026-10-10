@@ -758,12 +758,14 @@ WHEN NOT MATCHED THEN
             if (releaseStatus.Equals("Under Release", StringComparison.OrdinalIgnoreCase))
             {
                 _selectedPreparationId = RowInt(row, "MediaPreparationID");
+                _loadedPreparationVersion = row["WorkflowRowVersion"] is byte[] version ? (byte[])version.Clone() : null;
                 UpdatePreparationNextAction();
                 SetStatus("Preparation selected for editing / release");
                 return;
             }
 
             _selectedPreparationId = 0;
+            _loadedPreparationVersion = null;
             UpdatePreparationNextAction();
             SetStatus("Released or rejected preparations are locked. Use New Preparation to create another batch.");
         }
@@ -1890,6 +1892,7 @@ WHEN NOT MATCHED THEN
         private void BtnNewPreparation_Click(object sender, RoutedEventArgs e)
         {
             _selectedPreparationId = 0;
+            _loadedPreparationVersion = null;
             TxtPreparationNo.Text = "Generated on Save";
             DpPreparationDate.SelectedDate = DateTime.Today;
             DpPreparationExpiry.SelectedDate = DateTime.Today.AddDays(14);
@@ -1971,9 +1974,11 @@ WHEN NOT MATCHED THEN
                 TxtPreparedBy.Text = signedBy;
                 decimal powderQuantityG = ParseGramQuantity(TxtQuantityWeighedG.Text);
                 int savedPreparationId = _selectedPreparationId;
+                byte[]? savedPreparationVersion = null;
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureCultureMediaEntryAuthorizationInTransaction(conn, tx, signedBy, signatureAction);
                     if (isNew)
                     {
                         const string insertSql = @"
@@ -1996,7 +2001,7 @@ VALUES
                         decimal originalPowderQuantityG;
                         int originalLotId;
                         using (var lockCommand = new SqlCommand(@"
-SELECT MediaLotID, ISNULL(PowderQuantityG, 0)
+SELECT MediaLotID, ISNULL(PowderQuantityG, 0), WorkflowRowVersion, VisualCheckedBy, VisualCheckedAt, SterilityReviewedBy, SterilityReviewedAt
 FROM dbo.MediaPreparations WITH (UPDLOCK, HOLDLOCK)
 WHERE MediaPreparationID = @MediaPreparationID
   AND ReleaseStatus = 'Under Release';", conn, tx))
@@ -2007,6 +2012,9 @@ WHERE MediaPreparationID = @MediaPreparationID
                                 throw new DBConcurrencyException("Only preparations under release can be amended.");
                             originalLotId = reader.GetInt32(0);
                             originalPowderQuantityG = reader.GetDecimal(1);
+                            bool signed = !string.IsNullOrWhiteSpace(Convert.ToString(reader.GetValue(3), CultureInfo.InvariantCulture)) || !reader.IsDBNull(4) ||
+                                !string.IsNullOrWhiteSpace(Convert.ToString(reader.GetValue(5), CultureInfo.InvariantCulture)) || !reader.IsDBNull(6);
+                            CultureMediaPreparationGuard.EnsureAmendable(_loadedPreparationVersion, (byte[])reader.GetValue(2), signed);
                         }
                         if (originalLotId != mediaLotId)
                             throw new InvalidOperationException("The source dehydrated media lot cannot be changed after the preparation is first saved.");
@@ -2029,10 +2037,13 @@ SET MediaID = @MediaID,
     Remarks = @Remarks,
     UpdatedAt = SYSUTCDATETIME()
 WHERE MediaPreparationID = @MediaPreparationID
-  AND ReleaseStatus = 'Under Release';";
+  AND ReleaseStatus = 'Under Release' AND WorkflowRowVersion=@ExpectedVersion
+  AND NULLIF(LTRIM(RTRIM(VisualCheckedBy)),N'') IS NULL AND VisualCheckedAt IS NULL
+  AND NULLIF(LTRIM(RTRIM(SterilityReviewedBy)),N'') IS NULL AND SterilityReviewedAt IS NULL;";
                         int affected = DatabaseHelper.ExecuteNonQueryWithTransaction(
                             updateSql,
-                            BuildPreparationParameters(preparationNo, mediaId, mediaLotId, savedPreparationId),
+                            BuildPreparationParameters(preparationNo, mediaId, mediaLotId, savedPreparationId)
+                                .Concat(new[] { new SqlParameter("@ExpectedVersion", SqlDbType.Binary, 8) { Value = _loadedPreparationVersion! } }).ToArray(),
                             conn,
                             tx);
                         if (affected != 1)
@@ -2052,10 +2063,12 @@ WHERE MediaPreparationID = @MediaPreparationID
                         isNew ? "Media Preparation Created" : "Media Preparation Amended",
                         isNew ? string.Empty : "Under Release", "Under Release",
                         signatureReason, signedBy, preparationNo);
+                    savedPreparationVersion = (byte[])ExecuteScalarInTransaction(conn, tx, "SELECT WorkflowRowVersion FROM dbo.MediaPreparations WHERE MediaPreparationID=@ID;", new SqlParameter("@ID", SqlDbType.Int) { Value = savedPreparationId })!;
                 });
 
                 ClearPendingCultureMediaSignature();
                 _selectedPreparationId = savedPreparationId;
+                _loadedPreparationVersion = savedPreparationVersion;
                 _selectedPreparationPrintId = savedPreparationId;
                 TxtPreparationNo.Text = preparationNo;
                 if (TxtPreparationReleaseStatus != null)
@@ -2313,6 +2326,7 @@ WHERE MediaPreparationID = @MediaPreparationID
 
                 _selectedPreparationPrintId = releasedPreparationId;
                 _selectedPreparationId = 0;
+            _loadedPreparationVersion = null;
                 if (TxtPreparationReleaseStatus != null)
                     TxtPreparationReleaseStatus.Text = "Released";
                 UpdatePreparationNextAction();

@@ -1,4 +1,4 @@
-namespace PharmaLIMS.Services
+﻿namespace PharmaLIMS.Services
 {
     internal static class WaterResultSnapshotSql
     {
@@ -12,7 +12,11 @@ SELECT st.SampleTestID, st.SampleID, st.TestID, st.ResultRowVersion,
        CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.AlertLimitSnapshot ELSE t.AlertLimit END AS AlertLimit,
        CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN st.ActionLimitSnapshot ELSE t.ActionLimit END AS ActionLimit,
        CASE WHEN NULLIF(st.TestNameSnapshot,N'') IS NOT NULL THEN 1 ELSE 0 END AS HasSpecSnapshot,
-       st.ResultValue, st.Remarks, st.ResultStatus, st.DeviationType, st.LimitDescription
+       st.ResultValue, st.Remarks, st.ResultStatus, st.DeviationType, st.LimitDescription, st.EnteredBy, st.ResultEnteredDate,
+       (SELECT MAX(h.HistoryID) FROM dbo.LabEquipmentUsageHistory h" + hint + @" WHERE h.Module=N'WATER' AND h.ParentRecordID=st.SampleID AND h.ResultRecordID=st.SampleTestID) AS EquipmentHistoryID,
+       (SELECT u.EquipmentID FROM dbo.LabEquipmentUsage u" + hint + @" WHERE u.Module=N'WATER' AND u.ParentRecordID=st.SampleID AND u.ResultRecordID=st.SampleTestID) AS EquipmentID,
+       (SELECT MAX(r.EvidenceID) FROM dbo.WaterResultResourceEvidence r" + hint + @" WHERE r.SampleID=st.SampleID AND r.SampleTestID=st.SampleTestID) AS ResourceEvidenceID,
+       (SELECT MAX(e.EvidenceID) FROM dbo.WaterResultExecutionEvidence e" + hint + @" WHERE e.SampleID=st.SampleID AND e.SampleTestID=st.SampleTestID) AS ExecutionEvidenceID
 FROM dbo.SampleTests st" + hint + @"
 LEFT JOIN dbo.Tests t" + hint + @" ON st.TestID=t.TestID
 WHERE st.SampleID=@sampleId

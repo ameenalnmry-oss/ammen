@@ -118,6 +118,7 @@ namespace PharmaLIMS
                 {
                     DatabaseHelper.EnsureUserPermissionInTransaction(conn, tx, currentUser, "CanEnterResults", "create an EM Quality Event");
                     DatabaseHelper.EnsureUserPermissionInTransaction(conn, tx, currentUser, "CanAccessEM", "access EM evidence");
+                    DatabaseHelper.EnsureEmSourcePlanInTransaction(conn, tx, currentEventId, AppConfig.IsProduction);
                     DataTable parent = ReadEmRows(conn, tx, @"SELECT Id, EventNo FROM dbo.EM_Events WITH(UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                         new SqlParameter("@eventId", currentEventId));
                     if (parent.Rows.Count != 1) throw new DBConcurrencyException("The EM event no longer exists. Reload before creating its investigation.");
@@ -429,8 +430,8 @@ namespace PharmaLIMS
                     SELECT TOP 50
                         E.EventNo,
                         E.EventDate,
-                        A.AreaCode,
-                        A.Grade,
+                        COALESCE(NULLIF(E.AreaCodeSnapshot,N''),A.AreaCode) AS AreaCode,
+                        COALESCE(NULLIF(E.GradeSnapshot,N''),A.Grade) AS Grade,
                         COALESCE(NULLIF(LTRIM(RTRIM(E.WorkflowStatus)), ''), 'Pending') AS WorkflowStatus,
                         COALESCE(NULLIF(LTRIM(RTRIM(E.FinalResult)), ''), 'Pending') AS ResultStatus,
                         ISNULL(P.PlanNo,N'') AS PlanNo
@@ -582,10 +583,12 @@ namespace PharmaLIMS
                             (SELECT TOP 1 S.NegativeControlResult FROM EM_PlanSamples S WHERE S.PlanID=E.PlanID AND S.IsNegativeControl=1 ORDER BY S.PlanSampleID)) AS NegativeControlResult,
                         ISNULL(P.PlanNo,N'') AS PlanNo,
 
-                        A.AreaCode,
-                        A.AreaName,
-                        A.AreaGroup,
-                        A.Grade
+                        COALESCE(NULLIF(E.AreaCodeSnapshot,N''),A.AreaCode) AS AreaCode,
+                        COALESCE(NULLIF(E.AreaNameSnapshot,N''),A.AreaName) AS AreaName,
+                        CASE WHEN NULLIF(E.AreaCodeSnapshot,N'') IS NOT NULL AND NULLIF(E.AreaNameSnapshot,N'') IS NOT NULL AND NULLIF(E.GradeSnapshot,N'') IS NOT NULL
+                          THEN COALESCE(NULLIF(E.AreaSnapshotSource,N''),N'Frozen identity; source not recorded')
+                          ELSE N'Legacy current-area fallback (historical identity unverified)' END AS AreaContextSource,
+                        COALESCE(NULLIF(E.GradeSnapshot,N''),A.Grade) AS Grade
                     FROM EM_Events E
                     INNER JOIN EM_Areas A ON E.AreaId = A.Id
                     LEFT JOIN EM_Plans P ON P.PlanID=E.PlanID
@@ -620,7 +623,8 @@ namespace PharmaLIMS
                 lblEventNo.Text = currentEventNo;
                 lblPlanNo.Text = string.IsNullOrWhiteSpace(currentPlanNo) ? "N/A" : currentPlanNo;
                 lblEventDate.Text = row.GetSafeDateTime("EventDate")?.ToString("yyyy-MM-dd") ?? "";
-                lblArea.Text = $"{row.GetSafeString("AreaCode")} - {row.GetSafeString("AreaName")} - {row.GetSafeString("AreaGroup")}";
+                lblArea.Text = $"{row.GetSafeString("AreaCode")} - {row.GetSafeString("AreaName")}";
+                currentAreaContextSource = row.GetSafeString("AreaContextSource");
                 lblGrade.Text = row.GetSafeString("Grade");
                 lblMediaUsed.Text = row.GetSafeString("MediaUsed");
                 lblMediaLotNo.Text = row.GetSafeString("MediaLotNo");
@@ -690,8 +694,7 @@ namespace PharmaLIMS
 
             DataTable dt = DatabaseHelper.ExecuteQuery(platesQuery, pars);
             ReloadAvailableEquipmentChoices();
-            Dictionary<int, int?> equipmentAssignments =
-                LabEquipmentUsageService.LoadCurrentAssignments(_equipmentDatabase, "EM", eventId);
+
 
             foreach (DataRow row in dt.Rows)
             {
@@ -731,9 +734,7 @@ namespace PharmaLIMS
                     HasLimitSnapshot = hasAlertSnapshot && hasActionSnapshot && !string.IsNullOrWhiteSpace(frozenUnit) && hasAirVolumeSnapshot,
                     LimitReconciliationId = row["ReconciliationID"] == DBNull.Value ? null : row.GetSafeInt("ReconciliationID"),
                     LimitEvidenceSource = row.GetSafeString("EvidenceSource"),
-                    EquipmentID = equipmentAssignments.TryGetValue(row.GetSafeInt("Id"), out int? assignedEquipment)
-                        ? assignedEquipment
-                        : null,
+                    EquipmentID = row["EquipmentID"] == DBNull.Value ? null : row.GetSafeInt("EquipmentID"),
                     TotalCount = EmResultCalculator.ReadStoredCount(row["TotalCount"]),
                     AirVolumeLiters = effectiveAirVolume,
                     ResultCFU = row.GetSafeString("ResultCFU"),

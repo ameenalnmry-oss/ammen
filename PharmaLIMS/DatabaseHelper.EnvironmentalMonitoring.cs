@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
+using PharmaLIMS.Services;
 
 #nullable disable
 
@@ -278,89 +279,31 @@ WHERE EventId = @eventId;", connection, transaction);
             return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
         }
 
-        public static bool CanPrintEMResultReport(int eventId, string username, out string message)
+        public static bool CanPrintEMResultReport(int eventId, string username, out string message,
+            Action<SqlConnection, SqlTransaction, DataTable> validateLoadedEvidence = null)
         {
             message = "";
-
-            string effectiveUsername;
             try
             {
-                effectiveUsername = ResolveAuthenticatedSigner(username);
-            }
-            catch (Exception ex)
-            {
-                message = Infrastructure.UserFacingError.SafeMessage(ex, "EM report print authorization");
-                return false;
-            }
-
-            if (eventId <= 0)
-            {
-                message = "No EM event is loaded.";
-                return false;
-            }
-
-            string status = GetEMWorkflowStatus(eventId);
-
-            if (!status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
-            {
-                message = "EM Result Report can be printed only after Review and Approval. Current status: " + status;
-                return false;
-            }
-
-            int total = GetEMTotalPlateCount(eventId);
-            int entered = GetEMEnteredPlateCount(eventId);
-
-            if (total <= 0)
-            {
-                message = "No EM plates were found for this event.";
-                return false;
-            }
-
-            if (entered != total)
-            {
-                message = "All EM plate results must be entered before printing the approved report. Entered: " + entered + " of " + total + ".";
-                return false;
-            }
-
-            try
-            {
-                // Re-validate the OOS / Quality Event release gate at print time. Approval may
-                // have occurred earlier, but a final controlled report must not be printed if
-                // the linked investigation has since been reopened or its closure evidence is
-                // no longer complete. The same fail-closed gate used by approval is reused here.
-                ExecuteInTransaction((connection, transaction) =>
+                string signer = ResolveAuthenticatedSigner(username);
+                if (eventId <= 0) throw new InvalidOperationException("No EM event is loaded.");
+                ExecuteInTransaction((conn, tx) =>
                 {
-                    EnsureUserPermissionInTransaction(
-                        connection,
-                        transaction,
-                        effectiveUsername,
-                        "CanAccessReports",
-                        "print approved EM Result Report");
-
-                    string eventNo;
-                    using (SqlCommand eventCommand = new SqlCommand(@"
-SELECT EventNo
-FROM dbo.EM_Events WITH (UPDLOCK, HOLDLOCK)
-WHERE Id = @eventId;", connection, transaction))
-                    {
-                        eventCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
-                        eventCommand.Parameters.Add("@eventId", SqlDbType.Int).Value = eventId;
-                        object value = eventCommand.ExecuteScalar();
-                        if (value == null || value == DBNull.Value)
-                            throw new InvalidOperationException("The EM event no longer exists. Report printing is blocked.");
-                        eventNo = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
-                    }
-
-                    EnsureEmApprovalQualityEventGateInTransaction(connection, transaction, eventId, eventNo);
+                    EnsureUserPermissionInTransaction(conn, tx, signer, "CanAccessReports", "print approved EM Result Report");
+                    EnsureEmSourcePlanInTransaction(conn, tx, eventId, false);
+                    string status = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
+                    if (!status.Equals("Approved", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Only an approved EM event can be printed.");
+                    DataTable rows = ReadEmPlateSnapshotInTransaction(conn, tx, eventId);
+                    EmReportEvidenceGuard.EnsureConsistent(rows);
+                    validateLoadedEvidence?.Invoke(conn, tx, rows);
+                    using var command = new SqlCommand("SELECT EventNo FROM dbo.EM_Events WHERE Id=@ID;", conn, tx) { CommandTimeout = AppConfig.CommandTimeoutSeconds };
+                    command.Parameters.Add("@ID", SqlDbType.Int).Value = eventId;
+                    string no = Convert.ToString(command.ExecuteScalar(), CultureInfo.InvariantCulture) ?? "";
+                    EnsureEmApprovalQualityEventGateInTransaction(conn, tx, eventId, no);
                 });
+                return true;
             }
-            catch (Exception ex)
-            {
-                message = Infrastructure.UserFacingError.SafeMessage(ex, "EM report print validation");
-                return false;
-            }
-
-            return true;
+            catch (Exception ex) { message = UserFacingError.SafeMessage(ex, "EM report print validation"); return false; }
         }
 
         public static DataTable GetEMEventSignatures(int eventId)
@@ -434,7 +377,18 @@ WHERE Id = @eventId;", connection, transaction))
                 NVarCharParameter("@meaning", meaningOfSignature, 255)
             };
 
-            return ExecuteNonQuery(query, pars);
+            int affected = 0;
+            ExecuteInTransaction((conn, tx) =>
+            {
+                bool reportPrint = string.Equals(actionType, "EM Report Print", StringComparison.OrdinalIgnoreCase);
+                string role = reportPrint
+                    ? EnsureUserPermissionInTransaction(conn, tx, effectiveSignedBy, "CanAccessReports", "print an EM report")
+                    : EnsureActiveUserInTransaction(conn, tx, effectiveSignedBy, "sign EM evidence");
+                EnsureEmSourcePlanInTransaction(conn, tx, eventId, AppConfig.IsProduction && !reportPrint);
+                foreach (SqlParameter parameter in pars) if (parameter.ParameterName == "@userRole") parameter.Value = role;
+                affected = ExecuteNonQueryWithTransaction(query, pars, conn, tx);
+            });
+            return affected;
         }
 
         public static void MarkEMResultsEntered(
@@ -451,6 +405,7 @@ WHERE Id = @eventId;", connection, transaction))
             {
                 string signerRole = EnsureUserPermissionInTransaction(
                     conn, tx, effectiveSignedBy, "CanEnterResults", "record EM results");
+                EnsureEmSourcePlanInTransaction(conn, tx, eventId, AppConfig.IsProduction);
 
                 int updated = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.EM_Events
@@ -520,6 +475,7 @@ WHERE Id = @eventId;", connection, transaction))
             {
                 string signerRole = EnsureActiveUserInTransaction(
                     conn, tx, effectiveModifiedBy, "place an EM event under investigation");
+                EnsureEmSourcePlanInTransaction(conn, tx, eventId, AppConfig.IsProduction);
 
                 int updated = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.EM_Events
@@ -530,7 +486,7 @@ WHERE Id = @eventId;", connection, transaction))
                             ELSE FinalResult
                         END
                     WHERE Id = @eventId
-                      AND ISNULL(WorkflowStatus, '') <> 'Approved'",
+                      AND ISNULL(WorkflowStatus, '') NOT IN(N'Approved',N'Cancelled',N'Completed',N'Closed')",
                     new[]
                     {
                         new SqlParameter("@eventId", eventId)
@@ -584,7 +540,7 @@ WHERE Id = @eventId;", connection, transaction))
             string eventNo,
             string submittedBy,
             string meaningOfSignature,
-            string reason)
+            string reason, Action<SqlConnection, SqlTransaction> validateEvidence = null)
         {
             EnsureEMWorkflowObjects();
             string effectiveSubmittedBy = ResolveAuthenticatedSigner(submittedBy);
@@ -607,6 +563,7 @@ WHERE Id = @eventId;", connection, transaction))
             {
                 string signerRole = EnsureUserPermissionInTransaction(
                     conn, tx, effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review");
+                EnsureEmSourcePlanInTransaction(conn, tx, eventId, AppConfig.IsProduction);
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Results Entered", StringComparison.OrdinalIgnoreCase))
@@ -623,6 +580,8 @@ WHERE Id = @eventId;", connection, transaction))
                         "EM plate completion changed while the electronic signature was being completed. " +
                         "Submission was cancelled. Entered: " + currentEntered + " of " + currentTotal + ".");
                 }
+
+                validateEvidence?.Invoke(conn, tx);
 
                 int updated = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.EM_Events
@@ -705,6 +664,7 @@ WHERE Id = @eventId;", connection, transaction))
             {
                 string signerRole = EnsureUserPermissionInTransaction(
                     conn, tx, effectiveReviewedBy, "CanReviewResults", "review EM results");
+                EnsureEmSourcePlanInTransaction(conn, tx, eventId, AppConfig.IsProduction);
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Under Review", StringComparison.OrdinalIgnoreCase))
@@ -811,6 +771,7 @@ WHERE Id = @eventId;", connection, transaction))
             {
                 string signerRole = EnsureQaApprovalAuthorizationInTransaction(
                     conn, tx, effectiveApprovedBy, "approve EM results");
+                linkedPlanId = EnsureEmSourcePlanInTransaction(conn, tx, eventId, AppConfig.IsProduction);
 
                 string lockedStatus = GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId);
                 if (!lockedStatus.Equals("Reviewed", StringComparison.OrdinalIgnoreCase))
@@ -836,16 +797,6 @@ WHERE Id = @eventId;", connection, transaction))
                 }
 
                 EnsureEmApprovalQualityEventGateInTransaction(conn, tx, eventId, eventNo);
-
-                using (SqlCommand planCommand = new SqlCommand(
-                    "SELECT ISNULL(PlanID, 0) FROM dbo.EM_Events WHERE Id = @eventId", conn, tx))
-                {
-                    planCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
-                    planCommand.Parameters.Add("@eventId", SqlDbType.Int).Value = eventId;
-                    object linkedPlanValue = planCommand.ExecuteScalar();
-                    if (linkedPlanValue != null && linkedPlanValue != DBNull.Value)
-                        linkedPlanId = Convert.ToInt32(linkedPlanValue, CultureInfo.InvariantCulture);
-                }
 
                 int updated = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.EM_Events

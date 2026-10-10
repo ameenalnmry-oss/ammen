@@ -20,5 +20,10 @@
     <Compile Include="../../Services/EmTrendAssessmentService.cs" Link="Production/EmTrendAssessmentService.cs" />
     <Compile Include="../../Services/WaterResultValueContract.cs" Link="Production/WaterResultValueContract.cs" />
     <Compile Include="../../Services/PrmCertificateSignatureChain.cs" Link="Production/PrmCertificateSignatureChain.cs" />
+    <Compile Include="../../Services/WaterLesTemperatureContract.cs" Link="Shared/WaterLesTemperatureContract.cs" />
+    <Compile Include="../../Services/EmReportEvidenceGuard.cs" Link="Shared/EmReportEvidenceGuard.cs" />
+    <Compile Include="../../Services/CultureMediaPreparationGuard.cs" Link="Shared/CultureMediaPreparationGuard.cs" />
+    <Compile Include="../../Services/EmPersonnelHandoffContract.cs" Link="Shared/EmPersonnelHandoffContract.cs" />
+    <Compile Include="../../Services/SpecificationNumericStorage.cs" Link="Shared/SpecificationNumericStorage.cs" />
   </ItemGroup>
 </Project>

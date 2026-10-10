@@ -1,4 +1,4 @@
-#nullable disable
+﻿#nullable disable
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Services;
 using System;
@@ -104,7 +104,7 @@ namespace PharmaLIMS
 
                 string setClause = resultChanged
                     ? @"ResultValue=@resultValue, Remarks=@remarks, ResultStatus=@resultStatus,
-                        DeviationType=@deviationType"
+                        DeviationType=@deviationType, EnteredBy=@enteredBy, ResultEnteredDate=SYSDATETIME()"
                     : "Remarks=@remarks";
                 DataTable delta = ReadWaterRows(connection, transaction, @"
 DECLARE @Changes TABLE(OldValue nvarchar(max), NewValue nvarchar(max));
@@ -120,6 +120,7 @@ WHERE SampleTestID=@sampleTestId AND SampleID=@sampleId AND ResultRowVersion=@ex
 SELECT OldValue,NewValue FROM @Changes;",
                     new SqlParameter("@resultValue", SqlDbType.Decimal) { Precision = 18, Scale = 4, Value = resultChanged ? resultValue : DBNull.Value },
                     new SqlParameter("@remarks", SqlDbType.NVarChar, -1) { Value = remarks },
+                    new SqlParameter("@enteredBy", SqlDbType.NVarChar, 100) { Value = signature.SignedBy },
                     new SqlParameter("@resultStatus", SqlDbType.NVarChar, 50) { Value = status },
                     new SqlParameter("@deviationType", SqlDbType.NVarChar, 100) { Value = (object)BuildDeviationType(authoritative, status) ?? DBNull.Value },
                     new SqlParameter("@sampleTestId", edited.SampleTestID),

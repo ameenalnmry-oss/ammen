@@ -121,13 +121,13 @@ class V299DevelopmentAdminAndSnapshotControls(unittest.TestCase):
     def test_prm_na_answers_require_controlled_reason_and_technical_rationale(self):
         xaml = source("PRMQualityEventInvestigation.xaml")
         code = source("PRMQualityEventInvestigation.xaml.cs")
-        service = source("Services/Investigations/PRMQualityEventInvestigationService.cs")
+        service = source("Services/Investigations/PRMQualityEventInvestigationEvidence.cs")
         self.assertEqual(xaml.count('Header="N/A Justification"'), 3)
         self.assertIn("IsControlledNaJustification", code)
         self.assertIn("minimumNaCommentLength", code)
         self.assertIn("Other scientifically justified reason", code)
         self.assertIn('CAST(N\'\' AS nvarchar(120)) AS NAJustification', service)
-        self.assertIn('string prefix = "[N/A: " + naJustification.Trim() + "]";', service)
+        self.assertIn('string prefix="[N/A: "+na.Trim()+"]";', service)
         self.assertIn("NAJustification", service)
 
 

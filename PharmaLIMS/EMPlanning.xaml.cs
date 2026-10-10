@@ -1,6 +1,7 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
+using PharmaLIMS.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -1076,6 +1077,8 @@ ORDER BY S.PlanSampleID;",
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                DatabaseHelper.EnsureActiveUserInTransaction(connection, transaction, signature.SignedBy, "change an EM plan");
+                DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, plan.PlanID);
                 if (!finalControlReading)
                 {
                     using SqlCommand mediaGate = new SqlCommand(@"
@@ -1231,6 +1234,8 @@ Status=@SampleStatus WHERE PlanSampleID=@ID;", connection, transaction);
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                DatabaseHelper.EnsureActiveUserInTransaction(connection, transaction, signature.SignedBy, "change an EM plan");
+                DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, plan.PlanID);
                 using SqlCommand samples = new SqlCommand(@"
 UPDATE dbo.EM_PlanSamples
 SET IncubationStart=@Phase1Start,
@@ -1299,6 +1304,8 @@ WHERE PlanID=@Plan AND Status=N'Collected';", connection, transaction);
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                DatabaseHelper.EnsureActiveUserInTransaction(connection, transaction, signature.SignedBy, "change an EM plan");
+                DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, plan.PlanID);
                 using SqlCommand command = new SqlCommand(@"
 UPDATE dbo.EM_PlanSamples
 SET IncubationPhase1End=@TransitionAt,
@@ -1374,6 +1381,8 @@ WHERE PlanID=@Plan
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                DatabaseHelper.EnsureActiveUserInTransaction(connection, transaction, signature.SignedBy, "change an EM plan");
+                DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, plan.PlanID);
                 using SqlCommand command = new SqlCommand(@"
 UPDATE dbo.EM_PlanSamples
 SET IncubationPhase2End=@CompletedAt,
@@ -1478,33 +1487,41 @@ WHERE PlanID=@Plan
             if (_samples.Any(s => s.IsNegativeControl && !string.Equals(s.NegativeControlResult, "No Growth", StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("Negative control must be recorded as 'No Growth' before release to results.");
 
-            List<IGrouping<int, PlanSampleRow>> resultGroups = _samples
+            List<IGrouping<(int AreaID, string EmployeeID), PlanSampleRow>> resultGroups = _samples
                 .Where(s => !s.IsNegativeControl && s.AreaID.HasValue)
-                .GroupBy(s => s.AreaID!.Value)
+                .GroupBy(s => (s.AreaID!.Value, EmPersonnelHandoffContract.EmployeeKey(s.Method, s.EmployeeID)))
                 .ToList();
             if (resultGroups.Count == 0)
                 throw new InvalidOperationException("No valid area samples are available for EM Results Entry.");
 
+            foreach (var group in resultGroups.Where(g => g.Any(sample => string.Equals(sample.Method?.Trim(), "Personnel Monitoring", StringComparison.OrdinalIgnoreCase))))
+            {
+                EmPersonnelHandoffContract.Validate(group.Select(sample => (sample.EmployeeID, sample.EmployeeName)));
+            }
             const string releaseAction = "Release EM Samples to Results Entry";
             var signature = ConfirmSignature(plan.PlanNo, releaseAction);
             if (signature == null) return;
             List<string> events = new();
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
-                foreach (IGrouping<int, PlanSampleRow> group in resultGroups)
+                DatabaseHelper.EnsureActiveUserInTransaction(connection, transaction, signature.SignedBy, "change an EM plan");
+                DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, plan.PlanID);
+                foreach (IGrouping<(int AreaID, string EmployeeID), PlanSampleRow> group in resultGroups)
                 {
                     string eventNo = DatabaseHelper.GetNextEMEventNumber(connection, transaction);
                     int eventId;
                     using (SqlCommand ev = new SqlCommand(@"
 INSERT dbo.EM_Events(EventNo,AreaId,EventDate,AreaCodeSnapshot,AreaNameSnapshot,GradeSnapshot,AreaSnapshotSource,MediaUsed,MediaLotNo,MediaPreparationID,SamplingTimeFrom,SamplingTimeTo,
 IncubationStart,IncubationEnd,IncubationTemperature,IncubatorNo1,IncubatorNo2,NegativeControlResult,
-FinalResult,Remarks,MonitoringCategory,WorkflowStatus,PlanID,CreatedAt)
+EmployeeId,EmployeeName,FinalResult,Remarks,MonitoringCategory,WorkflowStatus,PlanID,CreatedAt)
 OUTPUT INSERTED.Id VALUES(@No,@Area,@Date,@AreaCode,@AreaName,@Grade,N'Native controlled plan release',@Media,@Lot,@MediaPreparationID,@From,@To,@Inc,@IncEnd,@IncTemp,@Inc1,@Inc2,@Control,
-N'Pending',@Remarks,N'Plan Based',N'Pending',@Plan,SYSDATETIME());", connection, transaction))
+@EmployeeID,@EmployeeName,N'Pending',@Remarks,N'Plan Based',N'Pending',@Plan,SYSDATETIME());", connection, transaction))
                     {
                         PlanSampleRow first = group.First();
-                        ev.Parameters.AddExplicit("@No", SqlDbType.NVarChar, eventNo, size: 50); ev.Parameters.AddExplicit("@Area", SqlDbType.Int, group.Key);
+                        ev.Parameters.AddExplicit("@No", SqlDbType.NVarChar, eventNo, size: 50); ev.Parameters.AddExplicit("@Area", SqlDbType.Int, group.Key.AreaID);
                         ev.Parameters.AddExplicit("@Date", SqlDbType.DateTime2, first.SamplingStart ?? databaseNow); ev.Parameters.AddExplicit("@AreaCode", SqlDbType.NVarChar, Db(first.AreaCode), size: 100); ev.Parameters.AddExplicit("@AreaName", SqlDbType.NVarChar, Db(first.AreaName), size: 200); ev.Parameters.AddExplicit("@Grade", SqlDbType.NVarChar, Db(first.Grade), size: 100);
+                        ev.Parameters.AddExplicit("@EmployeeID", SqlDbType.NVarChar, string.IsNullOrWhiteSpace(group.Key.EmployeeID) ? DBNull.Value : first.EmployeeID.Trim(), size: 50);
+                        ev.Parameters.AddExplicit("@EmployeeName", SqlDbType.NVarChar, string.IsNullOrWhiteSpace(group.Key.EmployeeID) ? DBNull.Value : first.EmployeeName.Trim(), size: 150);
                         ev.Parameters.AddExplicit("@Media", SqlDbType.NVarChar, Db(first.MediaUsed), size: 200); ev.Parameters.AddExplicit("@Lot", SqlDbType.NVarChar, Db(first.MediaLotNo), size: 100);
                         ev.Parameters.AddExplicit("@MediaPreparationID", SqlDbType.Int, first.MediaPreparationID.HasValue ? first.MediaPreparationID.Value : DBNull.Value);
                         ev.Parameters.AddExplicit("@From", SqlDbType.NVarChar, Db(first.SamplingStartText), size: 50); ev.Parameters.AddExplicit("@To", SqlDbType.NVarChar, Db(first.SamplingEndText), size: 50);
@@ -1579,20 +1596,8 @@ WHERE PlanID=@Plan AND IsNegativeControl=1 AND NegativeControlResult=N'No Growth
             var signature = ConfirmSignature(plan.PlanNo, "Cancel EM Plan");
             if (signature == null) return;
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
-            {
-                DatabaseHelper.EnsureUserPermissionInTransaction(
-                    connection, transaction, signature.SignedBy, "CanApproveResults", "cancel an EM plan");
-                using SqlCommand command = new SqlCommand(@"
-UPDATE dbo.EM_Plans SET Status=N'Cancelled',CancelledBy=@User,CancelledAt=SYSDATETIME(),CancellationReason=@Reason
-WHERE PlanID=@Plan AND Status NOT IN (N'Completed',N'Cancelled');
-UPDATE dbo.EM_PlanSamples SET Status=N'Cancelled' WHERE PlanID=@Plan AND Status<>N'Completed';", connection, transaction);
-                command.Parameters.AddExplicit("@User", SqlDbType.NVarChar, signature.SignedBy, size: 100); command.Parameters.AddExplicit("@Reason", SqlDbType.NVarChar, signature.Reason, size: -1);
-                command.Parameters.AddExplicit("@Plan", SqlDbType.Int, plan.PlanID);
-                if (command.ExecuteNonQuery() < 1)
-                    throw new DBConcurrencyException("The EM plan changed after it was loaded. Refresh and retry.");
-                InsertSignature(connection, transaction, plan.PlanID, "Cancelled", signature);
-                Audit(connection, transaction, plan, plan.Status, "Cancelled", signature);
-            });
+                DatabaseHelper.CancelEmPlanInTransaction(connection, transaction, plan.PlanID, plan.PlanNo, plan.Status,
+                    signature.SignedBy, signature.Meaning, signature.Reason));
             LoadPlans();
         }
 
@@ -1602,6 +1607,8 @@ UPDATE dbo.EM_PlanSamples SET Status=N'Cancelled' WHERE PlanID=@Plan AND Status<
             var signature = ConfirmSignature(plan.PlanNo, action); if (signature == null) return;
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                DatabaseHelper.EnsureActiveUserInTransaction(connection, transaction, signature.SignedBy, "change an EM plan");
+                DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, plan.PlanID);
                 using SqlCommand samples = new SqlCommand("UPDATE dbo.EM_PlanSamples SET Status=@Status WHERE PlanID=@Plan;", connection, transaction);
                 samples.Parameters.AddExplicit("@Status", SqlDbType.NVarChar, next, size: 50); samples.Parameters.AddExplicit("@Plan", SqlDbType.Int, plan.PlanID); samples.ExecuteNonQuery();
                 UpdatePlan(connection, transaction, plan.PlanID, next, signature.SignedBy, required);

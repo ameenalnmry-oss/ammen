@@ -656,6 +656,7 @@
                                 <DataGridTextColumn Header="Code" Binding="{Binding TestCode, UpdateSourceTrigger=PropertyChanged}" Width="125" MinWidth="110"/>
                                 <DataGridTextColumn Header="Test Name" Binding="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" Width="220" MinWidth="180"/>
                                 <DataGridTextColumn Header="Specification / Acceptance Criteria" Binding="{Binding SpecificationText, UpdateSourceTrigger=PropertyChanged}" Width="480" MinWidth="360"/>
+                                <DataGridTextColumn Header="Numeric Limit" Binding="{Binding SpecificationLimit, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Width="130" MinWidth="110"/>
                                 <DataGridTextColumn Header="Unit" Binding="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" Width="120" MinWidth="100"/>
                                 <DataGridTextColumn Header="Result Type" Binding="{Binding ResultType, UpdateSourceTrigger=PropertyChanged}" Width="150" MinWidth="130"/>
                                 <DataGridCheckBoxColumn Header="Required" Binding="{Binding RequiredTest}" Width="95" MinWidth="90"/>
