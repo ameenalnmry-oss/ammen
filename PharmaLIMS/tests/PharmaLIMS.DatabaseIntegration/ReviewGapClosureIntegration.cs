@@ -162,6 +162,8 @@ OUTPUT INSERTED.QuestionID VALUES(N'Fixture',N'Controlled question',N'PRM',N'PRM
             await Exec(c, "INSERT dbo.QualityEventChecklistAnswers(QualityEventID,QuestionID,AnswerValue,Comments,AnsweredBy,AnsweredDate) VALUES(@id,@question,N'N/A',@comment,N'author-a','20260101');", t,
                 Arg("@id", id), Arg("@question", question), Arg("@comment", originalComment));
             DataTable raw = PRMQualityEventInvestigationService.LoadChecklist(c, t, id, "");
+            Require(new[] { "AnswerValue", "Comments", "NAJustification" }.All(name => !raw.Columns[name]!.ReadOnly),
+                "SQL-loaded checklist answer, comment and derived N/A justification must support editing");
             DataTable visible = raw.Copy(); DataRow visibleRow = visible.Select("QuestionID=" + question)[0];
             visibleRow["Comments"] = "Stable note"; visibleRow["NAJustification"] = "Not applicable to product/material/sample/test type";
             PRMQualityEventInvestigationService.SavePRMQualityEventChecklistAnswers(c, t, id, visible, "editor-b", visible.Copy());

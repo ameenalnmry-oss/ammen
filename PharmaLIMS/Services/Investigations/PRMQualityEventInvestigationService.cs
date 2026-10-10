@@ -418,6 +418,8 @@ VALUES
             EnsureColumn(table, "AnswerValue", typeof(string));
             EnsureColumn(table, "Comments", typeof(string));
             EnsureColumn(table, "NAJustification", typeof(string));
+            // SQL projects this UI-only value as an expression; DataTable.Load marks it read-only.
+            table.Columns["NAJustification"].ReadOnly = false;
             EnsureColumn(table, "IsRequired", typeof(bool));
             EnsureColumn(table, "ExpectedAnswer", typeof(string));
             EnsureColumn(table, "AnswerType", typeof(string));
