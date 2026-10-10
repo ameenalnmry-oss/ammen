@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-MIGRATION = Path(__file__).resolve().parents[2] / 'Database' / 'Migrations' / '20261010_002_Micro_Equipment_Activity_Ledger.sql'
+MIGRATION = Path(__file__).resolve().parents[1] / 'Database' / 'Migrations' / '20261010_002_Micro_Equipment_Activity_Ledger.sql'
 
 class MicroEquipmentActivityContractTests(unittest.TestCase):
     def test_schema_and_protective_constraints(self):
