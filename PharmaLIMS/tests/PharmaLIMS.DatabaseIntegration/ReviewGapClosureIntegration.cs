@@ -228,7 +228,8 @@ VALUES(@user,N'TEST_ONLY_INVALID_ENCODING',N'Disposable fixture',N'Technician',1
             Require(media == same && Convert.ToString((await Query(c, "SELECT Manufacturer FROM dbo.CultureMedia WHERE MediaID=@id;", t, Arg("@id", media))).Rows[0][0]) == "Manufacturer A", "a receipt supplier must not rewrite master manufacturer");
             await SqlDenied(() => Query(c, CultureMediaWriteContract.EnsureMaster, t, MasterArgs("Renamed media")), "shared master identity rewrite", 56461);
             int lot = Convert.ToInt32((await Query(c, @"INSERT dbo.CultureMediaLots(MediaID,LotNumber,ManufacturerLot,Supplier,ReceivedDate,ExpiryDate,QuantityReceived,InitialStockG,CurrentStockG,ReceivedBy)
-OUTPUT INSERTED.MediaLotID VALUES(@media,@lot,N'MLOT',N'Supplier B','20261010','20301010',100,100,100,N'fixture');", t, Arg("@media", media), Arg("@lot", code))).Rows[0][0]);
+VALUES(@media,@lot,N'MLOT',N'Supplier B','20261010','20301010',100,100,100,N'fixture');
+SELECT CAST(SCOPE_IDENTITY() AS int);", t, Arg("@media", media), Arg("@lot", code))).Rows[0][0]);
             int qualification = Convert.ToInt32((await Query(c, CultureQualificationStartContract.Sql, t,
                 CultureQualificationStartContract.Parameters("GPT304-" + Guid.NewGuid().ToString("N")[..20], lot, "actual-signer", 48m))).Rows[0][0]);
             DataTable started = await Query(c, "SELECT PerformedBy,QualificationStatus,QualificationStartedAt,MinimumIncubationHoursSnapshot FROM dbo.MediaQualifications WHERE MediaQualificationID=@id;", t, Arg("@id", qualification));
