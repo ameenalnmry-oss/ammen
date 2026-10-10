@@ -179,6 +179,7 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
                 return;
 
             _selectedEquipmentId = row.EquipmentID;
+            LoadEquipmentActivityHistory(row.EquipmentID);
             _selectedRowVersion = row.RowVersion;
             LblMode.Text = $"Editing {row.EquipmentCode}";
 
@@ -202,6 +203,35 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
             TxtMethodReference.Text = row.MethodReference;
             TxtControlledUses.Text = row.ControlledUses;
             TxtNotes.Text = row.Notes;
+        }
+
+        private void LoadEquipmentActivityHistory(int equipmentId)
+        {
+            GridActivityHistory.ItemsSource = null;
+            try
+            {
+                DataTable exists = _database.ExecuteQuery("SELECT OBJECT_ID(N'dbo.MicroEquipmentActivities',N'U') AS TableId;");
+                if (exists.Rows.Count == 0 || exists.Rows[0]["TableId"] == DBNull.Value)
+                {
+                    LblActivityHistory.Text = "Activity ledger migration is not yet applied. Equipment master remains available.";
+                    return;
+                }
+                DataTable table = _database.ExecuteQuery(@"
+SELECT TOP (100) ActivityID,ActivityType,ActivityStatus,PerformedBy,CreatedAt
+FROM dbo.MicroEquipmentActivities
+WHERE EquipmentID=@EquipmentID
+ORDER BY ActivityID DESC;",
+                    new[] { new SqlParameter("@EquipmentID", SqlDbType.Int) { Value = equipmentId } });
+                GridActivityHistory.ItemsSource = table.DefaultView;
+                LblActivityHistory.Text = table.Rows.Count == 0
+                    ? "No confirmed or draft activity records for this equipment."
+                    : $"Showing {table.Rows.Count} most recent activity records (read-only).";
+            }
+            catch (Exception ex)
+            {
+                LblActivityHistory.Text = "Activity history could not be loaded: " +
+                    UserFacingError.SafeMessage(ex, "Equipment activity history");
+            }
         }
 
         private void BtnNew_Click(object sender, RoutedEventArgs e) => ClearForm();
