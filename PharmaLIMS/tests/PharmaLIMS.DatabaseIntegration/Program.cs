@@ -816,18 +816,9 @@ SELECT @SampleID;", writerConnection))
 
     private static async Task<DataTable> LoadPrmResultSnapshotAsync(SqlConnection connection, int sampleId)
     {
-        await using SqlCommand command = new(@"
-SELECT
-    SampleTestID, SampleID, TestName, SpecificationText, Unit, ResultValue, ResultType, TestCode,
-    SpecificationLimit, ISNULL(RequiredTest,1) AS RequiredTest, MinimumElapsedHours, Interpretation,
-    Remarks, EnteredBy, EnteredDate, ISNULL(SortOrder,SampleTestID) AS SortOrder
-FROM dbo.PRM_SampleTests
-WHERE SampleID=@SampleID
-ORDER BY ISNULL(SortOrder,SampleTestID),SampleTestID;", connection) { CommandTimeout = 60 };
-        command.Parameters.Add("@SampleID", SqlDbType.Int).Value = sampleId;
-        await using SqlDataReader reader = await command.ExecuteReaderAsync();
-        DataTable table = new();
-        table.Load(reader);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+        DataTable table = PrmSampleResultStateService.LoadLockedResults(connection, transaction, sampleId);
+        await transaction.CommitAsync();
         return table;
     }
 

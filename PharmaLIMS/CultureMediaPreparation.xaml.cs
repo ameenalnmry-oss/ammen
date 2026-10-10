@@ -31,6 +31,7 @@ namespace PharmaLIMS
 
         private int _selectedLotId;
         private int _selectedPreparationId;
+        private byte[]? _loadedPreparationVersion;
         private int _selectedPreparationPrintId;
         private int _selectedReleaseReportId;
         private bool _isLoading;
@@ -46,7 +47,7 @@ namespace PharmaLIMS
         private static bool IsCultureMediaAdministrator()
         {
             string role = Login.CurrentUserRole ?? string.Empty;
-            return AppConfig.DevelopmentAdminFullPermissions &&
+            return AppConfig.IsDevelopment && AppConfig.DevelopmentAdminFullPermissions &&
                    (role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
                     role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
         }
@@ -225,7 +226,7 @@ namespace PharmaLIMS
 
         private static bool IsDevelopmentAdminOverrideForRole(string role)
         {
-            return AppConfig.DevelopmentAdminFullPermissions &&
+            return AppConfig.IsDevelopment && AppConfig.DevelopmentAdminFullPermissions &&
                    (role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
                     role.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
         }
@@ -698,6 +699,7 @@ namespace PharmaLIMS
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureCultureMediaEntryAuthorizationInTransaction(conn, tx, signedBy, action);
                     mediaId = EnsureMediaMasterInTransaction(conn, tx);
                     EnsureNoDuplicateMediaLotInTransaction(conn, tx, mediaId, lotNumber, isNew ? 0 : savedLotId);
 
@@ -752,6 +754,7 @@ WHERE l.MediaLotID = @MediaLotID
                             issueTransactionCount = reader.GetInt32(2);
                         }
 
+                        DatabaseHelper.ExecuteNonQueryWithTransaction(CultureMediaWriteContract.GuardLotIdentity, new[] { new SqlParameter("@MediaLotID", SqlDbType.Int) { Value = savedLotId } }, conn, tx);
                         decimal stockDifferenceG = requestedInitialStockG - oldInitialStockG;
                         if (stockDifferenceG != 0m && issueTransactionCount > 0)
                         {
@@ -1071,34 +1074,7 @@ VALUES
 
         private int EnsureMediaMasterInTransaction(SqlConnection conn, SqlTransaction tx)
         {
-            const string sql = @"
-MERGE dbo.CultureMedia WITH (HOLDLOCK) AS target
-USING
-(
-    SELECT
-        @MediaCode AS MediaCode,
-        @MediaName AS MediaName,
-        @MediaType AS MediaType,
-        @Manufacturer AS Manufacturer,
-        @StorageCondition AS StorageCondition,
-        @UserName AS UserName
-) AS source
-ON UPPER(LTRIM(RTRIM(target.MediaCode))) = UPPER(LTRIM(RTRIM(source.MediaCode)))
-WHEN MATCHED THEN
-    UPDATE SET
-        MediaName = source.MediaName,
-        MediaType = source.MediaType,
-        Manufacturer = source.Manufacturer,
-        StorageCondition = source.StorageCondition,
-        IsActive = 1,
-        UpdatedBy = source.UserName,
-        UpdatedAt = SYSDATETIME()
-WHEN NOT MATCHED THEN
-    INSERT
-    (MediaCode, MediaName, MediaType, Manufacturer, StorageCondition, DefaultExpiryDays, PreparationInstruction, IsActive, CreatedBy)
-    VALUES
-    (source.MediaCode, source.MediaName, source.MediaType, source.Manufacturer, source.StorageCondition, 14, NULL, 1, source.UserName)
-OUTPUT inserted.MediaID;";
+            const string sql = CultureMediaWriteContract.EnsureMaster;
 
             object? value = ExecuteScalarInTransaction(
                 conn,
@@ -1497,25 +1473,8 @@ WHERE IsActive=1
                         conn, tx, startedBy, "CanEnterResults", "start culture media qualification");
                     EnsureNoActiveQualificationForLotInTransaction(conn, tx, mediaLotId);
 
-                    object? id = ExecuteScalarInTransaction(conn, tx, @"
-INSERT INTO dbo.MediaQualifications
-(
-    QualificationNo, MediaLotID, MediaPreparationID, QualificationType, QualificationDate,
-    PerformedBy, ReviewedBy, ReleasedBy, ReviewDate, ReleaseDate,
-    QualificationStatus, OverallResult, Remarks,
-    QualificationStartedAt, MinimumIncubationHoursSnapshot, IncubationCompletedAt
-)
-VALUES
-(
-    @QualificationNo, @MediaLotID, NULL, N'Media Lot Promotion Test / Release', CAST(SYSDATETIME() AS date),
-    @PerformedBy, NULL, NULL, NULL, NULL,
-    N'In Progress', N'Pending', NULL,
-    SYSDATETIME(), @MinimumIncubationHours, NULL
-);
-SELECT CAST(SCOPE_IDENTITY() AS int);",
-                        new SqlParameter("@QualificationNo", SqlDbType.NVarChar, 50) { Value = reportNo },
-                        new SqlParameter("@MediaLotID", SqlDbType.Int) { Value = mediaLotId },
-                        CreateDecimalParameter("@MinimumIncubationHours", minimumIncubationHours));
+                    object? id = ExecuteScalarInTransaction(conn, tx, CultureQualificationStartContract.Sql,
+                        CultureQualificationStartContract.Parameters(reportNo, mediaLotId, startedBy, minimumIncubationHours));
 
                     qualificationId = Convert.ToInt32(id ?? throw new InvalidOperationException("The qualification report ID was not returned by the database."), CultureInfo.InvariantCulture);
                     minimumIncubationHours = CreateQualificationRequirementSnapshotsInTransaction(

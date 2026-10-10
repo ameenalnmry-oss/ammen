@@ -17,7 +17,17 @@ internal static class EmQualityEventEvidenceGuard
             DataRow row = rows[entry.PlateId];
             if (entry.Count != EmResultCalculator.ReadStoredCount(row["TotalCount"]) ||
                 (entry.Remarks ?? string.Empty).Trim() != (Convert.ToString(row["ColoniesObserved"], CultureInfo.InvariantCulture) ?? string.Empty).Trim())
-                throw new DBConcurrencyException("Save and reload the EM results before creating a Quality Event. Unsaved counts or remarks cannot become investigation evidence.");
+                throw new DBConcurrencyException("Save and reload the EM results before this controlled operation. Unsaved counts or remarks cannot become investigation evidence.");
+        }
+    }    internal static void EnsureEquipmentSaved(DataTable locked, IReadOnlyDictionary<int, int?> visible)
+    {
+        ResultSnapshotGuard.EnsureVisibleKeys(visible.Keys, locked, "Id");
+        foreach (DataRow row in locked.Rows)
+        {
+            int id = Convert.ToInt32(row["Id"], CultureInfo.InvariantCulture);
+            int? persisted = row["EquipmentID"] == DBNull.Value ? null : Convert.ToInt32(row["EquipmentID"], CultureInfo.InvariantCulture);
+            if (visible[id] != persisted) throw new DBConcurrencyException("Save and reload changed EM equipment before submission or printing.");
         }
     }
+
 }

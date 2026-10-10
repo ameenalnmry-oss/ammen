@@ -1052,6 +1052,19 @@ SELECT @ReleaseResult;", connection)
             // idempotent are eligible for structural verification and controlled replay.
             string verificationSql = versionKey switch
             {
+                "20261010_001" => @"
+SELECT CASE WHEN
+    EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.WaterResultResourceEvidence') AND name=N'ExecutionDate' AND system_type_id=40 AND max_length=3)
+    AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.MediaPreparations') AND name=N'WorkflowRowVersion' AND system_type_id=189 AND max_length=8)
+    AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory') AND name=N'ContentHash' AND system_type_id=173 AND max_length=32 AND is_nullable=0)
+    AND NOT EXISTS
+    (SELECT 1 FROM (VALUES(N'CultureMedia',N'TRG_CultureMedia_ReferencedIdentity'),
+      (N'CultureMediaLots',N'TRG_CultureMediaLots_ReferencedIdentity'),
+      (N'PRM_SpecificationContentHistory',N'TRG_PRM_SpecificationContentHistory_AppendOnly')) e(TableName,TriggerName)
+      LEFT JOIN sys.triggers t ON t.object_id=OBJECT_ID(N'dbo.'+e.TriggerName,N'TR')
+      WHERE t.object_id IS NULL OR t.parent_id<>OBJECT_ID(N'dbo.'+e.TableName) OR t.is_disabled=1 OR t.is_instead_of_trigger=1)
+    AND EXISTS(SELECT 1 FROM sys.check_constraints WHERE object_id=OBJECT_ID(N'dbo.CK_QEInvestigationEvidenceHistory_Table_20261010_001',N'C') AND is_disabled=0 AND is_not_trusted=0)
+THEN 1 ELSE 0 END;",
                 "20260722_005" => @"
 SELECT CASE WHEN
     OBJECT_ID(N'dbo.PRM_SpecificationTests',N'U') IS NOT NULL

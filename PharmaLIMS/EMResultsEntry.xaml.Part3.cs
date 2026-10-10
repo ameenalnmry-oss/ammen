@@ -11,25 +11,20 @@ namespace PharmaLIMS
 {
     public partial class EMResultsEntry
     {
-        private static string PlateSnapshotSql(bool forUpdate)
+        private void CommitEmResultGridEdits()
         {
-            string hint = forUpdate ? " WITH (UPDLOCK, HOLDLOCK)" : string.Empty;
-            return @"
-SELECT P.Id, P.EventId, P.Method, P.PlateCode, P.SequenceNo, P.TotalCount,
-       P.ColoniesObserved, P.ResultCFU, P.Status, P.FungalCount, P.CorrectedCount,
-       P.ResultRowVersion, P.ResultCalculationVersion,
-       E.ResultRowVersion AS EventRowVersion, E.WorkflowStatus, E.FinalResult,
-       EVID.AlertLimitSnapshot, EVID.ActionLimitSnapshot,
-       EVID.ResultUnitSnapshot, EVID.AirVolumeLitersSnapshot,
-       EVID.NativeSnapshotComplete, EVID.ReconciliationID, EVID.EvidenceSource,
-       EVID.EvidenceComplete, A.Grade
-FROM dbo.EM_EventPlates P" + hint + @"
-INNER JOIN dbo.EM_Events E" + hint + @" ON P.EventId=E.Id
-INNER JOIN dbo.EM_Areas A ON E.AreaId=A.Id
-" + EmLimitEvidenceSql.Joins(forUpdate) + @"
-WHERE P.EventId=@eventId
-ORDER BY P.Id;";
+            foreach (var grid in new[] { dgActiveAirPlates, dgSettlePlates })
+                if (!grid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true) || !grid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true))
+                    throw new InvalidOperationException("Correct the invalid EM cell before this operation.");
         }
+        private static void EnsureEmVisibleEvidenceSaved(DataTable loaded, DataTable locked, int eventId,
+            IEnumerable<(int PlateId, int? Count, string Remarks)> visible, IReadOnlyDictionary<int, int?> equipment)
+        {
+            EmQualityEventEvidenceGuard.EnsureSaved(loaded, locked, eventId, visible);
+            EmQualityEventEvidenceGuard.EnsureEquipmentSaved(locked, equipment);
+        }
+
+        private static string PlateSnapshotSql(bool forUpdate) => DatabaseHelper.GetEmPlateSnapshotSql(forUpdate);
 
         private static DataTable ReadEmRows(
             SqlConnection connection, SqlTransaction transaction, string sql, params SqlParameter[] parameters)
@@ -103,6 +98,8 @@ ORDER BY P.Id;";
                 connection, transaction, signature.SignedBy, "CanEnterResults", "save EM results");
             DatabaseHelper.EnsureUserPermissionInTransaction(
                 connection, transaction, signature.SignedBy, "CanAccessEM", "access EM results");
+
+            DatabaseHelper.EnsureEmSourcePlanInTransaction(connection, transaction, currentEventId, AppConfig.IsProduction);
 
             DataTable parent = ReadEmRows(connection, transaction, @"
 SELECT Id, WorkflowStatus, FinalResult, ResultRowVersion

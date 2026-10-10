@@ -517,6 +517,8 @@ WHERE SampleID = @SampleID
                     signature.SignedBy,
                     "CanIssueCOA",
                     isReissue ? "reissue PRM certificate/report" : "issue PRM certificate/report");
+                    if (isReissue) ReviewWorkflowAuthorization.EnsurePrmReissue(conn, tx, signature.SignedBy,
+                        AppConfig.IsDevelopment && AppConfig.DevelopmentAdminFullPermissions);
 
                     issuanceStage = "approved sample validation";
                     DataTable lockedSample = new DataTable();

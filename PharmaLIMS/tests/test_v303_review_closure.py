@@ -109,7 +109,7 @@ class V303ReviewClosureTests(unittest.TestCase):
 
     def test_version_and_historical_migration_identity_remain_controlled(self):
         manifest = json.loads(source("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
+        self.assertEqual("2026.10.10.304", manifest["applicationVersion"])
         self.assertIn("20260908_000", source("Infrastructure/SystemPreflightService.cs"))
 
 

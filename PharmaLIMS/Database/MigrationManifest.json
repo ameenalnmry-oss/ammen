@@ -1,6 +1,6 @@
 {
   "application": "PharmaLIMS",
-  "applicationVersion": "2026.10.6.303",
+  "applicationVersion": "2026.10.10.304",
   "generatedAtUtc": "2026-09-23T19:26:23Z",
   "baselineThrough": "20260722_003",
   "freshInstallBaseline": {
@@ -581,6 +581,12 @@
       "description": "Append-only controlled Water equipment and test kit resource evidence",
       "file": "Migrations/20261009_002_Water_Resources_Traceability.sql",
       "sha256": "4f246f168f8ce835f7eb83f4d0969049b7540783c65a7c7c3f7ea235cfa7bde8"
+    },
+    {
+      "versionKey": "20261010_001",
+      "description": "Full specification content/authorship evidence, PRM investigation history, preparation concurrency and frozen media identity; authoritative Water kit execution date",
+      "file": "Migrations/20261010_001_Review_Content_And_Identity_Protection.sql",
+      "sha256": "db9aa55419e798cc0790fadeb8f49e1c2fbd0d857f9dbe6921cb8bb9f973b547"
     }
   ]
 }

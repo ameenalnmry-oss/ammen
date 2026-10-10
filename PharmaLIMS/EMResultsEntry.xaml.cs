@@ -75,6 +75,7 @@ namespace PharmaLIMS
 
         private List<EMPlateResultItem> plateItems = new List<EMPlateResultItem>();
         private DataTable _loadedPlateSnapshot;
+        private string currentAreaContextSource = "";
         private bool isSaving = false;
         private bool isWorkflowActionInProgress = false;
         private bool reportPrintedThisSession = false;
@@ -592,6 +593,9 @@ SELECT CASE
         private bool CanPrintApprovedEMReport(out string message)
         {
             message = "";
+            try { CommitEmResultGridEdits(); }
+            catch (Exception ex) { message = UserFacingError.SafeMessage(ex); return false; }
+
 
             if (currentEventId <= 0)
             {
@@ -631,7 +635,9 @@ SELECT CASE
             }
 
             string databaseMessage;
-            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, currentUser, out databaseMessage))
+            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, currentUser, out databaseMessage,
+                (conn, tx, locked) => EnsureEmVisibleEvidenceSaved(_loadedPlateSnapshot, locked, currentEventId,
+                    plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)), plateItems.ToDictionary(item => item.PlateId, item => item.EquipmentID))))
             {
                 message = databaseMessage;
                 return false;
@@ -907,10 +913,24 @@ SELECT CASE
                 return;
             }
 
+            try
+            {
+            CommitEmResultGridEdits();
+            int submittedEventId = currentEventId;
+            string submittedEventNo = currentEventNo;
+            DataTable original = _loadedPlateSnapshot?.Copy() ?? throw new InvalidOperationException("Reload the EM event before submitting.");
+            var visible = plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)).ToArray();
+            var equipment = plateItems.ToDictionary(item => item.PlateId, item => item.EquipmentID);
+            EnsureEmVisibleEvidenceSaved(original, original, submittedEventId, visible, equipment);
             await PerformEMWorkflowActionAsync(
                 "Submit for Review",
                 "EM Submit for Review",
-                (meaning, reason) => DatabaseHelper.SubmitEMEventForReview(currentEventId, currentEventNo, currentUser, meaning, reason));
+                (meaning, reason) => DatabaseHelper.SubmitEMEventForReview(submittedEventId, submittedEventNo, currentUser, meaning, reason,
+                    (conn, tx) => EnsureEmVisibleEvidenceSaved(original, DatabaseHelper.ReadEmPlateSnapshotInTransaction(conn, tx, submittedEventId),
+                        submittedEventId, visible, equipment)));
+            }
+            catch (Exception ex) { MessageBox.Show(UserFacingError.SafeMessage(ex), "Unsaved EM Evidence", MessageBoxButton.OK, MessageBoxImage.Warning); }
+
         }
 
         private async void BtnReview_Click(object sender, RoutedEventArgs e)
@@ -1114,6 +1134,8 @@ SELECT CASE
             document.PagePadding = new Thickness(42, 38, 42, 48);
             document.ColumnWidth = double.PositiveInfinity;
 
+            int previewEventId = currentEventId;
+            string previewEventNo = currentEventNo;
             var viewer = new FlowDocumentPageViewer
             {
                 Document = document,
@@ -1174,6 +1196,8 @@ SELECT CASE
 
                 try
                 {
+                    if (currentEventId != previewEventId || currentEventNo != previewEventNo || !CanPrintApprovedEMReport(out string blockReason))
+                        throw new InvalidOperationException("The preview evidence changed or is no longer printable. Reload the approved report.");
                     // Create a separate document for printing.
                     // Do not reuse the document currently attached to the preview viewer.
                     FlowDocument printDocument = BuildEMResultReportDocument();
@@ -1916,6 +1940,8 @@ SELECT CASE
                 Foreground = CreateReportBrush("#1E3A5F")
             };
 
+            if (currentAreaContextSource.Contains("Legacy", StringComparison.OrdinalIgnoreCase) || currentAreaContextSource.Contains("not recorded", StringComparison.OrdinalIgnoreCase))
+                list.ListItems.Add(MakeEvaluationListItem("Area identity evidence: " + currentAreaContextSource + "."));
             if (HasSettlePlateResults())
                 list.ListItems.Add(MakeEvaluationListItem("Settle Plate results are evaluated as direct CFU/plate counts."));
 

@@ -521,6 +521,7 @@ END;";
                     activeCertificate != null &&
                     ToInt(activeCertificate, "CertificateID") == _initialLegacyCertificateId;
                 bool baseReissueAllowed =
+                    CanCancelPrmCertificate() &&
                     hasSample &&
                     CanIssuePrmCertificate() &&
                     hasReissueSource &&
@@ -1057,10 +1058,12 @@ SELECT
     EnteredDate,
     CONVERT(NVARCHAR(20), EnteredDate, 120) AS EnteredDateText,
     usage.EquipmentID,
+    (SELECT MAX(h.HistoryID) FROM dbo.LabEquipmentUsageHistory h WHERE h.Module=N'PRM' AND h.ParentRecordID=st.SampleID AND h.ResultRecordID=st.SampleTestID) AS EquipmentHistoryID,
     ISNULL(st.SortOrder, st.SampleTestID) AS SortOrder
 FROM dbo.PRM_SampleTests st
 LEFT JOIN dbo.LabEquipmentUsage usage
   ON usage.Module=N'PRM'
+ AND usage.ParentRecordID=st.SampleID
  AND usage.ResultRecordID=st.SampleTestID
 WHERE st.SampleID = @SampleID
 ORDER BY ISNULL(st.SortOrder, st.SampleTestID), st.SampleTestID;";
@@ -2189,8 +2192,8 @@ WHERE SampleID = @SampleID
             try
             {
                 RequireSample();
-                if (!CanIssuePrmCertificate())
-                    throw new InvalidOperationException("You do not have permission to reissue PRM certificates/reports.");
+                if (!CanIssuePrmCertificate() || !CanCancelPrmCertificate())
+                    throw new InvalidOperationException("Issue and cancellation permissions are required to reissue PRM certificates/reports.");
 
                 string status = GetCurrentSampleStatus();
                 if (!IsOneOf(status, "Approved", "Certificate Issued"))

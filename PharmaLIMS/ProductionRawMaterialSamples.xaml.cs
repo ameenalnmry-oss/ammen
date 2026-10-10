@@ -29,6 +29,9 @@ namespace PharmaLIMS
         private string _selectedCategory = "";
         private readonly ObservableCollection<SpecificationTestDraft> _specificationTests = new();
         private int _masterVersion;
+        private DataTable? _loadedSpecificationSnapshot;
+        private string _loadedSpecificationView = string.Empty;
+        private int? _requestedLoadVersion;
         private string _masterApprovalStatus = "Draft";
         private bool _returnToRegistrationAfterMaster;
         private readonly bool _specificationMasterOnly;
@@ -176,6 +179,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                 int sourceVersion = Convert.ToInt32(table.Rows[0]["VersionNo"], CultureInfo.InvariantCulture);
 
                 _masterVersion = 0;
+            _loadedSpecificationSnapshot = null;
+            _loadedSpecificationView = string.Empty;
                 _masterApprovalStatus = "Draft";
                 TxtMasterVersion.Text = "New";
                 TxtMasterReference.Text = table.Rows[0]["CompendialReference"] == DBNull.Value
@@ -199,6 +204,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                         TestCode = Convert.ToString(row["TestCode"], CultureInfo.InvariantCulture) ?? string.Empty,
                         TestName = Convert.ToString(row["TestName"], CultureInfo.InvariantCulture) ?? string.Empty,
                         SpecificationText = Convert.ToString(row["SpecificationText"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        SpecificationLimit = row["SpecificationLimit"] == DBNull.Value ? null : Convert.ToDecimal(row["SpecificationLimit"], CultureInfo.InvariantCulture),
+                        IsDefaultForCategory = row["IsDefaultForCategory"] != DBNull.Value && Convert.ToBoolean(row["IsDefaultForCategory"], CultureInfo.InvariantCulture),
                         Unit = row["Unit"] == DBNull.Value ? string.Empty : Convert.ToString(row["Unit"], CultureInfo.InvariantCulture) ?? string.Empty,
                         ResultType = Convert.ToString(row["ResultType"], CultureInfo.InvariantCulture) ?? "Text",
                         RequiredTest = row["RequiredTest"] != DBNull.Value && Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture),
@@ -434,6 +441,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
         private void NewSpecificationDraft()
         {
             _masterVersion = 0;
+            _loadedSpecificationSnapshot = null;
+            _loadedSpecificationView = string.Empty;
             _masterApprovalStatus = "Draft";
             TxtMasterSpecificationNo.Text = string.Empty;
             TxtMasterReference.Text = string.Empty;
@@ -461,16 +470,18 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
 SELECT * FROM dbo.PRM_SpecificationTests
 WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
   AND LTRIM(RTRIM(SampleCategory))=@Category
-  AND VersionNo=(SELECT MAX(VersionNo) FROM dbo.PRM_SpecificationTests WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo AND LTRIM(RTRIM(SampleCategory))=@Category)
+  AND VersionNo=COALESCE(@RequestedVersion,(SELECT MAX(VersionNo) FROM dbo.PRM_SpecificationTests WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo AND LTRIM(RTRIM(SampleCategory))=@Category))
 ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     new[]
                     {
+                        new SqlParameter("@RequestedVersion", SqlDbType.Int) { Value = _requestedLoadVersion.HasValue ? _requestedLoadVersion.Value : DBNull.Value },
                         new SqlParameter("@SpecificationNo", SqlDbType.NVarChar, 120) { Value = specificationNo },
                         new SqlParameter("@Category", SqlDbType.NVarChar, 40) { Value = category }
                     });
                 if (table.Rows.Count == 0)
                     throw new InvalidOperationException("No specification version was found for the selected number and category.");
 
+                _loadedSpecificationSnapshot = table.Copy();
                 _masterVersion = Convert.ToInt32(table.Rows[0]["VersionNo"], CultureInfo.InvariantCulture);
                 _masterApprovalStatus = Convert.ToString(table.Rows[0]["ApprovalStatus"], CultureInfo.InvariantCulture) ?? "Draft";
                 TxtMasterVersion.Text = _masterVersion.ToString(CultureInfo.InvariantCulture);
@@ -493,6 +504,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                         TestCode = Convert.ToString(row["TestCode"], CultureInfo.InvariantCulture) ?? string.Empty,
                         TestName = Convert.ToString(row["TestName"], CultureInfo.InvariantCulture) ?? string.Empty,
                         SpecificationText = Convert.ToString(row["SpecificationText"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        SpecificationLimit = row["SpecificationLimit"] == DBNull.Value ? null : Convert.ToDecimal(row["SpecificationLimit"], CultureInfo.InvariantCulture),
+                        IsDefaultForCategory = row["IsDefaultForCategory"] != DBNull.Value && Convert.ToBoolean(row["IsDefaultForCategory"], CultureInfo.InvariantCulture),
                         Unit = row["Unit"] == DBNull.Value ? string.Empty : Convert.ToString(row["Unit"], CultureInfo.InvariantCulture) ?? string.Empty,
                         ResultType = Convert.ToString(row["ResultType"], CultureInfo.InvariantCulture) ?? "Text",
                         RequiredTest = row["RequiredTest"] != DBNull.Value && Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture),
@@ -502,6 +515,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                         SortOrder = row["SortOrder"] == DBNull.Value ? 0 : Convert.ToInt32(row["SortOrder"], CultureInfo.InvariantCulture)
                     });
                 }
+                _loadedSpecificationView = CaptureSpecificationView();
             }
             catch (Exception ex) { MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Load Specification", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
@@ -510,6 +524,7 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
         {
             try
             {
+                CommitSpecificationEdits();
                 if (!DatabaseHelper.CanEditResults(Login.CurrentUser))
                     throw new UnauthorizedAccessException("You are not authorized to maintain specification drafts.");
                 if (!_masterApprovalStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase) && _masterVersion > 0)
@@ -533,6 +548,10 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                     if (test.RequiredTest && test.MinimumElapsedHours <= 0m)
                         throw new InvalidOperationException("Every required microbiology test must define a Minimum Elapsed Hours value greater than zero before the profile can be saved.");
                     test.ResultType = NormalizeControlledResultType(test.ResultType);
+                    SpecificationNumericStorage.EnsureExact(test.SpecificationLimit);
+                    if (test.ResultType == "Numeric" && PrmNumericSpecificationEvaluator.Evaluate(0m, test.SpecificationText,
+                        test.SpecificationLimit?.ToString(CultureInfo.InvariantCulture), test.TestCode, test.TestName) == "Check Required")
+                        throw new InvalidOperationException("Numeric acceptance criteria/limit are ambiguous or inconsistent for " + test.TestName + ".");
                     if ((test.ResultType.Contains("Presence", StringComparison.OrdinalIgnoreCase) ||
                          test.ResultType.Contains("Qualitative", StringComparison.OrdinalIgnoreCase)) &&
                         !PrmResultInterpretationEvaluator.TryGetRequiredPresence(test.SpecificationText, out _))
@@ -545,20 +564,30 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                 if (category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(productionStage))
                     throw new InvalidOperationException("Production Stage is required for an In-Process inspection profile.");
 
+                int targetVersion = _masterVersion;
                 DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
                 {
                     DatabaseHelper.EnsureUserPermissionInTransaction(
                         connection, transaction, Login.CurrentUser, "CanEnterResults", "maintain PRM specification drafts");
 
+                    string beforeJson = "[]";
+                    if (targetVersion > 0)
+                    {
+                        DataTable locked = SpecificationEvidenceService.Load(connection, transaction, specificationNo, category, targetVersion);
+                        ResultSnapshotGuard.EnsureMatches(_loadedSpecificationSnapshot, locked, "SpecificationTestID", "VersionNo", targetVersion);
+                        if (SpecificationEvidenceService.HasControlledCreation(connection, transaction, specificationNo, category, targetVersion))
+                            beforeJson = SpecificationEvidenceService.Json(connection, transaction, specificationNo, category, targetVersion);
+                        else targetVersion = 0; // Preserve legacy rows; establish a new, fully attributable draft.
+                    }
                     string draftCreatedBy = Login.CurrentUser;
                     DateTime draftCreatedDate;
 
-                    if (_masterVersion <= 0)
+                    if (targetVersion <= 0)
                     {
                         using SqlCommand versionCommand = new SqlCommand("SELECT ISNULL(MAX(VersionNo),0)+1 FROM dbo.PRM_SpecificationTests WITH(UPDLOCK,HOLDLOCK) WHERE SpecificationNo=@No AND SampleCategory=@Category", connection, transaction);
                         versionCommand.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                         versionCommand.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
-                        _masterVersion = Convert.ToInt32(versionCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
+                        targetVersion = Convert.ToInt32(versionCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
 
                         using SqlCommand createdAtCommand = new SqlCommand("SELECT SYSDATETIME();", connection, transaction);
                         draftCreatedDate = Convert.ToDateTime(createdAtCommand.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -576,7 +605,7 @@ ORDER BY SpecificationTestID;", connection, transaction))
                         {
                             creatorCommand.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                             creatorCommand.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
-                            creatorCommand.Parameters.Add("@Version", SqlDbType.Int).Value = _masterVersion;
+                            creatorCommand.Parameters.Add("@Version", SqlDbType.Int).Value = targetVersion;
                             using SqlDataReader creatorReader = creatorCommand.ExecuteReader();
                             if (!creatorReader.Read())
                                 throw new DBConcurrencyException("The specification draft no longer exists or is no longer editable. Reload before saving.");
@@ -587,7 +616,7 @@ ORDER BY SpecificationTestID;", connection, transaction))
                         using SqlCommand delete = new SqlCommand("DELETE dbo.PRM_SpecificationTests WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version AND ApprovalStatus=N'Draft'", connection, transaction);
                         delete.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                         delete.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
-                        delete.Parameters.Add("@Version", SqlDbType.Int).Value = _masterVersion;
+                        delete.Parameters.Add("@Version", SqlDbType.Int).Value = targetVersion;
                         delete.ExecuteNonQuery();
                     }
 
@@ -596,17 +625,20 @@ ORDER BY SpecificationTestID;", connection, transaction))
                     {
                         using SqlCommand insert = new SqlCommand(@"
 INSERT dbo.PRM_SpecificationTests
-(SpecificationNo,SampleCategory,ItemCode,ProductionStage,CompendialReference,VersionNo,TestCode,TestName,SpecificationText,Unit,ResultType,RequiredTest,MinimumElapsedHours,SortOrder,ApprovalStatus,EffectiveDate,IsActive,CreatedBy,CreatedDate)
-VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,@Criteria,@Unit,@Type,@Required,@MinimumElapsedHours,@Order,N'Draft',@Effective,0,@CreatedBy,@CreatedDate);", connection, transaction);
+(SpecificationNo,SampleCategory,ItemCode,ProductionStage,CompendialReference,VersionNo,TestCode,TestName,SpecificationText,SpecificationLimit,IsDefaultForCategory,Unit,ResultType,RequiredTest,MinimumElapsedHours,SortOrder,ApprovalStatus,EffectiveDate,IsActive,CreatedBy,CreatedDate)
+VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,@Criteria,@Limit,@Default,@Unit,@Type,@Required,@MinimumElapsedHours,@Order,N'Draft',@Effective,0,@CreatedBy,@CreatedDate);", connection, transaction);
                         insert.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                         insert.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
                         insert.Parameters.Add("@ItemCode", SqlDbType.NVarChar, 80).Value = itemCode;
                         insert.Parameters.Add("@ProductionStage", SqlDbType.NVarChar, 80).Value = string.IsNullOrWhiteSpace(productionStage) ? DBNull.Value : productionStage;
                         insert.Parameters.Add("@Reference", SqlDbType.NVarChar, 160).Value = reference;
-                        insert.Parameters.Add("@Version", SqlDbType.Int).Value = _masterVersion;
+                        insert.Parameters.Add("@Version", SqlDbType.Int).Value = targetVersion;
                         insert.Parameters.Add("@Code", SqlDbType.NVarChar, 40).Value = test.TestCode.Trim();
                         insert.Parameters.Add("@Name", SqlDbType.NVarChar, 160).Value = test.TestName.Trim();
                         insert.Parameters.Add("@Criteria", SqlDbType.NVarChar, 500).Value = test.SpecificationText.Trim();
+                        var limit = insert.Parameters.Add("@Limit", SqlDbType.Decimal); limit.Precision = 18; limit.Scale = 3;
+                        limit.Value = test.SpecificationLimit.HasValue ? test.SpecificationLimit.Value : DBNull.Value;
+                        insert.Parameters.Add("@Default", SqlDbType.Bit).Value = test.IsDefaultForCategory;
                         insert.Parameters.Add("@Unit", SqlDbType.NVarChar, 50).Value = string.IsNullOrWhiteSpace(test.Unit) ? DBNull.Value : test.Unit.Trim();
                         insert.Parameters.Add("@Type", SqlDbType.NVarChar, 60).Value = string.IsNullOrWhiteSpace(test.ResultType) ? "Text" : test.ResultType.Trim();
                         insert.Parameters.Add("@Required", SqlDbType.Bit).Value = test.RequiredTest;
@@ -623,18 +655,19 @@ VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,
                         insert.ExecuteNonQuery();
                     }
 
+                    SpecificationEvidenceService.Record(connection, transaction, specificationNo, category, targetVersion,
+                        beforeJson == "[]" ? "Draft Created" : "Draft Updated", beforeJson, Login.CurrentUser, "Controlled draft creation or update.");
                     DatabaseHelper.AddAuditTrailAdvanced(
                         connection, transaction, "PRM_SpecificationTests", 0,
                         "PRM Specification Draft Saved", string.Empty,
-                        specificationNo + " v" + _masterVersion.ToString(CultureInfo.InvariantCulture) +
+                        specificationNo + " v" + targetVersion.ToString(CultureInfo.InvariantCulture) +
                             "; ItemCode=" + itemCode +
                             (string.IsNullOrWhiteSpace(productionStage) ? string.Empty : "; ProductionStage=" + productionStage),
                         "Controlled draft creation or update.", Login.CurrentUser,
                         "ApprovalStatus", null, specificationNo, "PRM Specification");
                 });
-                TxtMasterVersion.Text = _masterVersion.ToString(CultureInfo.InvariantCulture);
-                TxtMasterState.Text = "Draft";
-                _masterApprovalStatus = "Draft";
+                _masterVersion = targetVersion;
+                ReloadSpecificationVersion(targetVersion);
                 TxtStatus.Text = "Specification draft saved.";
             }
             catch (Exception ex) { MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Save Specification", MessageBoxButton.OK, MessageBoxImage.Warning); }
@@ -647,6 +680,7 @@ VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,
         {
             try
             {
+                EnsureSpecificationViewSaved();
                 if (_masterVersion <= 0) throw new InvalidOperationException("Save or load the specification version first.");
                 bool approval = targetStatus == "Approved";
                 string scopedItemCode = (TxtMasterItemCode.Text ?? string.Empty).Trim();
@@ -682,6 +716,7 @@ WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version;",
                 string action = approval ? "Approve Specification" : "Review Specification";
                 ElectronicSignature signature = new ElectronicSignature(TxtMasterSpecificationNo.Text + " v" + _masterVersion, Login.CurrentUser, action) { Owner = this };
                 if (signature.ShowDialog() != true || !signature.IsConfirmed) return;
+                EnsureSpecificationViewSaved();
 
                 string specificationNo = TxtMasterSpecificationNo.Text.Trim();
                 string category = MasterCategory;
@@ -700,6 +735,21 @@ WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version;",
                             "CanReviewResults",
                             "review a PRM specification");
 
+                    DataTable lockedContent = SpecificationEvidenceService.Load(connection, transaction, specificationNo, category, _masterVersion);
+                    ResultSnapshotGuard.EnsureMatches(_loadedSpecificationSnapshot, lockedContent, "SpecificationTestID", "VersionNo", _masterVersion);
+                    foreach (DataRow testRow in lockedContent.Rows)
+                    {
+                        decimal? limit = testRow["SpecificationLimit"] == DBNull.Value ? null : Convert.ToDecimal(testRow["SpecificationLimit"], CultureInfo.InvariantCulture);
+                        SpecificationNumericStorage.EnsureExact(limit);
+                        if (NormalizeControlledResultType(Convert.ToString(testRow["ResultType"], CultureInfo.InvariantCulture) ?? "") == "Numeric" &&
+                            PrmNumericSpecificationEvaluator.Evaluate(0m, Convert.ToString(testRow["SpecificationText"], CultureInfo.InvariantCulture),
+                                limit?.ToString(CultureInfo.InvariantCulture), Convert.ToString(testRow["TestCode"], CultureInfo.InvariantCulture),
+                                Convert.ToString(testRow["TestName"], CultureInfo.InvariantCulture)) == "Check Required")
+                            throw new InvalidOperationException("Stored numeric specification criteria/limit are inconsistent. Create a corrected controlled draft before signing.");
+                    }
+                    if (!SpecificationEvidenceService.HasControlledCreation(connection, transaction, specificationNo, category, _masterVersion))
+                        throw new InvalidOperationException("Historical draft authorship is incomplete. Save as a new controlled draft before review/approval.");
+                    string beforeJson = SpecificationEvidenceService.Json(connection, transaction, specificationNo, category, _masterVersion);
                     string lockedStatus;
                     string lockedReviewedBy;
                     string lockedCreatedBy;
@@ -766,6 +816,9 @@ WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version;",
                         (string.Equals(authorizedRole, "Admin", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(authorizedRole, "Administrator", StringComparison.OrdinalIgnoreCase));
 
+                    if (!developmentOverride && !approval)
+                        SpecificationEvidenceService.EnsureReviewIndependent(connection, transaction, specificationNo, category, _masterVersion, signature.SignedBy);
+
                     if (!developmentOverride && !approval &&
                         !string.IsNullOrWhiteSpace(lockedCreatedBy) &&
                         lockedCreatedBy.Equals(signature.SignedBy, StringComparison.OrdinalIgnoreCase))
@@ -797,6 +850,7 @@ WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version AN
 
                     using SqlCommand sign = new SqlCommand(@"
 INSERT dbo.PRM_SpecificationSignatures(SpecificationNo,SampleCategory,VersionNo,ActionType,ActionReason,SignedBy,MeaningOfSignature,UserRole,SignedAt)
+OUTPUT INSERTED.SignatureID
 VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME());", connection, transaction);
                     sign.Parameters.Add("@No", SqlDbType.NVarChar, 120).Value = specificationNo;
                     sign.Parameters.Add("@Category", SqlDbType.NVarChar, 40).Value = category;
@@ -806,7 +860,9 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                     sign.Parameters.Add("@User", SqlDbType.NVarChar, 120).Value = signature.SignedBy;
                     sign.Parameters.Add("@Meaning", SqlDbType.NVarChar, 255).Value = signature.Meaning;
                     sign.Parameters.Add("@Role", SqlDbType.NVarChar, 100).Value = authorizedRole;
-                    sign.ExecuteNonQuery();
+                    long signatureId = Convert.ToInt64(sign.ExecuteScalar(), CultureInfo.InvariantCulture);
+                    SpecificationEvidenceService.Record(connection, transaction, specificationNo, category, _masterVersion,
+                        action, beforeJson, signature.SignedBy, signature.Reason, signatureId);
 
                     DatabaseHelper.AddAuditTrailAdvanced(
                         connection, transaction, "PRM_SpecificationTests", 0,
@@ -815,8 +871,7 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                         specificationNo + " v" + _masterVersion.ToString(CultureInfo.InvariantCulture),
                         "PRM Specification");
                 });
-                _masterApprovalStatus = targetStatus;
-                TxtMasterState.Text = targetStatus;
+                ReloadSpecificationVersion(_masterVersion);
                 TxtStatus.Text = "Specification version " + targetStatus.ToLowerInvariant() + ".";
                 if (approval)
                     LoadApprovedSpecificationChoices();
@@ -824,11 +879,35 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             catch (Exception ex) { MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Specification Workflow", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
+        private void ReloadSpecificationVersion(int version)
+        {
+            _requestedLoadVersion = version;
+            try { BtnLoadSpecification_Click(this, new RoutedEventArgs()); }
+            finally { _requestedLoadVersion = null; }
+        }
+        private void CommitSpecificationEdits()
+        {
+            if (!DgSpecificationTests.CommitEdit(DataGridEditingUnit.Cell, true) || !DgSpecificationTests.CommitEdit(DataGridEditingUnit.Row, true))
+                throw new InvalidOperationException("Correct the invalid specification cell before saving or signing.");
+        }
+        private string CaptureSpecificationView() => System.Text.Json.JsonSerializer.Serialize(new {
+            No = TxtMasterSpecificationNo.Text, Category = MasterCategory, Reference = TxtMasterReference.Text,
+            ItemCode = TxtMasterItemCode.Text, Stage = GetComboText(CmbMasterProductionStage), Effective = DpMasterEffective.SelectedDate,
+            Tests = _specificationTests.ToArray() });
+        private void EnsureSpecificationViewSaved()
+        {
+            CommitSpecificationEdits();
+            if (_loadedSpecificationSnapshot == null || _loadedSpecificationView != CaptureSpecificationView())
+                throw new InvalidOperationException("Save and reload all specification edits before review or approval.");
+        }
+
         private sealed class SpecificationTestDraft
         {
             public string TestCode { get; set; } = string.Empty;
             public string TestName { get; set; } = string.Empty;
             public string SpecificationText { get; set; } = string.Empty;
+            public decimal? SpecificationLimit { get; set; }
+            public bool IsDefaultForCategory { get; set; }
             public string Unit { get; set; } = string.Empty;
             public string ResultType { get; set; } = "Text";
             public bool RequiredTest { get; set; } = true;
