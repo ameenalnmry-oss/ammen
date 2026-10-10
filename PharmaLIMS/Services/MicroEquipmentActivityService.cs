@@ -14,6 +14,7 @@ internal static class MicroEquipmentActivityService
     {
         if (equipmentId <= 0 || string.IsNullOrWhiteSpace(actor) || string.IsNullOrWhiteSpace(activityType))
             throw new ArgumentException("Equipment, activity type and authenticated performer are required.");
+        DatabaseHelper.EnsureUserPermissionInTransaction(connection,transaction,actor,"CanEnterResults","create microbiology equipment activity");
         using var command = new SqlCommand(@"
 INSERT dbo.MicroEquipmentActivities
 (EquipmentID,ActivityType,PerformedBy,MethodReference,EquipmentCodeSnapshot,
