@@ -177,6 +177,29 @@
                                  ToolTip="Read-only controlled use matrix. Result-level compatibility is enforced separately where a direct one-to-one rule is approved."/>
 
                         <Separator Margin="0,8,0,12"/>
+                        <TextBlock Text="New Equipment Activity Draft" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="Creates a draft record only. Actual equipment use must be confirmed separately." Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Activity Type" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox x:Name="CboActivityType" Height="34" Margin="0,0,8,10">
+                                    <ComboBoxItem Content="Use"/>
+                                    <ComboBoxItem Content="Incubation"/>
+                                    <ComboBoxItem Content="Calibration"/>
+                                    <ComboBoxItem Content="Periodic Verification"/>
+                                    <ComboBoxItem Content="Cleaning"/>
+                                    <ComboBoxItem Content="Sanitization"/>
+                                    <ComboBoxItem Content="Maintenance"/>
+                                    <ComboBoxItem Content="Breakdown"/>
+                                    <ComboBoxItem Content="Repair"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel><TextBlock Text="Method / SOP reference" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="TxtActivityMethod" Height="34" Margin="0,0,0,10"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <Button Content="Create Activity Draft" Style="{StaticResource PrimaryButton}"
+                                HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnCreateActivityDraft_Click"/>
+                        <Separator Margin="0,8,0,12"/>
                         <TextBlock Text="Equipment Activity History" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
                         <TextBlock x:Name="LblActivityHistory" Text="Select an equipment record to view its activity history." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,8"/>
                         <DataGrid x:Name="GridActivityHistory" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
