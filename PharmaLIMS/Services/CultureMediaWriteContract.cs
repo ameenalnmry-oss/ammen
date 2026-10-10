@@ -17,6 +17,6 @@ BEGIN
  -- Supplier belongs to the receipt lot; never rewrite a shared master manufacturer.
  SELECT @ID;
 END
-ELSE INSERT dbo.CultureMedia(MediaCode,MediaName,MediaType,Manufacturer,StorageCondition,DefaultExpiryDays,PreparationInstruction,IsActive,CreatedBy)
-OUTPUT INSERTED.MediaID VALUES(@MediaCode,@MediaName,@MediaType,@Manufacturer,@StorageCondition,14,NULL,1,@UserName);";
+ELSE INSERT dbo.CultureMedia(MediaCode,MediaName,MediaType,Manufacturer,StorageCondition,DefaultExpiryDays,IsActive)
+OUTPUT INSERTED.MediaID VALUES(@MediaCode,@MediaName,@MediaType,@Manufacturer,@StorageCondition,14,1);";
 }

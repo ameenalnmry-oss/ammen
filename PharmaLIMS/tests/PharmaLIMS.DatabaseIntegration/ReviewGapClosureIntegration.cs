@@ -253,7 +253,8 @@ OUTPUT INSERTED.MediaLotID VALUES(@media,@lot,N'MLOT',N'Supplier B','20261010','
             string no = "EM304-" + Guid.NewGuid().ToString("N")[..20];
             int plan = Convert.ToInt32((await Query(c, @"INSERT dbo.EM_Plans(PlanNo,PlanType,SourceType,LoginDate,SampleDueDate,RequiredDate,Status,CreatedBy)
 OUTPUT INSERTED.PlanID VALUES(@no,N'Routine',N'Manual','20261010','20261010','20261010',N'Ready for Results',N'fixture');", t, Arg("@no", no))).Rows[0][0]);
-            int area = Convert.ToInt32((await Query(c, "SELECT TOP(1) Id FROM dbo.EM_Areas ORDER BY Id;", t)).Rows[0][0]);
+            int area = Convert.ToInt32((await Query(c, @"INSERT dbo.EM_Areas(AreaCode,AreaName,Grade)
+OUTPUT INSERTED.Id VALUES(@no,N'v304 cancellation fixture',N'D');", t, Arg("@no", no))).Rows[0][0]);
             int eventId = Convert.ToInt32((await Query(c, @"INSERT dbo.EM_Events(EventNo,AreaId,EventDate,PlanID,WorkflowStatus,FinalResult)
 OUTPUT INSERTED.Id VALUES(@no,@area,'20261010',@plan,N'Pending',N'Pending');", t, Arg("@no", no), Arg("@area", area), Arg("@plan", plan))).Rows[0][0]);
             SqlParameter[] CancelArgs(string status) => new[] { Arg("@Plan",plan),Arg("@Expected",status),Arg("@User","fixture"),Arg("@Role","QA"),Arg("@Meaning","Cancel plan and events"),Arg("@Reason","Controlled cancellation") };
