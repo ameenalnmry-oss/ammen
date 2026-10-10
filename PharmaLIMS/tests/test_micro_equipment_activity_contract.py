@@ -22,7 +22,8 @@ class MicroEquipmentActivityContractTests(unittest.TestCase):
 
     def test_scope_and_multiple_activity_links(self):
         sql = MIGRATION.read_text(encoding='utf-8').upper()
-        self.assertIn('MIC-EQ-%', sql)
+        self.assertIn('MIC-EQ-[0-9][0-9][0-9]', sql)
+        self.assertIn('MICROBIOLOGY', sql)
         self.assertIn('MICROEQUIPMENTACTIVITYLINKS', sql)
         self.assertNotIn('UNIQUE(MODULE,RESULTRECORDID)', sql.replace(' ', ''))
 
