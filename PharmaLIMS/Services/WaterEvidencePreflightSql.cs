@@ -27,7 +27,14 @@ BEGIN
     AND ((st.ResultEnteredDate<@ResourceCutover AND NOT EXISTS(SELECT 1 FROM dbo.LabEquipmentUsage u WHERE u.Module=N'WATER' AND u.ParentRecordID=st.SampleID AND u.ResultRecordID=st.SampleTestID))
     OR (st.ResultEnteredDate>=@ResourceCutover AND
       (primaryResource.EvidenceID IS NULL OR NOT
-       ((primaryResource.ResourceKind=N'NO_INSTRUMENT' AND UPPER(LTRIM(RTRIM(COALESCE(NULLIF(st.TestNameSnapshot,N''),t.TestName)))) IN
+       ((primaryResource.ResourceKind=N'NO_INSTRUMENT' AND name.TestName=N'TURBIDITY'
+         AND OBJECT_ID(N'dbo.WaterVisualMethodEvidence',N'U') IS NOT NULL
+         AND EXISTS(SELECT 1 FROM dbo.WaterVisualMethodEvidence v WHERE v.SampleID=st.SampleID AND v.SampleTestID=st.SampleTestID
+         AND v.ResourceEvidenceID=primaryResource.EvidenceID AND v.IsVoid=0
+         AND NULLIF(LTRIM(RTRIM(v.VisualMethodReference)),N'') IS NOT NULL
+         AND NULLIF(LTRIM(RTRIM(v.ObservationDescription)),N'') IS NOT NULL
+         AND NULLIF(LTRIM(RTRIM(v.SignedBy)),N'') IS NOT NULL))
+       OR (primaryResource.ResourceKind=N'NO_INSTRUMENT' AND UPPER(LTRIM(RTRIM(COALESCE(NULLIF(st.TestNameSnapshot,N''),t.TestName)))) IN
          (N'APPEARANCE',N'APPEARANCE (COLOR & CLARITY)',N'COLOR & CLARITY',N'COLOUR & CLARITY',N'DESCRIPTION',N'ODOR',N'ODOUR',N'TASTE'))
        OR (primaryResource.ResourceKind=N'TEST_KIT' AND (name.TestName LIKE N'%CHLOR%' OR name.TestName LIKE N'%HARDNESS%' OR name.TestName LIKE N'%CALCIUM%' OR name.TestName LIKE N'%MAGNESIUM%' OR name.TestName LIKE N'%NITRATE%' OR name.TestName LIKE N'%SULPHATE%' OR name.TestName LIKE N'%SULFATE%' OR name.TestName LIKE N'%AMMON%' OR name.TestName IN(N'ACIDITY',N'ALKALINITY',N'OXIDISABLE SUBSTANCES',N'OXIDIZABLE SUBSTANCES',N'HEAVY METALS (AS PB)')) AND NULLIF(LTRIM(RTRIM(primaryResource.KitCode)),N'') IS NOT NULL AND NULLIF(LTRIM(RTRIM(primaryResource.KitLot)),N'') IS NOT NULL AND primaryResource.KitExpiry>=COALESCE(primaryResource.ExecutionDate,CAST(primaryResource.SignedAt AS date)))
        OR (primaryResource.ResourceKind=N'INSTRUMENT' AND name.TestName NOT IN(N'RESIDUAL CHLORINE',N'FREE CHLORINE',N'FREE RESIDUAL CHLORINE',N'CHLORINE',N'APPEARANCE',N'APPEARANCE (COLOR & CLARITY)',N'COLOR & CLARITY',N'COLOUR & CLARITY',N'DESCRIPTION',N'ODOR',N'ODOUR',N'TASTE') AND EXISTS(SELECT 1 FROM dbo.LabEquipmentUsage u WHERE u.Module=N'WATER' AND u.ParentRecordID=st.SampleID AND u.ResultRecordID=st.SampleTestID AND u.EquipmentID=primaryResource.EquipmentID)))
