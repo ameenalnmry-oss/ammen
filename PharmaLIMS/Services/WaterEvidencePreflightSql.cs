@@ -13,6 +13,20 @@ DECLARE @Cutover datetime2(0)=
 DECLARE @ResourceCutover datetime2(0)=(SELECT TOP(1) AppliedAt FROM dbo.LIMS_SchemaVersions WHERE VersionKey=N'20261009_002' ORDER BY AppliedAt DESC);
 
 DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
+CREATE TABLE #WaterVisualMethodEvidence
+(
+ SampleID int NOT NULL, SampleTestID int NOT NULL,
+ ResourceEvidenceID bigint NOT NULL, IsVoid bit NOT NULL,
+ VisualMethodReference nvarchar(200) NULL,
+ ObservationDescription nvarchar(1000) NULL,
+ SignedBy nvarchar(100) NULL
+);
+IF OBJECT_ID(N'dbo.WaterVisualMethodEvidence',N'U') IS NOT NULL
+ EXEC sys.sp_executesql N'INSERT #WaterVisualMethodEvidence
+ (SampleID,SampleTestID,ResourceEvidenceID,IsVoid,VisualMethodReference,ObservationDescription,SignedBy)
+ SELECT SampleID,SampleTestID,ResourceEvidenceID,IsVoid,VisualMethodReference,ObservationDescription,SignedBy
+ FROM dbo.WaterVisualMethodEvidence';
+
 
 IF @Cutover IS NOT NULL
 BEGIN
@@ -29,7 +43,7 @@ BEGIN
       (primaryResource.EvidenceID IS NULL OR NOT
        ((primaryResource.ResourceKind=N'NO_INSTRUMENT' AND name.TestName=N'TURBIDITY'
          AND OBJECT_ID(N'dbo.WaterVisualMethodEvidence',N'U') IS NOT NULL
-         AND EXISTS(SELECT 1 FROM dbo.WaterVisualMethodEvidence v WHERE v.SampleID=st.SampleID AND v.SampleTestID=st.SampleTestID
+         AND EXISTS(SELECT 1 FROM #WaterVisualMethodEvidence v WHERE v.SampleID=st.SampleID AND v.SampleTestID=st.SampleTestID
          AND v.ResourceEvidenceID=primaryResource.EvidenceID AND v.IsVoid=0
          AND NULLIF(LTRIM(RTRIM(v.VisualMethodReference)),N'') IS NOT NULL
          AND NULLIF(LTRIM(RTRIM(v.ObservationDescription)),N'') IS NOT NULL
