@@ -211,6 +211,13 @@
                             <StackPanel><TextBlock Text="Test / Plate ID" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtSourceResultId" Height="32" Margin="0,0,0,8"/></StackPanel>
                         </UniformGrid>
                         <Button Content="Link to Test" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnLinkActivity_Click"/>
+                        <TextBlock Text="Confirm Actual Use (Use activities only)" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="Use the Activity ID above. Enter actual start and end including UTC offset, e.g. 2026-10-11T08:30:00+03:00. Requires linked test and matching performer." TextWrapping="Wrap" Foreground="#64748B" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Actual Start (ISO 8601)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="DpActualUseStart" Height="32" Margin="0,0,8,8"/></StackPanel>
+                            <StackPanel><TextBlock Text="Actual End (ISO 8601)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="DpActualUseEnd" Height="32" Margin="0,0,0,8"/></StackPanel>
+                        </UniformGrid>
+                        <Button Content="Confirm Actual Use" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnConfirmActualUse_Click"/>
                         <Separator Margin="0,8,0,12"/>
                         <TextBlock Text="Equipment Activity History" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
                         <TextBlock x:Name="LblActivityHistory" Text="Select an equipment record to view its activity history." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,8"/>
