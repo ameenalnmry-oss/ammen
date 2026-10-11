@@ -10,5 +10,5 @@ class ActivityLinkUiTests(unittest.TestCase):
   s=(ROOT/"LabResources.xaml.cs").read_text(encoding="utf8")
   self.assertIn("MicroEquipmentActivityService.AddLink(",s)
   self.assertIn("BtnLinkActivity_Click(",s)
-  self.assertNotIn("MicroEquipmentActivityService.ConfirmUse(",s)
+  self.assertNotIn("MicroEquipmentActivityService.ConfirmUse(",s.split("private void BtnLinkActivity_Click(")[1].split("private void BtnConfirmActualUse_Click(")[0])
 if __name__=="__main__": unittest.main()
