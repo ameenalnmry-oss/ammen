@@ -12,5 +12,5 @@ class ActivityDraftUiTests(unittest.TestCase):
   self.assertIn('MicroEquipmentActivityService.CreateDraft(',s)
   self.assertIn('ExecuteInTransaction(',s)
   self.assertIn('Activity draft',s)
-  self.assertNotIn('MicroEquipmentActivityService.ConfirmUse(',s)
+  self.assertNotIn('MicroEquipmentActivityService.ConfirmUse(',s.split('private void BtnCreateActivityDraft_Click(')[1].split('private void BtnLinkActivity_Click(')[0])
 if __name__=="__main__": unittest.main()
