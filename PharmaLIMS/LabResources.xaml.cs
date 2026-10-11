@@ -297,6 +297,42 @@ ORDER BY ActivityID DESC;",
             }
         }
 
+        private void BtnConfirmActualUse_Click(object sender, RoutedEventArgs e)
+        {
+            if (!long.TryParse(TxtActivityId.Text.Trim(), out long activityId) || activityId <= 0 ||
+                !DateTimeOffset.TryParse(DpActualUseStart.Text.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var started) ||
+                !DateTimeOffset.TryParse(DpActualUseEnd.Text.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var ended) ||
+                ended < started)
+            {
+                MessageBox.Show("Enter a valid activity ID, start and end timestamps with correct offsets.", "Confirm Actual Use");
+                return;
+            }
+            try
+            {
+                _database.ExecuteInTransaction((connection, transaction) =>
+                {
+                    using var command = new SqlCommand(@"
+SELECT VersionToken FROM dbo.MicroEquipmentActivities WITH (UPDLOCK,HOLDLOCK)
+WHERE ActivityID=@Activity AND ActivityType=N'Use' AND ActivityStatus=N'Draft'
+  AND PerformedBy=@Actor;", connection, transaction);
+                    command.Parameters.Add("@Activity", SqlDbType.BigInt).Value = activityId;
+                    command.Parameters.Add("@Actor", SqlDbType.NVarChar, 100).Value = Login.CurrentUser;
+                    byte[]? token = command.ExecuteScalar() as byte[];
+                    if (token == null || token.Length != 8)
+                        throw new InvalidOperationException("Draft use activity does not exist or is owned by another performer.");
+                    Services.MicroEquipmentActivityService.ConfirmUse(connection, transaction,
+                        activityId, token, Login.CurrentUser, started, ended);
+                });
+                if (_selectedEquipmentId.HasValue) LoadEquipmentActivityHistory(_selectedEquipmentId.Value);
+                LblStatus.Text = $"Use activity {activityId} submitted. Review and approval remain pending.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Confirm actual equipment use"), "Confirm Actual Use",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void BtnNew_Click(object sender, RoutedEventArgs e) => ClearForm();
 
         private void ClearForm()
