@@ -32,6 +32,8 @@ class UserSnapshotCompileContractTests(unittest.TestCase):
         self.assertIn("reader.GetBoolean(21)", body)  # IsLockedNow
         self.assertNotIn("reader.GetBoolean(19)", body)
         self.assertNotIn("reader[20]", body)
+        self.assertEqual(2, text.count("CONVERT(bit, CASE WHEN ISNULL(IsLocked,0)=1"),
+                         "Both lock-status SQL projections must return BIT for GetBoolean readers")
 
 if __name__ == "__main__":
     unittest.main()
