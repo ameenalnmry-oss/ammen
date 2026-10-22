@@ -264,6 +264,19 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
+            // EQ-001: do not accept locally validated WPF signatures as a trusted
+            // production signing authority. This guard is temporary until an
+            // independently authenticated signing service is integrated and UAT-approved.
+            if (AppConfig.IsProduction)
+            {
+                MessageBox.Show(
+                    "EQ-001 equipment changes are blocked in Production until trusted signing is validated and activated. No record was changed.",
+                    "Trusted Signing Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             if (!(Login.CanManageSettings ||
                   string.Equals(Login.CurrentUserRole, "Admin", StringComparison.OrdinalIgnoreCase)))
             {
