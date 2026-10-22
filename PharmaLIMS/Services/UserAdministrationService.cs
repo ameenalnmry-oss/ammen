@@ -469,7 +469,7 @@ SELECT UserID, Username, FullName, Role, Department, Section, IsActive,
        CanAccessWater, CanAccessEM, CanRegisterSamples, CanEnterResults,
        CanReviewResults, CanApproveResults, CanIssueCOA, CanCancelCOA,
        CanAccessReports, CanManageUsers, CanManageSettings, MustChangePassword, AuthenticationRowVersion, FailedLoginAttempts,
-       CASE WHEN ISNULL(IsLocked,0)=1 AND (LockedUntil IS NULL OR LockedUntil>SYSDATETIME()) THEN 1 ELSE 0 END AS IsLockedNow
+       CONVERT(bit, CASE WHEN ISNULL(IsLocked,0)=1 AND (LockedUntil IS NULL OR LockedUntil>SYSDATETIME()) THEN 1 ELSE 0 END) AS IsLockedNow
 FROM dbo.Users WITH (UPDLOCK, HOLDLOCK)
 WHERE UserID = @UserID;", connection, transaction);
             command.Parameters.Add("@UserID", SqlDbType.Int).Value = userId;
