@@ -29,7 +29,7 @@ class UserSnapshotCompileContractTests(unittest.TestCase):
         self.assertIn("reader.IsDBNull(19) ? Array.Empty<byte>() : (byte[])reader[19]", body)
         self.assertIn("reader.IsDBNull(20)", body)
         self.assertIn("reader.GetInt32(20)", body)  # FailedLoginAttempts
-        self.assertIn("reader.GetBoolean(21)", body)  # IsLockedNow
+        self.assertIn("reader.GetInt32(21) == 1", body)  # IsLockedNow uses SQL CASE with INT 0/1
         self.assertNotIn("reader.GetBoolean(19)", body)
         self.assertNotIn("reader[20]", body)
 
