@@ -4,8 +4,8 @@ using System.Text.Json.Serialization;
 
 namespace PharmaLIMS.TrustedSigning;
 
-public sealed record TrustedSigningEnvelope(EquipmentSigningRequest Request, string ExpectedUsername, string Password);
-public sealed record TrustedSigningReply(Guid RequestId, bool Success, string? SignedBy, string ErrorCode);
+public sealed record TrustedSigningEnvelope(EquipmentSigningRequest? Request, string ExpectedUsername, string Password, TrustedApplicationRequest? Authentication = null);
+public sealed record TrustedSigningReply(Guid RequestId, bool Success, string? SignedBy, string ErrorCode, string? UserJson = null, string? Ticket = null);
 
 public static class TrustedPipeProtocol
 {

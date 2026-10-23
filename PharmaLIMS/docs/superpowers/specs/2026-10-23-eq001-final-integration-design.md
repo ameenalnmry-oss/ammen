@@ -12,7 +12,7 @@ Alternatives considered: HTTPS/Negotiate adds remote hosting/SPN configuration t
 
 ## UI and compatibility
 
-Replace only LabResources equipment saves with a dedicated trusted signature dialog and client; remove its SQL write/signature fallback in all build configurations. Preserve other ElectronicSignature workflows, login, result review, permissions and existing APIs. Trusted signing remains disabled by default until explicitly configured; production activation remains a deployment/QA action after acceptance.
+Replace only LabResources equipment saves with a dedicated trusted signature dialog and client; remove its SQL write/signature fallback in all build configurations. Preserve other ElectronicSignature workflows, result review, permissions and existing APIs. When trusted signing is enabled, route login, reauthentication, self-service password changes and user administration through the independently protected service as well: the desktop SQL principal must have no credential/counter writes or password-material reads. Reuse the original authentication and administration implementation inside the host. Administration requires a single-use 30-second proof bound to the kernel caller SID, verified username and current account rowversion; the server supplies the audit actor/signer. Trusted signing remains disabled by default until explicitly configured; production activation remains a deployment/QA action after acceptance.
 
 ## Validation
 

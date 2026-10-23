@@ -21,6 +21,15 @@ public sealed class WindowsTrustedPipeClient
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(expectedUsername) || expectedUsername.Length > 100 || string.IsNullOrEmpty(password) || password.Length > 4096)
             throw new ArgumentException("The active account and a fresh password are required.");
+        TrustedSigningReply reply = await ExchangeAsync(new(request, expectedUsername, password), request.RequestId, cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(reply.SignedBy, expectedUsername, StringComparison.OrdinalIgnoreCase)) throw new SecurityException("Trusted signing identity does not match the active account.");
+    }
+
+    public Task<TrustedSigningReply> ApplicationAsync(TrustedApplicationRequest request, CancellationToken cancellationToken = default) =>
+        ExchangeAsync(new(null, "", "", request), request.RequestId, cancellationToken);
+
+    private async Task<TrustedSigningReply> ExchangeAsync(TrustedSigningEnvelope envelope, Guid requestId, CancellationToken cancellationToken)
+    {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
         await using var pipe = new NamedPipeClientStream(".", _options.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Identification);
@@ -34,11 +43,10 @@ public sealed class WindowsTrustedPipeClient
             CertificateRevocationCheckMode = X509RevocationMode.Online
         }, timeout.Token).ConfigureAwait(false);
         // No credential is written before both normal TLS validation and the configured pin succeed.
-        await TrustedPipeProtocol.WriteAsync(tls, new TrustedSigningEnvelope(request, expectedUsername, password), timeout.Token).ConfigureAwait(false);
+        await TrustedPipeProtocol.WriteAsync(tls, envelope, timeout.Token).ConfigureAwait(false);
         TrustedSigningReply reply = await TrustedPipeProtocol.ReadAsync<TrustedSigningReply>(tls, timeout.Token).ConfigureAwait(false);
-        if (reply.RequestId != request.RequestId) throw new SecurityException("Signing response does not match the submitted request.");
-        if (!reply.Success) throw new UnauthorizedAccessException("Trusted equipment signing was rejected (" + reply.ErrorCode + "). No local signing fallback is permitted.");
-        if (!string.Equals(reply.SignedBy, expectedUsername, StringComparison.OrdinalIgnoreCase))
-            throw new SecurityException("Trusted signing identity does not match the active account.");
+        if (reply.RequestId != requestId) throw new SecurityException("Signing response does not match the submitted request.");
+        if (!reply.Success) throw new TrustedSigningRejectedException(reply.ErrorCode);
+        return reply;
     }
 }

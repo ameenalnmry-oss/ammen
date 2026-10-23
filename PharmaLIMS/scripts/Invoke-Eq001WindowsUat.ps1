@@ -18,6 +18,7 @@ Write-Output "::add-mask::$windowsPassword"
 Write-Output "::add-mask::$certificatePassword"
 $cert = $null
 $serviceCreated = $false
+$scmCreated = $false
 $rootCertificate = $null
 try {
     if (-not (Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue)) {
@@ -29,12 +30,19 @@ try {
     $instanceId = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL').SQLEXPRESS
     if ([string]::IsNullOrWhiteSpace($instanceId)) { throw 'Isolated SQL Express instance was not registered.' }
     $instanceRoot = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\$instanceId\MSSQLServer"
-    $cert = New-SelfSignedCertificate -DnsName @($env:COMPUTERNAME,'localhost','PharmaLIMS.TrustedSigning') -Type SSLServerAuthentication -CertStoreLocation Cert:\LocalMachine\My -Provider 'Microsoft Enhanced RSA and AES Cryptographic Provider' -KeySpec KeyExchange -KeyLength 2048 -HashAlgorithm SHA256 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddDays(2)
+    $cert = New-SelfSignedCertificate -DnsName @($env:COMPUTERNAME,'localhost','PharmaLIMS.TrustedSigning') -Type SSLServerAuthentication -CertStoreLocation Cert:\LocalMachine\My -Provider 'Microsoft RSA SChannel Cryptographic Provider' -KeySpec KeyExchange -KeyLength 2048 -HashAlgorithm SHA256 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddDays(2)
     $cer = Join-Path $env:TEMP "eq001-$stamp.cer"
     Export-Certificate -Cert $cert -FilePath $cer | Out-Null
     $rootCertificate = Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root
     $sqlIdentity = (Get-CimInstance Win32_Service -Filter "Name='MSSQL`$SQLEXPRESS'").StartName
-    $keyPath = Join-Path $env:ProgramData ('Microsoft\Crypto\RSA\MachineKeys\' + $cert.PrivateKey.CspKeyContainerInfo.UniqueKeyContainerName)
+    $rsa = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($cert)
+    if ($rsa -is [System.Security.Cryptography.RSACryptoServiceProvider]) {
+        $uniqueKey = $rsa.CspKeyContainerInfo.UniqueKeyContainerName
+    } elseif ($rsa -is [System.Security.Cryptography.RSACng]) {
+        $uniqueKey = $rsa.Key.UniqueName
+    } else { throw 'Unsupported certificate private-key provider.' }
+    $keyPath = @((Join-Path $env:ProgramData "Microsoft\Crypto\RSA\MachineKeys\$uniqueKey"),(Join-Path $env:ProgramData "Microsoft\Crypto\Keys\$uniqueKey")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $keyPath) { throw 'Certificate private-key file was not found.' }
     $keyAcl = Get-Acl $keyPath
     $keyAcl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($sqlIdentity,'Read','Allow'))
     Set-Acl $keyPath $keyAcl
@@ -67,6 +75,22 @@ try {
     $hostOutput = Join-Path $privateRoot 'host'
     dotnet publish (Join-Path $project 'tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj') --configuration Release --output $hostOutput
     if ($LASTEXITCODE -ne 0) { throw 'Signing host publish failed.' }
+    # Grant logon-as-service only to the ephemeral local test account.
+    $rights = Join-Path $privateRoot 'rights.inf'
+    secedit.exe /export /cfg $rights /areas USER_RIGHTS /quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not export isolated runner service-logon policy.' }
+    $policy = Get-Content $rights -Raw
+    if ($policy -match '(?m)^SeServiceLogonRight\s*=.*$') {
+        $policy = [regex]::Replace($policy,'(?m)^SeServiceLogonRight\s*=.*$',{ param($m) $m.Value + ",*$serviceSid" })
+    } else { $policy = $policy.Replace('[Privilege Rights]',"[Privilege Rights]`r`nSeServiceLogonRight = *$serviceSid") }
+    Set-Content -LiteralPath $rights -Value $policy -Encoding unicode
+    secedit.exe /configure /db (Join-Path $privateRoot 'rights.sdb') /cfg $rights /areas USER_RIGHTS /quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not grant ephemeral service-logon right.' }
+    if (Get-Service -Name 'PharmaLIMS.TrustedSigning' -ErrorAction SilentlyContinue) { throw 'Refusing to replace an existing signing service.' }
+    $binary = '"' + (Join-Path $hostOutput 'PharmaLIMS.TrustedSigning.Host.exe') + '" --service --config "' + (Join-Path $privateRoot 'hostsettings.json') + '"'
+    $credential = [PSCredential]::new("$env:COMPUTERNAME\$serviceName",(ConvertTo-SecureString $windowsPassword -AsPlainText -Force))
+    New-Service -Name 'PharmaLIMS.TrustedSigning' -BinaryPathName $binary -Credential $credential -StartupType Manual | Out-Null
+    $scmCreated = $true
     $fixture = Join-Path $privateRoot 'fixture.json'
     $settings = @{
         MasterConnectionString='Server=localhost,14335;Database=master;Integrated Security=true;Encrypt=Mandatory;TrustServerCertificate=false;Connection Timeout=30;Pooling=false'
@@ -81,12 +105,15 @@ try {
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
     if ($outcome.Passed -lt 20 -or $outcome.ProductionActivated) { throw 'Incomplete or invalid Windows UAT outcome.' }
     Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."
+    Write-Host "::notice title=EQ001 Windows UAT verified::$($outcome.Passed) actual Windows/WPF/SQL checks passed; production inactive; sanitized evidence in eq001-windows-wpf-sql-uat artifact."
+    $outcome.Checks | ForEach-Object { Write-Host "::notice title=EQ001 verified check::$_" }
 }
 catch {
     Write-Host ("::error title=EQ001 UAT provisioning::" + $_.Exception.Message.Replace("`r", " ").Replace("`n", " "))
     throw
 }
 finally {
+    if ($scmCreated) { Stop-Service -Name 'PharmaLIMS.TrustedSigning' -Force -ErrorAction SilentlyContinue; Remove-Service -Name 'PharmaLIMS.TrustedSigning' -ErrorAction SilentlyContinue }
     if ($serviceCreated) { Remove-LocalUser -Name $serviceName -ErrorAction SilentlyContinue }
     if ($cert) {
         Stop-Service -Name 'MSSQL$SQLEXPRESS' -Force -ErrorAction SilentlyContinue

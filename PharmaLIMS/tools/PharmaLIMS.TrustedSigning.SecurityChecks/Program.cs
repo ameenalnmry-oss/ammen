@@ -72,7 +72,7 @@ using (var frame = new MemoryStream()) {
     await TrustedPipeProtocol.WriteAsync(frame, new TrustedSigningEnvelope(request, "reviewer", "secret"), default);
     frame.Position = 0;
     var roundtrip = await TrustedPipeProtocol.ReadAsync<TrustedSigningEnvelope>(frame, default);
-    Assert(roundtrip.ExpectedUsername == "reviewer" && roundtrip.Request.RequestId == request.RequestId, "Bounded IPC frame roundtrips a request.");
+    Assert(roundtrip.ExpectedUsername == "reviewer" && roundtrip.Request!.RequestId == request.RequestId, "Bounded IPC frame roundtrips a request.");
 }
 using (var frame = new MemoryStream(new byte[] {0, 2, 0, 0})) {
     await ExpectDenied(() => TrustedPipeProtocol.ReadAsync<TrustedSigningEnvelope>(frame, default));

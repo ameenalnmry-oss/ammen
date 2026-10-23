@@ -9,14 +9,22 @@ namespace PharmaLIMS.Services
     {
         private readonly UserRepository _userRepository;
         private User? _currentUser;
+        private readonly bool _useTrustedTransport;
 
-        public AuthService(UserRepository userRepository)
+        public AuthService(UserRepository userRepository, bool useTrustedTransport = true)
         {
             _userRepository = userRepository;
+            _useTrustedTransport = useTrustedTransport;
         }
 
         public async Task<User?> AuthenticateAsync(string username, string password, CancellationToken cancellationToken = default)
         {
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled)
+            {
+                TrustedApplicationSession.Clear();
+                _currentUser = await TrustedApplicationSession.AuthenticateAsync("Login", username, password, "", cancellationToken);
+                return _currentUser;
+            }
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
                 return null;
 
@@ -80,6 +88,13 @@ namespace PharmaLIMS.Services
             if (_currentUser == null || string.IsNullOrEmpty(password))
                 return false;
 
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled)
+            {
+                User? verified = await TrustedApplicationSession.AuthenticateAsync("Reauthenticate", _currentUser.Username, password, "", CancellationToken.None);
+                if (verified is null) { if(TrustedApplicationSession.LastCredentialRejection is "Locked" or "Inactive") { _currentUser=null; Login.ClearCurrentUserContext(); } return false; }
+                _currentUser = verified;
+                return true;
+            }
             User? freshUser = await _userRepository.GetByUsernameAsync(_currentUser.Username);
 
             if (freshUser == null || !freshUser.IsActive || IsLockedNow(freshUser))
@@ -147,6 +162,13 @@ namespace PharmaLIMS.Services
             if (_currentUser == null || string.IsNullOrEmpty(currentPassword))
                 return false;
 
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled)
+            {
+                User? changed = await TrustedApplicationSession.AuthenticateAsync("ChangePassword", _currentUser.Username, currentPassword, newPassword, cancellationToken);
+                if (changed is null) { if(TrustedApplicationSession.LastCredentialRejection is "Locked" or "Inactive") { _currentUser=null; Login.ClearCurrentUserContext(); } return false; }
+                _currentUser = changed;
+                return true;
+            }
             PasswordSecurity.ValidateNewPassword(newPassword, _currentUser.Username);
             if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
                 throw new InvalidOperationException("The new password must be different from the current password.");
@@ -198,6 +220,7 @@ namespace PharmaLIMS.Services
 
         public void ClearCurrentUser()
         {
+            TrustedApplicationSession.Clear();
             _currentUser = null;
         }
 

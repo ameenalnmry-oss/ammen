@@ -17,15 +17,16 @@ public sealed class WindowsTrustedPipeServer
     private readonly TrustedCallerMap _callers;
     private readonly ITrustedSignerAccountRepository _accounts;
     private readonly ITrustedEquipmentSignatureStore _store;
+    private readonly ITrustedApplicationEndpoint? _application;
     public WindowsTrustedPipeServer(string pipeName, X509Certificate2 certificate, TrustedCallerMap callers,
-        ITrustedSignerAccountRepository accounts, ITrustedEquipmentSignatureStore store)
+        ITrustedSignerAccountRepository accounts, ITrustedEquipmentSignatureStore store, ITrustedApplicationEndpoint? application = null)
     {
         new TrustedPipeClientOptions(pipeName, Convert.ToHexString(certificate.GetCertHash(System.Security.Cryptography.HashAlgorithmName.SHA256))).Validate();
         if (!certificate.HasPrivateKey) throw new ArgumentException("Service TLS certificate has no private key.");
-        _pipeName = pipeName; _certificate = certificate; _callers = callers; _accounts = accounts; _store = store;
+        _pipeName = pipeName; _certificate = certificate; _callers = callers; _accounts = accounts; _store = store; _application = application;
     }
 
-    public async Task RunAsync(CancellationToken cancellationToken)
+    public async Task RunAsync(CancellationToken cancellationToken, TaskCompletionSource? readiness = null)
     {
         using var identity = WindowsIdentity.GetCurrent();
         SecurityIdentifier serviceSid = identity.User ?? throw new UnauthorizedAccessException("Windows service identity is missing.");
@@ -33,16 +34,17 @@ public sealed class WindowsTrustedPipeServer
         acl.SetAccessRuleProtection(true, false);
         acl.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid, null), PipeAccessRights.FullControl, AccessControlType.Deny));
         acl.AddAccessRule(new PipeAccessRule(serviceSid, PipeAccessRights.FullControl, AccessControlType.Allow));
-        acl.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null), PipeAccessRights.ReadWrite, AccessControlType.Allow));
+        acl.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null), PipeAccessRights.ReadWrite & ~PipeAccessRights.CreateNewInstance, AccessControlType.Allow));
         while (!cancellationToken.IsCancellationRequested)
         {
             await using var pipe = NamedPipeServerStreamAcl.Create(_pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance, TrustedPipeProtocol.MaximumFrameBytes, TrustedPipeProtocol.MaximumFrameBytes, acl);
+            readiness?.TrySetResult();
             await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(TimeSpan.FromSeconds(15));
             try { await ServeAsync(pipe, serviceSid.Value, deadline.Token).ConfigureAwait(false); }
-            catch (Exception ex) when (ex is IOException or AuthenticationException or OperationCanceledException or ArgumentException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or AuthenticationException or OperationCanceledException or ArgumentException or UnauthorizedAccessException or System.Text.Json.JsonException)
             { /* Invalid/abandoned connections cannot terminate the host or reach a local SQL fallback. */ }
         }
     }
@@ -57,6 +59,16 @@ public sealed class WindowsTrustedPipeServer
         TrustedSigningEnvelope envelope = await TrustedPipeProtocol.ReadAsync<TrustedSigningEnvelope>(tls, cancellationToken).ConfigureAwait(false);
         string? callerSid = null;
         pipe.RunAsClient(() => { using WindowsIdentity caller = WindowsIdentity.GetCurrent(true) ?? throw new UnauthorizedAccessException("No impersonated Windows caller."); callerSid = caller.User?.Value; });
+        if (envelope.Authentication is not null)
+        {
+            var request = envelope.Authentication;
+            TrustedSigningReply result;
+            if (callerSid is null || callerSid == serviceSid || _application is null)
+                result = new(request.RequestId, false, null, "Denied");
+            else result = await _application.HandleAsync(callerSid, request, cancellationToken).ConfigureAwait(false);
+            await TrustedPipeProtocol.WriteAsync(tls, result, cancellationToken).ConfigureAwait(false);
+            return;
+        }
         Guid requestId = envelope.Request?.RequestId ?? Guid.Empty;
         TrustedSigningReply reply;
         try
@@ -69,8 +81,9 @@ public sealed class WindowsTrustedPipeServer
             await coordinator.CommitEquipmentSignatureAsync(envelope.Request, envelope.Password, cancellationToken).ConfigureAwait(false);
             reply = new TrustedSigningReply(requestId, true, username, "");
         }
-        catch (UnauthorizedAccessException) { reply = new(requestId, false, null, "Denied"); }
+        catch (UnauthorizedAccessException) { reply = new(requestId, false, null, callerSid == serviceSid ? "SameAccountDenied" : "Denied"); }
         catch (ArgumentException) { reply = new(requestId, false, null, "InvalidRequest"); }
+        catch (SqlException ex) when (ex.Number == 56139) { reply = new(requestId, false, null, "Denied"); }
         catch (SqlException ex) when (ex.Number is 56140 or 56141 or 56142 or 2601 or 2627) { reply = new(requestId, false, null, "Conflict"); }
         catch (SqlException) { reply = new(requestId, false, null, "StoreUnavailable"); }
         await TrustedPipeProtocol.WriteAsync(tls, reply, cancellationToken).ConfigureAwait(false);

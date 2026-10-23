@@ -36,23 +36,27 @@ Files: tools/PharmaLIMS.TrustedSigning/{Windows*,TrustedPipe*,TrustedHostSetting
 
 Interfaces: `TrustedPipeClient.CommitAsync(EquipmentSigningRequest,string expectedUsername,string password,CancellationToken)` and `WindowsTrustedPipeServer.RunAsync(CancellationToken)`; configured certificate pin, caller-SID map and trusted SQL credentials.
 
-- [ ] Add failing transport/configuration security checks; run and observe failure.
-- [ ] Implement bounded protocol, authenticated server/client pipe boundary, protected configuration and host startup; preserve existing SQL interfaces.
-- [ ] Compile and run focused checks; commit and push same PR.
+- [x] Add failing transport/configuration security checks; run and observe failure.
+- [x] Implement bounded protocol, authenticated server/client pipe boundary, protected configuration and host startup; preserve existing SQL interfaces.
+- [x] Compile and run focused checks; commit and push same PR.
 
 ### Task 3: Integrate actual WPF equipment signing
 
 Files: LabResources.xaml.cs; TrustedEquipmentSignature.xaml/.cs; Services/TrustedEquipmentSigningClient.cs; PharmaLIMS.csproj; tests/test_eq001_production_signing_guard.py.
 
-- [ ] Replace outdated guard-only tests with failing assertions for exclusive service routing and no local SQL write fallback.
-- [ ] Implement dialog and client configuration, async save and request serialization. Preserve unrelated login/review/signature behavior.
-- [ ] Cross-build, run impacted tests and SecurityChecks; regenerate source manifest and commit.
+- [x] Replace outdated guard-only tests with failing assertions for exclusive service routing and no local SQL write fallback.
+- [x] Implement dialog and client configuration, async save and request serialization. Preserve unrelated login/review/signature behavior.
+- [x] Cross-build, run impacted tests and SecurityChecks; regenerate source manifest and commit.
 
 ### Task 4: Windows/WPF/SQL UAT and regression
 
 Files: tests/PharmaLIMS.TrustedSigning.WindowsUat/*; scripts/Invoke-Eq001WindowsUat.ps1; .github/workflows/ci.yml; docs/validation/EQ001/*.
 
-- [ ] Add isolated Windows integration runner that exercises the actual service, Windows caller SID and WPF controls against a disposable UAT database; no fake production identity implementation.
+- [x] Add isolated Windows integration runner that exercises the actual service, Windows caller SID and WPF controls against a disposable UAT database; no fake production identity implementation.
 - [ ] Verify success and denial scenarios plus historical evidence unchanged. Provision no production permissions.
 - [ ] Execute through Windows CI, inspect results and repair failures. Run impacted regression/build checks and save artifacts/results.
 - [ ] Fresh whole-branch review; address material findings, report exact remaining blockers. Do not merge or activate production.
+
+## Material review correction
+
+The fresh review found that allowing desktop credential/counter writes could defeat independent reauthentication. Extend the same service boundary to authentication and signed user administration, deny desktop credential reads/writes and all Users mutations, and verify legitimate password/login/admin flows. Tighten negative tests to exact authorization/TLS/conflict failures with valid control payloads. Exercise the actual service-account caller and SCM lifecycle, including invalid PFX and occupied-pipe startup failures. These material findings require new Windows execution; the earlier provisioning failure is not UAT acceptance.

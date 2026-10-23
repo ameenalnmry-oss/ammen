@@ -23,3 +23,10 @@ class Eq001ProductionSigningGuardTests(unittest.TestCase):
         import json
         for name in ('appsettings.Development.example.json', 'appsettings.Production.example.json'):
             self.assertIs(json.loads((ROOT/name).read_text(encoding='utf-8-sig'))['TrustedSigning']['Enabled'], False)
+
+class Eq001ProtectedAuthenticationBoundaryTests(unittest.TestCase):
+    def test_uat_desktop_principal_has_no_raw_password_or_lockout_writes(self):
+        source = (ROOT/'tests/PharmaLIMS.TrustedSigning.WindowsUat/Program.cs').read_text()
+        self.assertNotIn('GRANT UPDATE(LastLogin,FailedLoginAttempts,IsLocked,LockedUntil,PasswordHashNew,PasswordSalt,PasswordHash) ON dbo.Users TO [{_clientLogin}]', source)
+        self.assertIn('WPF principal cannot replace signer credentials', source)
+        self.assertIn('WPF principal cannot clear lockout', source)
