@@ -100,6 +100,9 @@ jobs:
           $ErrorActionPreference = "Stop"
           dotnet build tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj --configuration Release --nologo
           if ($LASTEXITCODE -ne 0) { throw "EQ-001 trusted-signing service build failed." }
+          # Build outputs must not enter controlled source release validation.
+          Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/bin -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/obj -Recurse -Force -ErrorAction SilentlyContinue
 
       - name: Verify validator content in runner
         working-directory: PharmaLIMS
