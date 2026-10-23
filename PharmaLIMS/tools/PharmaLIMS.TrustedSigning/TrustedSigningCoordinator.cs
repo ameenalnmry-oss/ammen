@@ -73,6 +73,10 @@ public sealed class TrustedSigningCoordinator
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // Reject malformed requests before consuming any authentication attempt.
+        SigningRequestPolicy.ValidateRequestShape(
+            request.Action, request.EquipmentCode, request.Reason,
+            request.RequestId, request.IssuedAtUtc, _clock.GetUtcNow());
         if (string.IsNullOrWhiteSpace(reauthenticationSecret))
             throw new UnauthorizedAccessException("A fresh EQ-001 credential is required.");
         if (request.Action == SigningRequestPolicy.EquipmentUpdate &&
