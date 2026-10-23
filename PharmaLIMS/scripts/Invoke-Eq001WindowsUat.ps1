@@ -1,0 +1,97 @@
+[CmdletBinding()]
+param([switch]$IsolatedGithubUat)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+if (-not $IsolatedGithubUat -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
+    throw 'This provisioning script is restricted to an ephemeral GitHub-hosted Windows UAT runner.'
+}
+if (-not [OperatingSystem]::IsWindows()) { throw 'Windows is required.' }
+$project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$results = Join-Path $project 'artifacts/eq001-windows-uat'
+New-Item -ItemType Directory -Force -Path $results | Out-Null
+$stamp = [Guid]::NewGuid().ToString('N').Substring(0,10)
+$serviceName = "eq001_$stamp"
+$privateRoot = Join-Path $env:ProgramData "PharmaLIMS-EQ001-UAT-$stamp"
+$windowsPassword = 'Aa1!' + [Guid]::NewGuid().ToString('N')
+$certificatePassword = 'Aa1!' + [Guid]::NewGuid().ToString('N')
+Write-Output "::add-mask::$windowsPassword"
+Write-Output "::add-mask::$certificatePassword"
+$cert = $null
+$serviceCreated = $false
+$rootCertificate = $null
+try {
+    if (-not (Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue)) {
+        Write-Host 'Installing SQL Server Express only on the fresh disposable CI runner.'
+        choco install sql-server-express -y --no-progress --execution-timeout=1800
+        if ($LASTEXITCODE -notin @(0,1641,3010)) { throw 'SQL Server Express installation failed.' }
+    }
+    $sqlService = Get-Service -Name 'MSSQL$SQLEXPRESS'
+    $instanceId = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL').SQLEXPRESS
+    if ([string]::IsNullOrWhiteSpace($instanceId)) { throw 'Isolated SQL Express instance was not registered.' }
+    $instanceRoot = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\$instanceId\MSSQLServer"
+    $cert = New-SelfSignedCertificate -DnsName @($env:COMPUTERNAME,'localhost','PharmaLIMS.TrustedSigning') -Type SSLServerAuthentication -CertStoreLocation Cert:\LocalMachine\My -Provider 'Microsoft Enhanced RSA and AES Cryptographic Provider' -KeySpec KeyExchange -KeyLength 2048 -HashAlgorithm SHA256 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddDays(2)
+    $cer = Join-Path $env:TEMP "eq001-$stamp.cer"
+    Export-Certificate -Cert $cert -FilePath $cer | Out-Null
+    $rootCertificate = Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root
+    $sqlIdentity = (Get-CimInstance Win32_Service -Filter "Name='MSSQL`$SQLEXPRESS'").StartName
+    $keyPath = Join-Path $env:ProgramData ('Microsoft\Crypto\RSA\MachineKeys\' + $cert.PrivateKey.CspKeyContainerInfo.UniqueKeyContainerName)
+    $keyAcl = Get-Acl $keyPath
+    $keyAcl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($sqlIdentity,'Read','Allow'))
+    Set-Acl $keyPath $keyAcl
+    Set-ItemProperty $instanceRoot -Name LoginMode -Value 2
+    $network = Join-Path $instanceRoot 'SuperSocketNetLib'
+    Set-ItemProperty $network -Name Certificate -Value $cert.Thumbprint.ToLowerInvariant()
+    Set-ItemProperty $network -Name ForceEncryption -Value 1
+    Set-ItemProperty (Join-Path $network 'Tcp') -Name Enabled -Value 1
+    Set-ItemProperty (Join-Path $network 'Tcp\IPAll') -Name TcpDynamicPorts -Value ''
+    Set-ItemProperty (Join-Path $network 'Tcp\IPAll') -Name TcpPort -Value '14335'
+    Restart-Service $sqlService.Name -Force
+    $sqlService.WaitForStatus('Running',[TimeSpan]::FromMinutes(2))
+    New-LocalUser -Name $serviceName -Password (ConvertTo-SecureString $windowsPassword -AsPlainText -Force) -AccountNeverExpires -PasswordNeverExpires | Out-Null
+    $serviceCreated = $true
+    $serviceSid = (Get-LocalUser -Name $serviceName).SID.Value
+    $callerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    New-Item -ItemType Directory -Path $privateRoot -Force | Out-Null
+    $acl = [System.Security.AccessControl.DirectorySecurity]::new()
+    $acl.SetOwner([System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
+    $acl.SetAccessRuleProtection($true,$false)
+    foreach ($sid in @('S-1-5-32-544','S-1-5-18',$serviceSid)) {
+        $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new([System.Security.Principal.SecurityIdentifier]::new($sid),'FullControl','ContainerInherit,ObjectInherit','None','Allow'))
+    }
+    Set-Acl $privateRoot $acl
+    $pfx = Join-Path $privateRoot 'service.pfx'
+    Export-PfxCertificate -Cert $cert -FilePath $pfx -Password (ConvertTo-SecureString $certificatePassword -AsPlainText -Force) | Out-Null
+    $pfxAcl = Get-Acl $pfx
+    $pfxAcl.SetOwner([System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
+    Set-Acl $pfx $pfxAcl
+    $hostOutput = Join-Path $privateRoot 'host'
+    dotnet publish (Join-Path $project 'tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj') --configuration Release --output $hostOutput
+    if ($LASTEXITCODE -ne 0) { throw 'Signing host publish failed.' }
+    $fixture = Join-Path $privateRoot 'fixture.json'
+    $settings = @{
+        MasterConnectionString='Server=localhost,14335;Database=master;Integrated Security=true;Encrypt=Mandatory;TrustServerCertificate=false;Connection Timeout=30;Pooling=false'
+        ServiceAccount=$serviceName;ServicePassword=$windowsPassword;ServiceSid=$serviceSid;CallerSid=$callerSid
+        PrivateDirectory=$privateRoot;HostExePath=(Join-Path $hostOutput 'PharmaLIMS.TrustedSigning.Host.exe')
+        CertificatePath=$pfx;CertificatePassword=$certificatePassword;CertificateSha256=[Convert]::ToHexString($cert.GetCertHash([System.Security.Cryptography.HashAlgorithmName]::SHA256))
+        PipeName="PharmaLIMS_EQ001_UAT_$stamp";RepositoryRoot=$project;ResultsDirectory=$results;SettingsPath=$fixture
+    }
+    $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $fixture -Encoding utf8
+    dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Debug -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
+    if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
+    $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
+    if ($outcome.Passed -lt 20 -or $outcome.ProductionActivated) { throw 'Incomplete or invalid Windows UAT outcome.' }
+    Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."
+}
+catch {
+    Write-Host ("::error title=EQ001 UAT provisioning::" + $_.Exception.Message.Replace("`r", " ").Replace("`n", " "))
+    throw
+}
+finally {
+    if ($serviceCreated) { Remove-LocalUser -Name $serviceName -ErrorAction SilentlyContinue }
+    if ($cert) {
+        Stop-Service -Name 'MSSQL$SQLEXPRESS' -Force -ErrorAction SilentlyContinue
+        Remove-Item "Cert:\LocalMachine\My\$($cert.Thumbprint)" -ErrorAction SilentlyContinue
+        Remove-Item "Cert:\LocalMachine\Root\$($cert.Thumbprint)" -ErrorAction SilentlyContinue
+    }
+    if (Test-Path $privateRoot) { Remove-Item $privateRoot -Recurse -Force -ErrorAction SilentlyContinue }
+}

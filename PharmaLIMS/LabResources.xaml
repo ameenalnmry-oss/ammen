@@ -185,7 +185,7 @@
                         </Border>
 
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="Save with E-Signature" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
+                            <Button x:Name="BtnSaveEquipment" Content="Save with E-Signature" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
                             <Button Content="Reload" Style="{StaticResource SecondaryButton}" Click="BtnReload_Click"/>
                         </StackPanel>
                     </StackPanel>

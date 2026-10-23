@@ -369,3 +369,29 @@ jobs:
           name: PharmaLIMS-Production-${{ github.sha }}
           path: PharmaLIMS/artifacts/publish/**
           if-no-files-found: error
+
+  eq001-windows-uat:
+    name: EQ001 Windows WPF SQL UAT
+    needs: validate-build-publish
+    if: github.event_name == 'pull_request'
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.x'
+      - name: Actual separate-account Windows service WPF SQL UAT
+        working-directory: PharmaLIMS
+        run: ./scripts/Invoke-Eq001WindowsUat.ps1 -IsolatedGithubUat
+      - name: Preserve EQ001 UAT execution evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: eq001-windows-wpf-sql-uat
+          path: PharmaLIMS/artifacts/eq001-windows-uat/
+          if-no-files-found: warn
+          retention-days: 30
