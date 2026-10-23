@@ -20,6 +20,29 @@ public static class SigningRequestPolicy
         EquipmentUpdate
     };
 
+    public static void ValidateRequestShape(
+        string? action,
+        string? equipmentCode,
+        string? reason,
+        Guid requestId,
+        DateTimeOffset issuedAtUtc,
+        DateTimeOffset nowUtc)
+    {
+        if (action is null || !AllowedActions.Contains(action))
+            throw new UnauthorizedAccessException("EQ-001 signing action is not allowed.");
+
+        if (string.IsNullOrWhiteSpace(equipmentCode) || equipmentCode.Length > 50 ||
+            string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10 || reason.Length > 500)
+            throw new ArgumentException("EQ-001 equipment identity and action reason are required.");
+
+        if (requestId == Guid.Empty)
+            throw new ArgumentException("EQ-001 requires a unique signing request identifier.");
+
+        if (issuedAtUtc.Offset != TimeSpan.Zero || nowUtc.Offset != TimeSpan.Zero ||
+            issuedAtUtc > nowUtc || nowUtc - issuedAtUtc > TimeSpan.FromMinutes(2))
+            throw new UnauthorizedAccessException("EQ-001 signing request is expired or invalid.");
+    }
+
     public static void Validate(
         string? verifiedPrincipal,
         bool principalActive,
@@ -37,18 +60,6 @@ public static class SigningRequestPolicy
             !principalActive || principalLocked || mustChangePassword || !canManageSettings)
             throw new UnauthorizedAccessException("EQ-001 trusted signer is not authorized.");
 
-        if (action is null || !AllowedActions.Contains(action))
-            throw new UnauthorizedAccessException("EQ-001 signing action is not allowed.");
-
-        if (string.IsNullOrWhiteSpace(equipmentCode) || equipmentCode.Length > 50 ||
-            string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10 || reason.Length > 500)
-            throw new ArgumentException("EQ-001 equipment identity and action reason are required.");
-
-        if (requestId == Guid.Empty)
-            throw new ArgumentException("EQ-001 requires a unique signing request identifier.");
-
-        if (issuedAtUtc.Offset != TimeSpan.Zero || nowUtc.Offset != TimeSpan.Zero ||
-            issuedAtUtc > nowUtc || nowUtc - issuedAtUtc > TimeSpan.FromMinutes(2))
-            throw new UnauthorizedAccessException("EQ-001 signing request is expired or invalid.");
+        ValidateRequestShape(action, equipmentCode, reason, requestId, issuedAtUtc, nowUtc);
     }
 }
