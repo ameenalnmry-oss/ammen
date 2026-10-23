@@ -173,10 +173,14 @@ internal sealed class UatRun(UatSettings settings)
             Check(await auth.ValidateCurrentUserPasswordAsync(_password),"fresh independent reauthentication produces a single-use administration proof");
             var adminService=new UserAdministrationService(new DatabaseConnection());
             var users=await adminService.GetUsersAsync("uat-signer");var targetUser=users.Single(x=>x.Username=="uat-reviewer");
+            await Denied(()=>pipe.ApplicationAsync(new(Guid.NewGuid(),"ResetPassword","uat-signer",NewPassword:_password,UserId:targetUser.UserId)),"account administration refuses a request without fresh server-issued proof");
             await adminService.ResetPasswordAsync(targetUser.UserId,_password,"uat-signer","Controlled UAT administrator password reset","Reset user password","uat-signer",(byte[])typeof(PharmaLIMS.Models.User).GetProperty("AuthenticationRowVersion",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(targetUser)!);
             Check(true,"signed account-administration reset remains functional without desktop credential writes");
             var reviewer=await auth.AuthenticateAsync("uat-reviewer",_password);
             Check(reviewer!=null && reviewer.CanReviewResults && !reviewer.CanManageSettings,"reviewer login and review permission are preserved without equipment-management permission");
+            Check(reviewer!.MustChangePassword,"administrator password reset preserves mandatory password rotation");
+            string reviewerPassword="Reviewer!Aa1"+Guid.NewGuid().ToString("N");
+            Check(await auth.ChangeCurrentUserPasswordAsync(_password,reviewerPassword) && await auth.ValidateCurrentUserPasswordAsync(reviewerPassword),"reviewer password rotation and electronic-signature reauthentication work through the trusted service");
             await Denied(()=>pipe.CommitAsync(Request(),"uat-reviewer",_password),"review-only application account cannot obtain an equipment signature");
             await Exec(_admin,"UPDATE dbo.Users SET CanManageSettings=0 WHERE Username=N'uat-signer'");
             await Denied(()=>pipe.CommitAsync(Request(),"uat-signer",_password),"server refuses revoked equipment permission even when client session is stale");
@@ -193,6 +197,7 @@ internal sealed class UatRun(UatSettings settings)
             await Denied(()=>pipe.CommitAsync(Request(),"uat-signer",_password),"unmapped actual Windows SID is refused despite a valid application password");
             StopHost();
             long count=Convert.ToInt64(await Scalar("SELECT COUNT_BIG(*) FROM dbo.LabEquipmentSignatures"));
+            Check(count==4 && Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.AuditTrail WHERE TableName=N'LabEquipment'"))==3,"all rejected Windows requests leave equipment signature and audit counts unchanged");
             Check(!await UiSave(auth,_password,false,update:true),"actual WPF dialog fails closed when trusted service is unavailable");
             Check(Convert.ToInt64(await Scalar("SELECT COUNT_BIG(*) FROM dbo.LabEquipmentSignatures"))==count,"service failure cannot fall back to direct WPF signing");
             File.WriteAllText(Path.Combine(settings.ResultsDirectory,"results.json"),JsonSerializer.Serialize(new{Commit=Environment.GetEnvironmentVariable("GITHUB_SHA"),Platform=Environment.OSVersion.ToString(),WindowsCallerSid=settings.CallerSid,ServiceSid=settings.ServiceSid,Passed=_passes.Count,Checks=_passes,ProductionActivated=false},new JsonSerializerOptions{WriteIndented=true}));

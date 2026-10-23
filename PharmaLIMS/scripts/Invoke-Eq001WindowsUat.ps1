@@ -80,8 +80,8 @@ try {
     secedit.exe /export /cfg $rights /areas USER_RIGHTS /quiet | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not export isolated runner service-logon policy.' }
     $policy = Get-Content $rights -Raw
-    if ($policy -match '(?m)^SeServiceLogonRight\s*=.*$') {
-        $policy = [regex]::Replace($policy,'(?m)^SeServiceLogonRight\s*=.*$',{ param($m) $m.Value + ",*$serviceSid" })
+    if ($policy -match '(?m)^SeServiceLogonRight[^\S\r\n]*=[^\r\n]*') {
+        $policy = [regex]::Replace($policy,'(?m)^SeServiceLogonRight[^\S\r\n]*=[^\r\n]*',{ param($m) $m.Value + ",*$serviceSid" })
     } else { $policy = $policy.Replace('[Privilege Rights]',"[Privilege Rights]`r`nSeServiceLogonRight = *$serviceSid") }
     Set-Content -LiteralPath $rights -Value $policy -Encoding unicode
     secedit.exe /configure /db (Join-Path $privateRoot 'rights.sdb') /cfg $rights /areas USER_RIGHTS /quiet | Out-Null
