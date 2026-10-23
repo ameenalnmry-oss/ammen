@@ -61,6 +61,23 @@ await ExpectDenied(() => coordinator.CommitEquipmentSignatureAsync(
     request with { RequestId = Guid.NewGuid() }, "CorrectPassword#2026"));
 Assert(store.SavedCount == 1, "Unmapped host principal must not impersonate another user.");
 
+var map = new TrustedCallerMap(new Dictionary<string,string> { ["S-1-5-21-1-2-3-1001"] = "reviewer" });
+Assert(map.Resolve("S-1-5-21-1-2-3-1001", "S-1-5-21-1-2-3-1002", "reviewer") == "reviewer", "Only the mapped Windows SID determines the signer.");
+await ExpectDenied(() => Task.Run(() => map.Resolve("S-1-5-21-1-2-3-9999", "S-1-5-21-1-2-3-1002", "reviewer")));
+await ExpectDenied(() => Task.Run(() => map.Resolve("S-1-5-21-1-2-3-1001", "S-1-5-21-1-2-3-1002", "administrator")));
+await ExpectDenied(() => Task.Run(() => map.Resolve("S-1-5-21-1-2-3-1001", "S-1-5-21-1-2-3-1001", "reviewer")));
+await ExpectDenied(() => Task.Run(() => new TrustedPipeClientOptions("../bad-pipe", new string('A',64)).Validate()));
+await ExpectDenied(() => Task.Run(() => new TrustedPipeClientOptions("eq001", "invalid-pin").Validate()));
+using (var frame = new MemoryStream()) {
+    await TrustedPipeProtocol.WriteAsync(frame, new TrustedSigningEnvelope(request, "reviewer", "secret"), default);
+    frame.Position = 0;
+    var roundtrip = await TrustedPipeProtocol.ReadAsync<TrustedSigningEnvelope>(frame, default);
+    Assert(roundtrip.ExpectedUsername == "reviewer" && roundtrip.Request.RequestId == request.RequestId, "Bounded IPC frame roundtrips a request.");
+}
+using (var frame = new MemoryStream(new byte[] {0, 2, 0, 0})) {
+    await ExpectDenied(() => TrustedPipeProtocol.ReadAsync<TrustedSigningEnvelope>(frame, default));
+}
+
 Console.WriteLine("PASS: EQ-001 independent credential validation, host-bound identity, and fail-closed coordination.");
 
 static void Assert(bool condition, string message)

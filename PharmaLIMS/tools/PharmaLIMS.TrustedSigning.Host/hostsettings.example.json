@@ -1,0 +1,9 @@
+{
+  "PipeName": "PharmaLIMS_EQ001",
+  "DeploymentMode": "UAT",
+  "ProductionActivationApproved": false,
+  "ConnectionString": "Server=YOUR-UAT-SQL;Database=PharmaLIMS_EQ001_UAT_site;Integrated Security=true;Encrypt=Mandatory;TrustServerCertificate=false",
+  "CertificatePath": "C:\\ProgramData\\PharmaLIMS\\TrustedSigning\\service.pfx",
+  "CertificatePassword": "",
+  "WindowsAccounts": { "S-1-5-21-REPLACE-WITH-APPROVED-WINDOWS-USER-SID": "approved_pharmalims_username" }
+}
