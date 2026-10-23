@@ -14,9 +14,8 @@ public sealed record EquipmentSigningRequest(
     string EquipmentCode,
     string Reason,
     DateTimeOffset IssuedAtUtc,
-    byte[] ExpectedRowVersion,
-    string OldStateJson,
-    string NewStateJson);
+    byte[]? ExpectedRowVersion,
+    string RequestedEquipmentStateJson);
 
 public sealed record VerifiedSigner(
     string Username,
@@ -39,8 +38,10 @@ public interface ITrustedSignerAuthenticator
 
 /// <summary>
 /// The implementation must atomically reject repeated RequestIds, verify the
-/// equipment RowVersion, persist the equipment change and immutable signature,
-/// and enforce authorization using a SQL principal inaccessible to WPF.
+/// equipment RowVersion, derive old and new state evidence from the database
+/// inside the same transaction, persist the equipment change and immutable
+/// signature, and enforce authorization using a SQL principal inaccessible to WPF.
+/// The request's RequestedEquipmentStateJson is proposed input, NEVER evidence.
 /// </summary>
 public interface ITrustedEquipmentSignatureStore
 {
@@ -74,12 +75,15 @@ public sealed class TrustedSigningCoordinator
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(reauthenticationSecret))
             throw new UnauthorizedAccessException("A fresh EQ-001 credential is required.");
-        if (request.ExpectedRowVersion is null ||
-            request.ExpectedRowVersion.Length != 8 && request.Action == SigningRequestPolicy.EquipmentUpdate)
+        if (request.Action == SigningRequestPolicy.EquipmentUpdate &&
+            request.ExpectedRowVersion?.Length != 8)
             throw new ArgumentException("EQ-001 update requires an exact SQL rowversion.");
-        if (string.IsNullOrWhiteSpace(request.NewStateJson) ||
-            request.OldStateJson is null)
-            throw new ArgumentException("EQ-001 requires bound old and new state evidence.");
+        if (request.Action == SigningRequestPolicy.EquipmentCreate &&
+            request.ExpectedRowVersion is { Length: > 0 })
+            throw new ArgumentException("EQ-001 create must not supply a previous rowversion.");
+        if (string.IsNullOrWhiteSpace(request.RequestedEquipmentStateJson) ||
+            request.RequestedEquipmentStateJson.Length > 32768)
+            throw new ArgumentException("EQ-001 requires bounded proposed equipment data.");
 
         // Revalidate after independent reauthentication; do not use WPF session
         // flags, workstation timestamps, or a user-supplied signer identity.
