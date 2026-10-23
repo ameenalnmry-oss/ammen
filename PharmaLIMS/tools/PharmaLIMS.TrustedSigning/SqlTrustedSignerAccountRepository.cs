@@ -20,7 +20,8 @@ public sealed class SqlTrustedSignerAccountRepository : ITrustedSignerAccountRep
         if (string.IsNullOrWhiteSpace(trustedConnectionString))
             throw new ArgumentException("Trusted SQL connection is required.", nameof(trustedConnectionString));
         var builder = new SqlConnectionStringBuilder(trustedConnectionString);
-        if (!builder.Encrypt || builder.TrustServerCertificate)
+        if ((builder.Encrypt != SqlConnectionEncryptOption.Mandatory &&
+             builder.Encrypt != SqlConnectionEncryptOption.Strict) || builder.TrustServerCertificate)
             throw new ArgumentException("EQ-001 requires encrypted, server-validated SQL transport.");
         _trustedConnectionString = builder.ConnectionString;
     }
