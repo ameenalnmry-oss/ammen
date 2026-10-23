@@ -11,6 +11,7 @@ namespace PharmaLIMS.TrustedSigning;
 public sealed record EquipmentSigningRequest(
     Guid RequestId,
     string Action,
+    int? EquipmentId,
     string EquipmentCode,
     string Reason,
     DateTimeOffset IssuedAtUtc,
@@ -79,6 +80,12 @@ public sealed class TrustedSigningCoordinator
             request.RequestId, request.IssuedAtUtc, _clock.GetUtcNow());
         if (string.IsNullOrWhiteSpace(reauthenticationSecret))
             throw new UnauthorizedAccessException("A fresh EQ-001 credential is required.");
+        if (request.Action == SigningRequestPolicy.EquipmentUpdate &&
+            request.EquipmentId is not > 0)
+            throw new ArgumentException("EQ-001 update requires an existing equipment ID.");
+        if (request.Action == SigningRequestPolicy.EquipmentCreate &&
+            request.EquipmentId.HasValue)
+            throw new ArgumentException("EQ-001 create must not supply an equipment ID.");
         if (request.Action == SigningRequestPolicy.EquipmentUpdate &&
             request.ExpectedRowVersion?.Length != 8)
             throw new ArgumentException("EQ-001 update requires an exact SQL rowversion.");
