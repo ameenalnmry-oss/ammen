@@ -21,7 +21,10 @@ public sealed record TrustedSignerAccount(
     bool IsActive,
     bool IsLocked,
     bool MustChangePassword,
-    bool CanManageSettings);
+    bool CanManageSettings,
+    int UserId,
+    byte[] AuthenticationRowVersion,
+    string LegacyPasswordHash);
 
 /// <summary>
 /// Repository implementation must independently load current account/permission
@@ -32,8 +35,8 @@ public sealed record TrustedSignerAccount(
 public interface ITrustedSignerAccountRepository
 {
     Task<TrustedSignerAccount?> LoadByUsernameAsync(string username, CancellationToken cancellationToken);
-    Task RecordFailedAttemptAsync(string username, CancellationToken cancellationToken);
-    Task<bool> ConfirmSuccessIfStillAuthorizedAsync(string username, CancellationToken cancellationToken);
+    Task RecordFailedAttemptAsync(TrustedSignerAccount verifiedAccount, CancellationToken cancellationToken);
+    Task<bool> ConfirmSuccessIfStillAuthorizedAsync(TrustedSignerAccount verifiedAccount, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -77,14 +80,14 @@ public sealed class TrustedHostAuthenticator : ITrustedSignerAuthenticator
         if (!TrustedCredentialVerifier.VerifyModernCredential(
                 reauthenticationSecret, account.PasswordSalt, account.PasswordHashNew))
         {
-            await _accounts.RecordFailedAttemptAsync(username, cancellationToken)
+            await _accounts.RecordFailedAttemptAsync(account, cancellationToken)
                 .ConfigureAwait(false);
             throw new UnauthorizedAccessException("EQ-001 reauthentication failed.");
         }
 
         // The account may have been disabled or locked concurrently.
         bool committed = await _accounts.ConfirmSuccessIfStillAuthorizedAsync(
-            username, cancellationToken).ConfigureAwait(false);
+            account, cancellationToken).ConfigureAwait(false);
         if (!committed)
             throw new UnauthorizedAccessException("EQ-001 signer status changed.");
 
