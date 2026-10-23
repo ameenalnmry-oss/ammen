@@ -94,15 +94,21 @@ jobs:
               throw "Controlled source manifest verification did not complete successfully."
           }
 
-      - name: Build independent EQ-001 trusted-signing service
+      - name: Build and test independent EQ-001 trusted-signing service
         working-directory: PharmaLIMS
         run: |
           $ErrorActionPreference = "Stop"
-          dotnet build tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj --configuration Release --nologo
-          if ($LASTEXITCODE -ne 0) { throw "EQ-001 trusted-signing service build failed." }
-          # Build outputs must not enter controlled source release validation.
-          Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/bin -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/obj -Recurse -Force -ErrorAction SilentlyContinue
+          try {
+              dotnet run --project tools/PharmaLIMS.TrustedSigning.SecurityChecks/PharmaLIMS.TrustedSigning.SecurityChecks.csproj --configuration Release
+              if ($LASTEXITCODE -ne 0) { throw "EQ-001 trusted-signing security checks failed." }
+          }
+          finally {
+              # Never allow build outputs into the controlled source delivery.
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning.SecurityChecks/bin -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning.SecurityChecks/obj -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/bin -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/obj -Recurse -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Verify validator content in runner
         working-directory: PharmaLIMS
