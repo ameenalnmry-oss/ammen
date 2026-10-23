@@ -278,6 +278,13 @@
         "type": "Transitive",
         "resolved": "8.0.1",
         "contentHash": "BVYuec3jV23EMRDeR7Dr1/qhx7369dZzJ9IWy2xylvb4YfXsrUxspWc4UWYid/tj4zZK58uGZqn2WQiaDMhmAg=="
+      },
+      "pharmalims.trustedsigning": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Data.SqlClient": "[6.1.6, )",
+          "System.Security.Cryptography.Pkcs": "[8.0.2, )"
+        }
       }
     }
   }

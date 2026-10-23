@@ -450,9 +450,10 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("BtnLabResources_Click", main_code)
         self.assertIn('x:Class="PharmaLIMS.LabResources"', resources_xaml)
         self.assertIn("Save with E-Signature", resources_xaml)
-        self.assertIn("EnsureUserPermissionInTransaction", resources_code)
-        self.assertIn("LabEquipmentSignatures", resources_code)
-        self.assertIn("ExpectedRowVersion", resources_code)
+        self.assertIn("new TrustedEquipmentSignature(", resources_code)
+        self.assertNotIn("INSERT dbo.LabEquipmentSignatures", resources_code)
+        self.assertIn("IsConfirmed", resources_code)
+        self.assertIn("_selectedRowVersion", resources_code)
         self.assertIn("20261008_001", [entry["versionKey"] for entry in manifest["migrations"]])
 
     def test_lab_equipment_usage_is_signed_and_bound_to_result_workflows(self):

@@ -1,4 +1,6 @@
-using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
+using PharmaLIMS.Services;
+using PharmaLIMS.TrustedSigning;
 using PharmaLIMS.Infrastructure;
 using System;
 using System.Collections.Generic;
@@ -13,6 +15,7 @@ namespace PharmaLIMS
     public partial class LabResources : Window
     {
         private readonly DatabaseConnection _database = new();
+        private readonly IAuthService? _authService;
         private readonly List<EquipmentRow> _allEquipment = new();
         private int? _selectedEquipmentId;
         private byte[]? _selectedRowVersion;
@@ -20,8 +23,11 @@ namespace PharmaLIMS
         public LabResources()
         {
             InitializeComponent();
+            _authService = App.ServiceProvider?.GetService<IAuthService>();
             Loaded += LabResources_Loaded;
         }
+
+        public LabResources(IAuthService authService) : this() => _authService = authService;
 
         private void LabResources_Loaded(object sender, RoutedEventArgs e)
         {
@@ -264,71 +270,33 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
-            // EQ-001: do not accept locally validated WPF signatures as a trusted
-            // production signing authority. This guard is temporary until an
-            // independently authenticated signing service is integrated and UAT-approved.
-            if (AppConfig.IsProduction)
+            var user = _authService?.GetCurrentUser();
+            if (user == null || !user.CanManageSettings)
             {
-                MessageBox.Show(
-                    "EQ-001 equipment changes are blocked in Production until trusted signing is validated and activated. No record was changed.",
-                    "Trusted Signing Required",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                MessageBox.Show("An authenticated account with system-settings permission is required.", "Permission Required", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-
-            if (!(Login.CanManageSettings ||
-                  string.Equals(Login.CurrentUserRole, "Admin", StringComparison.OrdinalIgnoreCase)))
-            {
-                MessageBox.Show(
-                    "Equipment master changes require system-settings permission.",
-                    "Permission Required",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             if (!ValidateForm(out string validationMessage))
             {
                 MessageBox.Show(validationMessage, "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-
-            string recordCode = TxtCode.Text.Trim();
-            string action = _selectedEquipmentId.HasValue
-                ? "Laboratory Equipment Master Update"
-                : "Laboratory Equipment Master Create";
-
-            var signature = new ElectronicSignature(recordCode, Login.CurrentUser, action, true)
-            {
-                Owner = this
-            };
-            signature.ShowDialog();
-            if (!signature.IsConfirmed)
-                return;
-
             try
             {
-                SaveEquipment(signature);
+                if (_selectedEquipmentId.HasValue && _selectedRowVersion?.Length != 8)
+                    throw new InvalidOperationException("Reload the equipment record before saving.");
+                var request = new EquipmentSigningRequest(Guid.NewGuid(),
+                    _selectedEquipmentId.HasValue ? SigningRequestPolicy.EquipmentUpdate : SigningRequestPolicy.EquipmentCreate,
+                    _selectedEquipmentId, TxtCode.Text.Trim(), "", DateTimeOffset.UtcNow, _selectedRowVersion, BuildProposedState());
+                var signature = new TrustedEquipmentSignature(request, user.Username, TrustedEquipmentSigningClient.CreateFromConfiguration()) { Owner = this };
+                if (signature.ShowDialog() != true || !signature.IsConfirmed) return;
                 LoadEquipment();
                 ClearForm();
-                LblStatus.Text = "Equipment record saved with electronic signature and audit evidence.";
-            }
-            catch (SqlException ex) when (ex.Number == 2601 || ex.Number == 2627)
-            {
-                MessageBox.Show(
-                    "Equipment Code must be unique. Another record already uses this code.",
-                    "Duplicate Equipment Code",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                LblStatus.Text = "Equipment record saved by the trusted signing service with signature and audit evidence.";
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    UserFacingError.SafeMessage(ex, "Save laboratory equipment"),
-                    "Laboratory Resources",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Trusted equipment signing"), "Laboratory Resources", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -369,170 +337,19 @@ ORDER BY CASE WHEN e.IsActive=1 THEN 0 ELSE 1 END, e.EquipmentCode;");
             return true;
         }
 
-        private void SaveEquipment(ElectronicSignature signature)
+        private string BuildProposedState() => JsonSerializer.Serialize(new
         {
-            _database.ExecuteInTransaction((connection, transaction) =>
-            {
-                string signedBy = signature.SignedBy.Trim();
-                DatabaseHelper.EnsureUserPermissionInTransaction(
-                    connection,
-                    transaction,
-                    signedBy,
-                    "CanManageSettings",
-                    "maintain laboratory equipment master data");
+            EquipmentCode = TxtCode.Text.Trim(), EquipmentName = TxtName.Text.Trim(), EquipmentType = TxtType.Text.Trim(),
+            Department = NullIfBlank(TxtDepartment.Text), Location = NullIfBlank(TxtLocation.Text),
+            Manufacturer = NullIfBlank(TxtManufacturer.Text), Model = NullIfBlank(TxtModel.Text), SerialNumber = NullIfBlank(TxtSerial.Text),
+            GmpCritical = ChkGmpCritical.IsChecked == true, EquipmentStatus = ComboText(CboStatus),
+            QualificationStatus = ComboText(CboQualification), LastQualificationDate = DpLastQualification.SelectedDate?.Date,
+            NextQualificationDate = DpNextQualification.SelectedDate?.Date, CalibrationRequired = ChkCalibrationRequired.IsChecked == true,
+            CalibrationStatus = ComboText(CboCalibration), LastCalibrationDate = DpLastCalibration.SelectedDate?.Date,
+            NextCalibrationDate = DpNextCalibration.SelectedDate?.Date, MethodReference = NullIfBlank(TxtMethodReference.Text), Notes = NullIfBlank(TxtNotes.Text)
+        });
 
-                string oldJson = string.Empty;
-                int equipmentId;
-
-                if (_selectedEquipmentId.HasValue)
-                {
-                    if (_selectedRowVersion == null)
-                        throw new InvalidOperationException("The selected equipment version is unavailable. Reload the record.");
-
-                    using (var oldCommand = new SqlCommand(@"
-SELECT EquipmentCode,EquipmentName,EquipmentType,Department,Location,Manufacturer,Model,SerialNumber,
-       GmpCritical,EquipmentStatus,QualificationStatus,LastQualificationDate,NextQualificationDate,
-       CalibrationRequired,CalibrationStatus,LastCalibrationDate,NextCalibrationDate,MethodReference,Notes,IsActive
-FROM dbo.LabEquipment WITH (UPDLOCK,HOLDLOCK)
-WHERE EquipmentID=@EquipmentID AND RowVersion=@ExpectedRowVersion;", connection, transaction))
-                    {
-                        oldCommand.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = _selectedEquipmentId.Value;
-                        oldCommand.Parameters.Add("@ExpectedRowVersion", SqlDbType.Timestamp, 8).Value = _selectedRowVersion;
-                        using var reader = oldCommand.ExecuteReader();
-                        if (!reader.Read())
-                            throw new InvalidOperationException("This equipment record was changed by another session. Reload before saving.");
-                        oldJson = SnapshotFromReader(reader);
-                    }
-
-                    using var update = new SqlCommand(@"
-UPDATE dbo.LabEquipment
-SET EquipmentCode=@Code,
-    EquipmentName=@Name,
-    EquipmentType=@Type,
-    Department=@Department,
-    Location=@Location,
-    Manufacturer=@Manufacturer,
-    Model=@Model,
-    SerialNumber=@Serial,
-    GmpCritical=@GmpCritical,
-    EquipmentStatus=@EquipmentStatus,
-    QualificationStatus=@QualificationStatus,
-    LastQualificationDate=@LastQualificationDate,
-    NextQualificationDate=@NextQualificationDate,
-    CalibrationRequired=@CalibrationRequired,
-    CalibrationStatus=@CalibrationStatus,
-    LastCalibrationDate=@LastCalibrationDate,
-    NextCalibrationDate=@NextCalibrationDate,
-    MethodReference=@MethodReference,
-    Notes=@Notes,
-    IsActive=CASE WHEN @EquipmentStatus=N'Retired' THEN 0 ELSE 1 END,
-    UpdatedBy=@UpdatedBy,
-    UpdatedAt=SYSUTCDATETIME()
-WHERE EquipmentID=@EquipmentID AND RowVersion=@ExpectedRowVersion;", connection, transaction);
-                    AddParameters(update, signedBy);
-                    update.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = _selectedEquipmentId.Value;
-                    update.Parameters.Add("@ExpectedRowVersion", SqlDbType.Timestamp, 8).Value = _selectedRowVersion;
-                    if (update.ExecuteNonQuery() != 1)
-                        throw new InvalidOperationException("This equipment record changed before save. Reload and try again.");
-                    equipmentId = _selectedEquipmentId.Value;
-                }
-                else
-                {
-                    using var insert = new SqlCommand(@"
-INSERT dbo.LabEquipment
-(EquipmentCode,EquipmentName,EquipmentType,Department,Location,Manufacturer,Model,SerialNumber,
- GmpCritical,EquipmentStatus,QualificationStatus,LastQualificationDate,NextQualificationDate,
- CalibrationRequired,CalibrationStatus,LastCalibrationDate,NextCalibrationDate,MethodReference,Notes,
- IsActive,CreatedBy)
-OUTPUT INSERTED.EquipmentID
-VALUES
-(@Code,@Name,@Type,@Department,@Location,@Manufacturer,@Model,@Serial,
- @GmpCritical,@EquipmentStatus,@QualificationStatus,@LastQualificationDate,@NextQualificationDate,
- @CalibrationRequired,@CalibrationStatus,@LastCalibrationDate,@NextCalibrationDate,@MethodReference,@Notes,
- CASE WHEN @EquipmentStatus=N'Retired' THEN 0 ELSE 1 END,@UpdatedBy);", connection, transaction);
-                    AddParameters(insert, signedBy);
-                    equipmentId = Convert.ToInt32(insert.ExecuteScalar(), CultureInfo.InvariantCulture);
-                }
-
-                string newJson;
-                using (var state = new SqlCommand(@"
-SELECT EquipmentCode,EquipmentName,EquipmentType,Department,Location,Manufacturer,Model,SerialNumber,
-       GmpCritical,EquipmentStatus,QualificationStatus,LastQualificationDate,NextQualificationDate,
-       CalibrationRequired,CalibrationStatus,LastCalibrationDate,NextCalibrationDate,MethodReference,Notes,IsActive
-FROM dbo.LabEquipment
-WHERE EquipmentID=@EquipmentID;", connection, transaction))
-                {
-                    state.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = equipmentId;
-                    using var reader = state.ExecuteReader();
-                    if (!reader.Read())
-                        throw new InvalidOperationException("Equipment state could not be reloaded after save.");
-                    newJson = SnapshotFromReader(reader);
-                }
-
-                using (var evidence = new SqlCommand(@"
-INSERT dbo.LabEquipmentSignatures
-(EquipmentID,ActionType,MeaningOfSignature,ActionReason,OldStateJson,NewStateJson,SignedBy,UserRole,SignedAt,SourceWorkstation)
-VALUES
-(@EquipmentID,@ActionType,@Meaning,@Reason,@OldState,@NewState,@SignedBy,@UserRole,SYSUTCDATETIME(),@Workstation);", connection, transaction))
-                {
-                    evidence.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = equipmentId;
-                    evidence.Parameters.Add("@ActionType", SqlDbType.NVarChar, 50).Value =
-                        _selectedEquipmentId.HasValue ? "Update" : "Create";
-                    evidence.Parameters.Add("@Meaning", SqlDbType.NVarChar, 250).Value = signature.Meaning;
-                    evidence.Parameters.Add("@Reason", SqlDbType.NVarChar, 500).Value = signature.Reason;
-                    evidence.Parameters.Add("@OldState", SqlDbType.NVarChar, -1).Value =
-                        string.IsNullOrWhiteSpace(oldJson) ? DBNull.Value : oldJson;
-                    evidence.Parameters.Add("@NewState", SqlDbType.NVarChar, -1).Value = newJson;
-                    evidence.Parameters.Add("@SignedBy", SqlDbType.NVarChar, 100).Value = signedBy;
-                    evidence.Parameters.Add("@UserRole", SqlDbType.NVarChar, 100).Value =
-                        string.IsNullOrWhiteSpace(Login.CurrentUserRole) ? DBNull.Value : Login.CurrentUserRole;
-                    evidence.Parameters.Add("@Workstation", SqlDbType.NVarChar, 100).Value = Environment.MachineName;
-                    evidence.ExecuteNonQuery();
-                }
-
-                DatabaseHelper.AddAuditTrailAdvanced(
-                    connection,
-                    transaction,
-                    "LabEquipment",
-                    equipmentId,
-                    _selectedEquipmentId.HasValue ? "Laboratory Equipment Updated" : "Laboratory Equipment Created",
-                    oldJson,
-                    newJson,
-                    signature.Reason,
-                    signedBy);
-            });
-        }
-
-        private void AddParameters(SqlCommand command, string signedBy)
-        {
-            command.Parameters.Add("@Code", SqlDbType.NVarChar, 50).Value = TxtCode.Text.Trim();
-            command.Parameters.Add("@Name", SqlDbType.NVarChar, 200).Value = TxtName.Text.Trim();
-            command.Parameters.Add("@Type", SqlDbType.NVarChar, 100).Value = TxtType.Text.Trim();
-            command.Parameters.Add("@Department", SqlDbType.NVarChar, 100).Value = Db(TxtDepartment.Text);
-            command.Parameters.Add("@Location", SqlDbType.NVarChar, 200).Value = Db(TxtLocation.Text);
-            command.Parameters.Add("@Manufacturer", SqlDbType.NVarChar, 150).Value = Db(TxtManufacturer.Text);
-            command.Parameters.Add("@Model", SqlDbType.NVarChar, 100).Value = Db(TxtModel.Text);
-            command.Parameters.Add("@Serial", SqlDbType.NVarChar, 100).Value = Db(TxtSerial.Text);
-            command.Parameters.Add("@GmpCritical", SqlDbType.Bit).Value = ChkGmpCritical.IsChecked == true;
-            command.Parameters.Add("@EquipmentStatus", SqlDbType.NVarChar, 30).Value = ComboText(CboStatus);
-            command.Parameters.Add("@QualificationStatus", SqlDbType.NVarChar, 30).Value = ComboText(CboQualification);
-            command.Parameters.Add("@LastQualificationDate", SqlDbType.Date).Value =
-                DpLastQualification.SelectedDate.HasValue ? DpLastQualification.SelectedDate.Value.Date : DBNull.Value;
-            command.Parameters.Add("@NextQualificationDate", SqlDbType.Date).Value =
-                DpNextQualification.SelectedDate.HasValue ? DpNextQualification.SelectedDate.Value.Date : DBNull.Value;
-            command.Parameters.Add("@CalibrationRequired", SqlDbType.Bit).Value = ChkCalibrationRequired.IsChecked == true;
-            command.Parameters.Add("@CalibrationStatus", SqlDbType.NVarChar, 30).Value = ComboText(CboCalibration);
-            command.Parameters.Add("@LastCalibrationDate", SqlDbType.Date).Value =
-                DpLastCalibration.SelectedDate.HasValue ? DpLastCalibration.SelectedDate.Value.Date : DBNull.Value;
-            command.Parameters.Add("@NextCalibrationDate", SqlDbType.Date).Value =
-                DpNextCalibration.SelectedDate.HasValue ? DpNextCalibration.SelectedDate.Value.Date : DBNull.Value;
-            command.Parameters.Add("@MethodReference", SqlDbType.NVarChar, 200).Value = Db(TxtMethodReference.Text);
-            command.Parameters.Add("@Notes", SqlDbType.NVarChar, 500).Value = Db(TxtNotes.Text);
-            command.Parameters.Add("@UpdatedBy", SqlDbType.NVarChar, 100).Value = signedBy;
-        }
-
-        private static object Db(string? value) =>
-            string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
+        private static string? NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
         private static string ComboText(ComboBox combo)
         {
@@ -553,17 +370,6 @@ VALUES
                 }
             }
             combo.SelectedIndex = 0;
-        }
-
-        private static string SnapshotFromReader(SqlDataReader reader)
-        {
-            var state = new Dictionary<string, object?>(StringComparer.Ordinal);
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                object value = reader.GetValue(i);
-                state[reader.GetName(i)] = value == DBNull.Value ? null : value;
-            }
-            return JsonSerializer.Serialize(state);
         }
 
         private sealed class EquipmentRow

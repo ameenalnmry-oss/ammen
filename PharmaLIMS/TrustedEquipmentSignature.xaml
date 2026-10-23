@@ -1,0 +1,21 @@
+<Window x:Class="PharmaLIMS.TrustedEquipmentSignature"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Equipment Electronic Signature" Width="610" Height="480"
+ ResizeMode="NoResize" WindowStartupLocation="CenterOwner" Background="#F8FAFC">
+ <Grid Margin="24">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <TextBlock Text="Equipment Electronic Signature" FontSize="23" FontWeight="Bold" Foreground="#123E5A" Margin="0,0,0,20"/>
+  <StackPanel Grid.Row="1" Margin="0,0,0,16">
+   <TextBlock x:Name="LblRecord" FontWeight="SemiBold"/>
+   <TextBlock x:Name="LblSigner" Margin="0,6,0,0"/>
+   <TextBlock Text="Signing confirms responsibility for this equipment change." TextWrapping="Wrap" Margin="0,6,0,0"/>
+  </StackPanel>
+  <StackPanel Grid.Row="2" Margin="0,0,0,14"><TextBlock Text="Your PharmaLIMS password"/><PasswordBox x:Name="TxtPassword" MaxLength="4096" Height="32" Margin="0,5,0,0"/></StackPanel>
+  <StackPanel Grid.Row="3"><TextBlock Text="Reason for this change"/><TextBox x:Name="TxtReason" MaxLength="500" Height="75" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,5,0,8"/><TextBlock x:Name="LblError" Foreground="#B91C1C" TextWrapping="Wrap"/></StackPanel>
+  <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+   <Button x:Name="BtnCancel" Content="Cancel" Width="100" Height="34" Click="Cancel_Click" Margin="0,0,10,0"/>
+   <Button x:Name="BtnConfirm" Content="Sign and save" Width="130" Height="34" Click="Confirm_Click"/>
+  </StackPanel>
+ </Grid>
+</Window>

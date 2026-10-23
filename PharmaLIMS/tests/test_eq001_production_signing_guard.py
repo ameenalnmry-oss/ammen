@@ -1,33 +1,25 @@
-import re
 import unittest
 from pathlib import Path
 
-SOURCE = (Path(__file__).resolve().parents[1] / "LabResources.xaml.cs")
-
+ROOT = Path(__file__).resolve().parents[1]
 
 class Eq001ProductionSigningGuardTests(unittest.TestCase):
-    def test_production_guard_precedes_local_signature_and_sql_save(self):
-        source = SOURCE.read_text(encoding="utf-8-sig")
-        start = source.index("private void BtnSave_Click(")
-        end = source.index("private void ", start + 1)
-        handler = source[start:end]
-        guard = re.search(
-            r"if\s*\(AppConfig\.IsProduction\)\s*\{(?P<body>.*?)\}",
-            handler, re.S,
-        )
-        self.assertIsNotNone(guard, "Production equipment change must fail closed")
-        self.assertIn("return;", guard.group("body"))
-        self.assertIn("Trusted Signing Required", guard.group("body"))
-        self.assertLess(guard.start(), handler.index("new ElectronicSignature("))
-        self.assertLess(guard.start(), handler.index("SaveEquipment(signature)"))
+    def test_equipment_screen_routes_exclusively_to_trusted_service(self):
+        source = (ROOT / 'LabResources.xaml.cs').read_text(encoding='utf-8-sig')
+        self.assertIn('new TrustedEquipmentSignature(', source)
+        self.assertNotIn('new ElectronicSignature(', source)
+        for forbidden in ('INSERT dbo.LabEquipmentSignatures', 'UPDATE dbo.LabEquipment', 'INSERT dbo.LabEquipment', 'SaveEquipment(ElectronicSignature'):
+            self.assertNotIn(forbidden, source)
 
-    def test_production_does_not_rely_on_local_password_validation(self):
-        source = SOURCE.read_text(encoding="utf-8-sig")
-        handler = source.split("private void BtnSave_Click(", 1)[1].split("private void ", 1)[0]
-        self.assertIn("if (AppConfig.IsProduction)", handler)
-        self.assertIn("SaveEquipment(signature);", handler)
-        self.assertIn("INSERT dbo.LabEquipmentSignatures", source)
+    def test_fresh_credential_is_submitted_only_to_authenticated_transport(self):
+        source = (ROOT / 'TrustedEquipmentSignature.xaml.cs').read_text(encoding='utf-8-sig')
+        self.assertIn('_client.CommitAsync(', source)
+        self.assertNotIn('ValidateCurrentUserPasswordAsync', source)
+        self.assertIn('TxtPassword.Clear()', source)
+        self.assertIn('IsConfirmed = true', source)
+        self.assertIn('Reason must contain', source)
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_trusted_service_is_disabled_by_default_in_config_examples(self):
+        import json
+        for name in ('appsettings.Development.example.json', 'appsettings.Production.example.json'):
+            self.assertIs(json.loads((ROOT/name).read_text(encoding='utf-8-sig'))['TrustedSigning']['Enabled'], False)

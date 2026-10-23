@@ -90,6 +90,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+        <ProjectReference Include="tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
 		<PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
