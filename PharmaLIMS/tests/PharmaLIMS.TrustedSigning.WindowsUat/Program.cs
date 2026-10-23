@@ -30,7 +30,7 @@ internal static class Program
         int result = 1;
         app.Startup += async (_, _) => {
             try { await new UatRun(settings).ExecuteAsync(); result = 0; }
-            catch (Exception ex) { Console.Error.WriteLine("::error title=EQ001 Windows UAT::" + ex.GetType().Name + ": " + ex.Message.Replace("\r", " ").Replace("\n", " ")); Console.Error.WriteLine(ex.StackTrace); }
+            catch (Exception ex) { Console.WriteLine("::error title=EQ001 Windows UAT::" + ex.GetType().Name + ": " + ex.Message.Replace("\r", " ").Replace("\n", " ")); Console.WriteLine(ex.StackTrace); }
             finally { app.Shutdown(result); }
         };
         app.Run();
