@@ -185,6 +185,7 @@ internal sealed partial class UatRun(UatSettings settings)
             if(effectiveClient.DataSource!="localhost,14335" || effectiveClient.InitialCatalog!=_db || effectiveClient.UserID!=_clientLogin)throw new Exception("Refusing a desktop connection outside the exact isolated UAT fixture.");
             await Exec(AppConfig.ConnectionString,"SELECT 1");
             Check(AppConfig.IsProduction && AppConfig.TrustedSigningEnabled && effectiveClient.InitialCatalog==_db && effectiveClient.UserID==_clientLogin && effectiveClient.Encrypt==SqlConnectionEncryptOption.Mandatory && !effectiveClient.TrustServerCertificate,"Release WPF loads Production configuration with account-bound DPAPI credentials and validated SQL TLS into isolated UAT");
+            await CheckProtectedCredentialPreflight();
             var auth=new AuthService(new UserRepository(new DatabaseConnection()));
             var user=await auth.AuthenticateAsync("uat-signer",_password);
             Check(user!=null && user.CanManageSettings,"existing application login succeeds with current PBKDF2 credential");
