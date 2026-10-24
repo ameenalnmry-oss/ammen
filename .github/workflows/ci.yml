@@ -372,7 +372,8 @@ jobs:
 
   eq001-windows-uat:
     name: EQ001 Windows WPF SQL UAT
-    needs: validate-build-publish
+    # This job publishes its own host and builds the real WPF fixture; it can run
+    # independently. Both validations must pass for EQ001 acceptance.
     if: github.event_name == 'pull_request'
     runs-on: windows-2022
     timeout-minutes: 45

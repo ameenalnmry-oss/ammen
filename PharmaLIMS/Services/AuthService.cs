@@ -22,6 +22,7 @@ namespace PharmaLIMS.Services
             if (_useTrustedTransport && AppConfig.TrustedSigningEnabled)
             {
                 TrustedApplicationSession.Clear();
+                _currentUser = null;
                 _currentUser = await TrustedApplicationSession.AuthenticateAsync("Login", username, password, "", cancellationToken);
                 return _currentUser;
             }

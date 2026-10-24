@@ -200,6 +200,10 @@ internal sealed class UatRun(UatSettings settings)
             Check(count==4 && Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.AuditTrail WHERE TableName=N'LabEquipment'"))==3,"all rejected Windows requests leave equipment signature and audit counts unchanged");
             Check(!await UiSave(auth,_password,false,update:true),"actual WPF dialog fails closed when trusted service is unavailable");
             Check(Convert.ToInt64(await Scalar("SELECT COUNT_BIG(*) FROM dbo.LabEquipmentSignatures"))==count,"service failure cannot fall back to direct WPF signing");
+            bool unavailable=false;
+            try {await auth.AuthenticateAsync("uat-signer",_password);}
+            catch(Exception e)when(e is IOException or OperationCanceledException or System.TimeoutException){unavailable=true;}
+            Check(unavailable && auth.GetCurrentUser() is null,"login transport failure clears the prior authenticated session");
             File.WriteAllText(Path.Combine(settings.ResultsDirectory,"results.json"),JsonSerializer.Serialize(new{Commit=Environment.GetEnvironmentVariable("GITHUB_SHA"),Platform=Environment.OSVersion.ToString(),WindowsCallerSid=settings.CallerSid,ServiceSid=settings.ServiceSid,Passed=_passes.Count,Checks=_passes,ProductionActivated=false},new JsonSerializerOptions{WriteIndented=true}));
             Console.WriteLine($"EQ001 WINDOWS/WPF/SQL UAT: {_passes.Count} checks passed.");
         }
