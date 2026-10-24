@@ -64,5 +64,8 @@ public sealed class TrustedHostSettings
     }
 
     [SupportedOSPlatform("windows")]
-    public X509Certificate2 LoadCertificate() => new(CertificatePath, CertificatePassword, X509KeyStorageFlags.EphemeralKeySet);
+    // Windows Schannel requires a persisted key handle during TLS authentication.
+    // Do not use EphemeralKeySet: it can load a PFX yet fail when Schannel uses it.
+    // Omit PersistKeySet/Exportable so this import remains temporary and private.
+    public X509Certificate2 LoadCertificate() => new(CertificatePath, CertificatePassword, X509KeyStorageFlags.MachineKeySet);
 }

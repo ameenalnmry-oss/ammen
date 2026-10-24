@@ -84,7 +84,7 @@ internal sealed class UatRun(UatSettings settings)
     }
     private async Task<object?> Scalar(string sql)
     {await using var c=new SqlConnection(_admin);await c.OpenAsync();await using var cmd=new SqlCommand(sql,c);return await cmd.ExecuteScalarAsync();}
-    private void Check(bool ok,string label) { if(!ok)throw new Exception("Assertion: "+label);_passes.Add(label);Console.WriteLine("PASS: "+label); }
+    private void Check(bool ok,string label) { if(!ok)throw new Exception("Assertion: "+label);_passes.Add(label);Console.WriteLine("PASS: "+label);Console.WriteLine("::notice title=EQ001 completed check::"+label); }
     private async Task Denied(Func<Task> action,string label,string expectedCode="Denied")
     {
         try {await action();} catch(TrustedSigningRejectedException e) when(e.ErrorCode==expectedCode) {Check(true,label+" ("+expectedCode+")");return;}
