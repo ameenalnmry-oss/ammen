@@ -267,8 +267,21 @@ internal sealed class UatRun(UatSettings settings)
     private void StopHost()
     {
         if(_host is null)return;
-        _host.Refresh();if(_host.Status!=ServiceControllerStatus.Stopped){_host.Stop();_host.WaitForStatus(ServiceControllerStatus.Stopped,TimeSpan.FromSeconds(30));}
-        _host.Dispose();_host=null;
+        try
+        {
+            _host.Refresh();
+            if(_host.Status is not (ServiceControllerStatus.Stopped or ServiceControllerStatus.StopPending))
+            {
+                try{_host.Stop();}
+                catch(InvalidOperationException)
+                {
+                    _host.Refresh();
+                    if(_host.Status is not (ServiceControllerStatus.Stopped or ServiceControllerStatus.StopPending))throw;
+                }
+            }
+            _host.WaitForStatus(ServiceControllerStatus.Stopped,TimeSpan.FromSeconds(30));
+        }
+        finally{_host.Dispose();_host=null;}
     }
     private ProcessStartInfo ServiceAccountProcess(string executable)
     {
