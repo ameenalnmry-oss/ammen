@@ -20,11 +20,23 @@ internal sealed partial class UatRun
         string fixture = File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/fixtures/eq001_activity_site_procedures.sql"));
         foreach (string batch in Regex.Split(fixture,@"^\s*GO\s*$",RegexOptions.Multiline|RegexOptions.IgnoreCase))
             if (!string.IsNullOrWhiteSpace(batch)) await Exec(_admin,batch);
+        string stagePolicy=File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/eq001_activity_stage_policy_uat.sql"));
+        await Exec(_admin,stagePolicy);
+        await Exec(_admin,stagePolicy); // Idempotence must retain the corrected procedure.
+        await Exec(_admin,$"CREATE ROLE PharmaLIMS_EquipmentWindowsUat;ALTER ROLE PharmaLIMS_EquipmentWindowsUat ADD MEMBER [{_clientLogin}];"+
+            "GRANT EXECUTE ON dbo.EQ001_WindowsUat_ReadOwnUser TO PharmaLIMS_EquipmentWindowsUat;"+
+            "GRANT EXECUTE ON dbo.EQ001_WindowsUat_CommitSuccess TO PharmaLIMS_EquipmentWindowsUat;"+
+            "GRANT EXECUTE ON dbo.EQ001_WindowsUat_RecordFailure TO PharmaLIMS_EquipmentWindowsUat;"+
+            "GRANT EXECUTE ON dbo.EQ001_WindowsUat_AssertActor TO PharmaLIMS_EquipmentWindowsUat;");
         await Exec(_admin,File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/eq001_activity_service_boundary_uat.sql")));
     }
 
     private async Task ExerciseActivities(WindowsTrustedPipeClient pipe,AuthService auth,string client,TrustedHostSettings hostSettings)
     {
+        await SqlDenied(()=>Exec(client,"EXEC dbo.EQ001_WindowsUat_ReadOwnUser @Username=N'uat-signer'"),"desktop principal cannot read password material through the retired compatibility procedure");
+        await SqlDenied(()=>Exec(client,"EXEC dbo.EQ001_WindowsUat_CommitSuccess @UserID=1,@Username=N'uat-signer',@ExpectedVersion=0x0100000000000000,@IsLogin=1"),"desktop principal cannot reset failure counters through the retired success procedure");
+        await SqlDenied(()=>Exec(client,"EXEC dbo.EQ001_WindowsUat_RecordFailure @VerifiedUserID=1,@Username=N'uat-signer',@VerifiedLegacyHash=N'forged',@VerifiedHash=N'forged',@VerifiedSalt=N'forged'"),"desktop principal cannot submit forged credential-state commits through the retired failure procedure");
+        await SqlDenied(()=>Exec(client,"DECLARE @Actor nvarchar(256),@ActorID int;EXEC dbo.EQ001_WindowsUat_AssertActor @Username=N'uat-signer',@Actor=@Actor OUTPUT,@ActorID=@ActorID OUTPUT"),"retired compatibility identity endpoint remains unavailable to the desktop");
         await Exec(_admin,"UPDATE dbo.Users SET PasswordChangedAt=SYSUTCDATETIME() WHERE Username IN(N'uat-signer',N'uat-reviewer');"+
             "INSERT dbo.LabEquipment(EquipmentCode,EquipmentName,EquipmentType,Department,CreatedBy) VALUES(N'MIC-EQ-999',N'Activity UAT equipment',N'pH Meter',N'Microbiology',N'qa-fixture');");
         int equipmentId=Convert.ToInt32(await Scalar("SELECT EquipmentID FROM dbo.LabEquipment WHERE EquipmentCode=N'MIC-EQ-999'"));

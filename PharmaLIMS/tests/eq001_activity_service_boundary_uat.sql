@@ -66,6 +66,19 @@ BEGIN TRY
  GRANT EXECUTE ON dbo.EQ001_CommitActivitySignature TO PharmaLIMS_TrustedEquipmentSigner;
  IF DATABASE_PRINCIPAL_ID(N'PharmaLIMS_EquipmentApp') IS NOT NULL
   DENY EXECUTE ON dbo.EQ001_CommitActivitySignature TO PharmaLIMS_EquipmentApp;
+ -- Only the fresh-credential wrapper may enter the underlying stage procedure.
+ -- Its dbo ownership chain remains valid; old direct service/desktop calls do not.
+ DENY EXECUTE ON dbo.MicroEquipment_SignActivityStage TO public;
+ -- Retire the old desktop-owned credential/counter compatibility API in this
+ -- new UAT database. Direct table DENY alone cannot block EXECUTE AS OWNER RPCs.
+ IF OBJECT_ID(N'dbo.EQ001_WindowsUat_ReadOwnUser',N'P') IS NOT NULL
+  DENY EXECUTE ON dbo.EQ001_WindowsUat_ReadOwnUser TO public;
+ IF OBJECT_ID(N'dbo.EQ001_WindowsUat_CommitSuccess',N'P') IS NOT NULL
+  DENY EXECUTE ON dbo.EQ001_WindowsUat_CommitSuccess TO public;
+ IF OBJECT_ID(N'dbo.EQ001_WindowsUat_RecordFailure',N'P') IS NOT NULL
+  DENY EXECUTE ON dbo.EQ001_WindowsUat_RecordFailure TO public;
+ IF OBJECT_ID(N'dbo.EQ001_WindowsUat_AssertActor',N'P') IS NOT NULL
+  DENY EXECUTE ON dbo.EQ001_WindowsUat_AssertActor TO public;
  COMMIT TRANSACTION;
 END TRY
 BEGIN CATCH
