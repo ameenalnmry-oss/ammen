@@ -27,10 +27,11 @@ internal static class Program
         var settings = JsonSerializer.Deserialize<UatSettings>(File.ReadAllText(path))!;
         if (args.Contains("--probe-self")) return ProbeSelf(settings).GetAwaiter().GetResult();
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        var run = new UatRun(settings);
         int result = 1;
         app.Startup += async (_, _) => {
-            try { await new UatRun(settings).ExecuteAsync(); result = 0; }
-            catch (Exception ex) { Console.WriteLine("::error title=EQ001 Windows UAT::" + ex.GetType().Name + ": " + ex.Message.Replace("\r", " ").Replace("\n", " ")); Console.WriteLine(ex.StackTrace); }
+            try { await run.ExecuteAsync(); result = 0; }
+            catch (Exception ex) { Console.WriteLine("::error title=EQ001 Windows UAT::After "+run.Progress+"; " + ex.GetType().Name + ": " + ex.Message.Replace("\r", " ").Replace("\n", " ")+"; "+ex.StackTrace?.Split('\n').FirstOrDefault(x=>x.Contains("Program.cs:line",StringComparison.Ordinal))); Console.WriteLine(ex.StackTrace); }
             finally { app.Shutdown(result); }
         };
         app.Run();
@@ -67,6 +68,7 @@ internal sealed class UatSettings
 internal sealed class UatRun(UatSettings settings)
 {
     private readonly List<string> _passes = new();
+    public string Progress => _passes.Count+" checks, last="+(_passes.LastOrDefault()??"none");
     private string _db = "EQ001_UAT_" + Guid.NewGuid().ToString("N");
     private string _admin = "";
     private ServiceController? _host;
@@ -87,7 +89,7 @@ internal sealed class UatRun(UatSettings settings)
     private void Check(bool ok,string label) { if(!ok)throw new Exception("Assertion: "+label);_passes.Add(label);Console.WriteLine("PASS: "+label);Console.WriteLine("::notice title=EQ001 completed check::"+label); }
     private async Task Denied(Func<Task> action,string label,string expectedCode="Denied")
     {
-        try {await action();} catch(TrustedSigningRejectedException e) when(e.ErrorCode==expectedCode) {Check(true,label+" ("+expectedCode+")");return;}
+        try {await action();} catch(TrustedSigningRejectedException e) {if(e.ErrorCode==expectedCode){Check(true,label+" ("+expectedCode+")");return;}throw new Exception("Wrong rejection for "+label+": expected "+expectedCode+", received "+e.ErrorCode,e);}
         throw new Exception("Expected exact trusted-service refusal: "+label);
     }
     private async Task SqlDenied(Func<Task> action,string label,int expectedNumber=229)
