@@ -63,7 +63,7 @@ if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
         catch [IO.IOException] { $blocked = $true }
         if (-not $blocked) { throw 'An editor must not acquire a writer while installation owns the source.' }
         $blocked = $false
-        try { [IO.File]::Replace($replacement,$target,$null) }
+        try { [IO.File]::Replace($replacement,$target,(Join-Path $fixture 'editor-backup.txt')) }
         catch [IO.IOException] { $blocked = $true }
         if (-not $blocked) { throw 'An atomic editor save must not replace the exclusively held source.' }
         $handle.WriteAll($crlf)

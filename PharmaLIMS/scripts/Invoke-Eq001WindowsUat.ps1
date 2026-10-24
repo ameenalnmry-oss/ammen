@@ -14,6 +14,7 @@ try {
         Tee-Object -FilePath (Join-Path $results 'source-installer-checks.txt')
 } catch {
     $details = ($_.Exception.Message + '; ' + $_.ScriptStackTrace).Replace("`r",' ').Replace("`n",' ')
+    Add-Content -LiteralPath (Join-Path $results 'source-installer-checks.txt') -Value $details
     Write-Host "::error title=EQ001 source installer qualification::$details"
     throw
 }
