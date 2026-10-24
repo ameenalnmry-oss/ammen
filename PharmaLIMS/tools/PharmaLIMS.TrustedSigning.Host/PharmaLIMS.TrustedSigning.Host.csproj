@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile><TargetFramework>net8.0-windows</TargetFramework><UseWPF>true</UseWPF><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+ <ItemGroup><ProjectReference Include="../../PharmaLIMS.csproj" /><ProjectReference Include="../PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj" /><PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" /></ItemGroup>
+</Project>

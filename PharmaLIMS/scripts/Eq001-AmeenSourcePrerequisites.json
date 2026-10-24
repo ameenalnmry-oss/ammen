@@ -1,0 +1,270 @@
+{
+  "Evidence": "User-supplied AMEEN source review, 2026-10-24; normalized UTF-8 source hashes, no credentials or configuration",
+  "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
+  "Files": [
+    {
+      "Path": "AppConfig.cs",
+      "SourcePath": "PharmaLIMS/AppConfig.cs",
+      "ExpectedNormalizedSha256": "243fb4ed064c5542d7a84199869e1d3d27f294855b83659b1f6225b35dfc9218",
+      "Remove": false
+    },
+    {
+      "Path": "DatabaseHelper.SecurityAudit.cs",
+      "SourcePath": "PharmaLIMS/DatabaseHelper.SecurityAudit.cs",
+      "ExpectedNormalizedSha256": "7cf3ff89475c200c61a3235aa267080681f53cd830cf4d49ffb4949f7df08e50",
+      "Remove": false
+    },
+    {
+      "Path": "Infrastructure/DatabaseConnection.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/DatabaseConnection.cs",
+      "ExpectedNormalizedSha256": "b2ac13a4d70387cbb5e533fb0371a0095eb6231bb95f829c72d2b884b255475b",
+      "Remove": false
+    },
+    {
+      "Path": "Infrastructure/TrustedAuditActorContext.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/TrustedAuditActorContext.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Infrastructure/TrustedSigningAssemblyAccess.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/TrustedSigningAssemblyAccess.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "LabResources.PrintEvidence.cs",
+      "SourcePath": "PharmaLIMS/LabResources.PrintEvidence.cs",
+      "ExpectedNormalizedSha256": "1da26b9bf2b81d882b63a043f84d14f9dd9f4a00245690bbfa37753c084d4ebf",
+      "Remove": false
+    },
+    {
+      "Path": "LabResources.xaml",
+      "SourcePath": "PharmaLIMS/LabResources.xaml",
+      "ExpectedNormalizedSha256": "63549a2849df3485c260d87cb3be6a11f91db0ce534be52bba772658e73f187e",
+      "Remove": false
+    },
+    {
+      "Path": "LabResources.xaml.cs",
+      "SourcePath": "PharmaLIMS/LabResources.xaml.cs",
+      "ExpectedNormalizedSha256": "f28bd8076fbb861832f556fa1ff08e327f2a3474681b78438d57485f94a8b0f7",
+      "Remove": false
+    },
+    {
+      "Path": "PharmaLIMS.csproj",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-PharmaLIMS.csproj.txt",
+      "ExpectedNormalizedSha256": "4d5b1cacc1efe2ac84fd74c19bf677a41e483df19682ef24200ebb02298dd45a",
+      "Remove": false
+    },
+    {
+      "Path": "Repositories/UserRepository.cs",
+      "SourcePath": "PharmaLIMS/Repositories/UserRepository.cs",
+      "ExpectedNormalizedSha256": "bc6af71fc3cd4a83acb1b3a69282bb387f1292c853b0ce56cbac396c36cfe4bf",
+      "Remove": false
+    },
+    {
+      "Path": "Services/AuthService.cs",
+      "SourcePath": "PharmaLIMS/Services/AuthService.cs",
+      "ExpectedNormalizedSha256": "adf6f93bcd3a577d1f29f326d1c2e6904d98e197572d1f2e079cc3fdcc28cffc",
+      "Remove": false
+    },
+    {
+      "Path": "Services/AuthenticationCommitContract.cs",
+      "SourcePath": "PharmaLIMS/Services/AuthenticationCommitContract.cs",
+      "ExpectedNormalizedSha256": "71c47f114a0df105c989e2519657025ad2d889d9673f169b13abe632611003ac",
+      "Remove": false
+    },
+    {
+      "Path": "Services/MicroEquipmentActivityService.cs",
+      "SourcePath": "PharmaLIMS/Services/MicroEquipmentActivityService.cs",
+      "ExpectedNormalizedSha256": "e444426317e829bab70a06c1f3d8c623d15fb32038089c724944c6ddac308673",
+      "Remove": false
+    },
+    {
+      "Path": "Services/TrustedApplicationSession.cs",
+      "SourcePath": "PharmaLIMS/Services/TrustedApplicationSession.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/TrustedEquipmentSigningClient.cs",
+      "SourcePath": "PharmaLIMS/Services/TrustedEquipmentSigningClient.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/UserAdministrationService.cs",
+      "SourcePath": "PharmaLIMS/Services/UserAdministrationService.cs",
+      "ExpectedNormalizedSha256": "99ccd6a39c20f421bb671de6b82f82397f6d7a54dd38ad2675c8ee366ce4d15b",
+      "Remove": false
+    },
+    {
+      "Path": "TrustedEquipmentSignature.xaml",
+      "SourcePath": "PharmaLIMS/TrustedEquipmentSignature.xaml",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "TrustedEquipmentSignature.xaml.cs",
+      "SourcePath": "PharmaLIMS/TrustedEquipmentSignature.xaml.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedActivityAuthenticator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedActivityAuthenticator.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj",
+      "ExpectedNormalizedSha256": "27256e5e8e206b24b3aca816898bcfa194f4f4ed25aa48957147e0b62d1d5078",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/Program.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/Program.cs",
+      "ExpectedNormalizedSha256": "d47489ab79104e173afa29dad424caabadbb37803f6982a3797f60f5b892e215",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SigningDeploymentGate.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SigningDeploymentGate.cs",
+      "ExpectedNormalizedSha256": "f420da1f2306d3eaddb1161c2ba96446840f623a97ae793b1b7818cb714a0cdd",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SigningRequestPolicy.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SigningRequestPolicy.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SigningRequestValidator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SigningRequestValidator.cs",
+      "ExpectedNormalizedSha256": "feafd0238feaaafffdb66457a7c43607bd7c39608a17e891132ad9cca1f9b855",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlSigningBoundary.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlSigningBoundary.cs",
+      "ExpectedNormalizedSha256": "fe8e37ead8cce23ff8bfcecc0a5aca92d6536424c74dfd54c707ad0c19804f4b",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlTrustedActivitySignatureStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlTrustedActivitySignatureStore.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlTrustedEquipmentSignatureStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlTrustedEquipmentSignatureStore.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlTrustedSignerAccountRepository.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlTrustedSignerAccountRepository.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedActivitySigning.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedActivitySigning.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedApplicationProtocol.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedApplicationProtocol.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedCredentialVerifier.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedCredentialVerifier.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedHostAuthenticator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedHostAuthenticator.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedPipeProtocol.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedPipeProtocol.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedSigningCoordinator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedSigningCoordinator.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedSigningHost.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedSigningHost.cs",
+      "ExpectedNormalizedSha256": "2516acf71147bddc612e38177656ed708088e6a745d66340fd19e9ca648b759b",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/VerifiedSigner.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/VerifiedSigner.cs",
+      "ExpectedNormalizedSha256": "70f39cf17797fe1869f22516d2ebc14c3320aa8412eacfd15fb3afb198ab550b",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WindowsSignerAuthorization.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsSignerAuthorization.cs",
+      "ExpectedNormalizedSha256": "f7a642f4a35dfe85b9487c83f829630f3129342842de7168e8c55b0f05a86e11",
+      "Remove": true
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeClient.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeClient.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    }
+  ]
+}
