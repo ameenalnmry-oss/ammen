@@ -16,7 +16,8 @@ else
     try{await server.RunAsync(stop.Token);}catch(OperationCanceledException)when(stop.IsCancellationRequested){}
 }
 
-static WindowsTrustedPipeServer BuildServer(TrustedHostSettings settings,X509Certificate2 certificate) => new(settings.PipeName,certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString));
+static WindowsTrustedPipeServer BuildServer(TrustedHostSettings settings,X509Certificate2 certificate) => new(settings.PipeName,certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString),
+    settings.DeploymentMode == "UAT" ? new TrustedActivitySigningCoordinator(new TrustedActivityAuthenticator(settings.ConnectionString),new SqlTrustedActivitySignatureStore(settings.ConnectionString)) : null);
 
 sealed class SigningWindowsService : ServiceBase
 {
@@ -26,7 +27,8 @@ sealed class SigningWindowsService : ServiceBase
     {
         var settings=TrustedHostSettings.Load(_path);
         _certificate=settings.LoadCertificate();
-        var server=new WindowsTrustedPipeServer(settings.PipeName,_certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString));
+        var server=new WindowsTrustedPipeServer(settings.PipeName,_certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString),
+            settings.DeploymentMode == "UAT" ? new TrustedActivitySigningCoordinator(new TrustedActivityAuthenticator(settings.ConnectionString),new SqlTrustedActivitySignatureStore(settings.ConnectionString)) : null);
         _stop=new CancellationTokenSource();var ready=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _host=server.RunAsync(_stop.Token,ready);
         if(!ready.Task.Wait(TimeSpan.FromSeconds(10)) || _host.IsFaulted){_stop.Cancel();_certificate.Dispose();throw new InvalidOperationException("Trusted signing listener failed to start.");}

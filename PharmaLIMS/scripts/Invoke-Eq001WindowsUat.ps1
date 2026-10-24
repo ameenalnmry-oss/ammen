@@ -7,6 +7,7 @@ if (-not $IsolatedGithubUat -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_E
 }
 if (-not [OperatingSystem]::IsWindows()) { throw 'Windows is required.' }
 $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+& (Join-Path $project 'tests/Test-Eq001SourceInstaller.ps1')
 $results = Join-Path $project 'artifacts/eq001-windows-uat'
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 $stamp = [Guid]::NewGuid().ToString('N').Substring(0,10)
@@ -103,7 +104,7 @@ try {
     dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
     if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
-    if ($outcome.Passed -ne 46 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 46 checks must belong to this Release commit.' }
+    if ($outcome.Passed -ne 65 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 65 checks must belong to this Release commit.' }
     Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."
     Write-Host "::notice title=EQ001 Windows UAT verified::$($outcome.Passed) actual Windows/WPF/SQL checks passed; production inactive; sanitized evidence in eq001-windows-wpf-sql-uat artifact."
     $report = @(

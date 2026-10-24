@@ -88,9 +88,12 @@ class UserManagementRegressionTests(unittest.TestCase):
         self.assertIn("new ChangePassword(_authService)", login)
         self.assertIn("if (freshUser.MustChangePassword)", auth)
         self.assertIn("Electronic-signature validation blocked", auth)
-        self.assertIn("MustChangePassword = 0", repository)
-        self.assertIn('"Password Changed"', repository)
-        self.assertIn('moduleName: "Authentication"', repository)
+        contract = text("Services/AuthenticationCommitContract.cs")
+        self.assertIn("AuthenticationCommitContract.PasswordChangeSql", repository)
+        self.assertIn("MustChangePassword = 0", contract)
+        self.assertIn("AuthenticationCommitContract.PasswordChangeAuditSql", repository)
+        self.assertIn("N'Password Changed', N'Authentication'", contract)
+        self.assertIn("account.AuthenticationRowVersion = @CommittedVersion", contract)
 
     def test_password_policy_and_password_values_are_not_audited(self):
         security = text("Infrastructure/PasswordSecurity.cs")

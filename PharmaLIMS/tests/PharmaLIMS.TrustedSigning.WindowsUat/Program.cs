@@ -26,6 +26,8 @@ internal static class Program
         string path = args.Last();
         var settings = JsonSerializer.Deserialize<UatSettings>(File.ReadAllText(path))!;
         if (args.Contains("--probe-self")) return ProbeSelf(settings).GetAwaiter().GetResult();
+        if (args.Contains("--probe-activity-store")) return ProbeActivityStore(settings).GetAwaiter().GetResult();
+        if (args.Contains("--probe-activity-self")) return ProbeActivitySelf(settings).GetAwaiter().GetResult();
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var run = new UatRun(settings);
         int result = 1;
@@ -42,6 +44,26 @@ internal static class Program
     {
         try { await new WindowsTrustedPipeClient(new(s.PipeName,s.CertificateSha256)).CommitAsync(UatRun.Request(),"uat-signer",s.ProbePassword); }
         catch (TrustedSigningRejectedException e) when(e.ErrorCode=="SameAccountDenied") { return 0; }
+        return 1;
+    }
+
+    private static async Task<int> ProbeActivityStore(UatSettings settings)
+    {
+        var connection = new SqlConnectionStringBuilder(settings.MasterConnectionString) { InitialCatalog = settings.ActivityProbeDatabase, IntegratedSecurity = true };
+        var store = new SqlTrustedActivitySignatureStore(connection.ConnectionString);
+        var request = new ActivitySigningRequest(Guid.NewGuid(), settings.ActivityProbeId, "Reviewed", "Stale authentication version probe",
+            DateTimeOffset.UtcNow, Convert.FromBase64String(settings.ActivityProbeVersion), settings.ActivityProbeDatabase);
+        try { await store.CommitOnceAsync(request, new("uat-signer",true,false,false,true,true,new byte[8]), default); }
+        catch (SqlException exception) when (exception.Number == 56764) { return 0; }
+        return 1;
+    }
+
+    private static async Task<int> ProbeActivitySelf(UatSettings settings)
+    {
+        var request = new ActivitySigningRequest(Guid.NewGuid(), settings.ActivityProbeId, "Reviewed", "Service identity exclusion probe",
+            DateTimeOffset.UtcNow, Convert.FromBase64String(settings.ActivityProbeVersion), settings.ActivityProbeDatabase);
+        try { await new WindowsTrustedPipeClient(new(settings.PipeName,settings.CertificateSha256)).CommitActivityAsync(request,"uat-signer",settings.ProbePassword); }
+        catch (TrustedSigningRejectedException exception) when (exception.ErrorCode == "SameAccountDenied") { return 0; }
         return 1;
     }
 }
@@ -63,9 +85,12 @@ internal sealed class UatSettings
     public string ResultsDirectory { get; set; } = "";
     public string SettingsPath { get; set; } = "";
     public string ProbePassword { get; set; } = "";
+    public string ActivityProbeDatabase { get; set; } = "";
+    public long ActivityProbeId { get; set; }
+    public string ActivityProbeVersion { get; set; } = "";
 }
 
-internal sealed class UatRun(UatSettings settings)
+internal sealed partial class UatRun(UatSettings settings)
 {
     private readonly List<string> _passes = new();
     public string Progress => _passes.Count+" checks, last="+(_passes.LastOrDefault()??"none");
@@ -118,7 +143,9 @@ internal sealed class UatRun(UatSettings settings)
             await PrepareSchema();
             _serviceLogin=Environment.MachineName+"\\"+settings.ServiceAccount;
             await Exec(settings.MasterConnectionString,$"CREATE LOGIN [{_serviceLogin}] FROM WINDOWS;CREATE LOGIN [{_clientLogin}] WITH PASSWORD='{_sqlPassword}',CHECK_POLICY=OFF;");
-            await Exec(_admin,$"CREATE USER [{_serviceLogin}] FOR LOGIN [{_serviceLogin}];GRANT SELECT,INSERT,UPDATE ON dbo.Users TO [{_serviceLogin}];GRANT INSERT ON dbo.UserAdministrationSignatures TO [{_serviceLogin}];GRANT INSERT ON dbo.AuditTrail TO [{_serviceLogin}];GRANT EXECUTE ON dbo.EQ001_CommitEquipmentSignature TO [{_serviceLogin}];CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.Users TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
+            const string serviceUser="PharmaLIMS_TrustedEquipmentSigner";
+            await Exec(_admin,$"CREATE USER [{serviceUser}] FOR LOGIN [{_serviceLogin}];GRANT SELECT,INSERT,UPDATE ON dbo.Users TO [{serviceUser}];GRANT INSERT ON dbo.UserAdministrationSignatures TO [{serviceUser}];GRANT INSERT ON dbo.AuditTrail TO [{serviceUser}];GRANT EXECUTE ON dbo.EQ001_CommitEquipmentSignature TO [{serviceUser}];CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.Users TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
+            await PrepareActivitySchema();
             string service = new SqlConnectionStringBuilder(_admin){IntegratedSecurity=true}.ConnectionString;
             string client = new SqlConnectionStringBuilder(_admin){IntegratedSecurity=false,UserID=_clientLogin,Password=_sqlPassword}.ConnectionString;
             await SqlDenied(()=>Exec(client,"UPDATE dbo.Users SET PasswordHashNew=N'forged',PasswordSalt=N'forged' WHERE Username=N'uat-signer'"),"WPF principal cannot replace signer credentials");
@@ -161,6 +188,10 @@ internal sealed class UatRun(UatSettings settings)
             var auth=new AuthService(new UserRepository(new DatabaseConnection()));
             var user=await auth.AuthenticateAsync("uat-signer",_password);
             Check(user!=null && user.CanManageSettings,"existing application login succeeds with current PBKDF2 credential");
+            new DatabaseConnection().ExecuteInTransaction((connection,transaction)=>
+                typeof(DatabaseHelper).GetMethod("EnsureUserPermissionInTransaction",BindingFlags.Static|BindingFlags.NonPublic)!
+                    .Invoke(null,new object[]{connection,transaction,"uat-signer","CanSubmitForReview","submit a controlled UAT record"}));
+            Check(true,"existing transactional submit-for-review permission mapping remains compatible");
             Check(!await UiSave(auth,"wrong-password",false),"actual WPF signature dialog rejects wrong password without equipment save");
             Check(Convert.ToInt32(await Scalar("SELECT FailedLoginAttempts FROM dbo.Users WHERE Username=N'uat-signer'"))==1,"WPF failed signature persists the server-side failure counter");
             Check(await UiSave(auth,_password,true),"actual LabResources WPF save and signature dialog commit through the Windows service");
@@ -173,6 +204,7 @@ internal sealed class UatRun(UatSettings settings)
             await pipe.CommitAsync(request,"uat-signer",_password);
             await Denied(()=>pipe.CommitAsync(request,"uat-signer",_password),"real Windows transport rejects replayed RequestId","Conflict");
             await Denied(()=>pipe.CommitAsync(request with{RequestId=Guid.NewGuid()},"uat-signer",_password),"real Windows transport rejects stale equipment version","Conflict");
+            await ExerciseActivities(pipe, auth, client, hostSettings);
             string rotated="Rotated!Aa1"+Guid.NewGuid().ToString("N");
             Check(await auth.ChangeCurrentUserPasswordAsync(_password,rotated),"normal self-service password change succeeds behind trusted verification");
             _password=rotated;
@@ -234,7 +266,7 @@ internal sealed class UatRun(UatSettings settings)
     private async Task SeedUser(string username,bool manage)
     {
         byte[] salt=RandomNumberGenerator.GetBytes(32);string hash=Convert.ToBase64String(Rfc2898DeriveBytes.Pbkdf2(_password,salt,600000,HashAlgorithmName.SHA256,32));
-        await using var c=new SqlConnection(_admin);await c.OpenAsync();await using var cmd=new SqlCommand("INSERT dbo.Users(Username,FullName,Role,PasswordHash,PasswordHashNew,PasswordSalt,CanManageSettings,CanReviewResults,CanManageUsers) VALUES(@u,@u,@r,N'[MIGRATED]',@h,@s,@m,1,@m)",c);
+        await using var c=new SqlConnection(_admin);await c.OpenAsync();await using var cmd=new SqlCommand("INSERT dbo.Users(Username,FullName,Role,PasswordHash,PasswordHashNew,PasswordSalt,CanManageSettings,CanReviewResults,CanManageUsers,CanEnterResults) VALUES(@u,@u,@r,N'[MIGRATED]',@h,@s,@m,1,@m,1)",c);
         cmd.Parameters.AddWithValue("@u",username);cmd.Parameters.AddWithValue("@r",manage?"Admin":"QA");cmd.Parameters.AddWithValue("@h",hash);cmd.Parameters.AddWithValue("@s",Convert.ToBase64String(salt));cmd.Parameters.AddWithValue("@m",manage);await cmd.ExecuteNonQueryAsync();
     }
     private async Task<string> HistoryDigest() => Convert.ToHexString((byte[])(await Scalar("SELECT HASHBYTES('SHA2_256',(SELECT e.*,s.SignatureID,s.SignedBy,s.SignedAt,s.ActionType,s.ActionReason FROM dbo.LabEquipment e JOIN dbo.LabEquipmentSignatures s ON e.EquipmentID=s.EquipmentID WHERE e.EquipmentCode=N'HISTORICAL-UAT' FOR JSON PATH))"))!);
@@ -301,6 +333,9 @@ internal sealed class UatRun(UatSettings settings)
     {
         var window=new LabResources(auth);
         window.Show();await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        var loadClock=Stopwatch.StartNew();
+        while (((TextBlock)window.FindName("LblStatus")).Text=="Loading equipment records..." && loadClock.Elapsed<TimeSpan.FromSeconds(25))
+            await Task.Delay(25);
         if(update) {
             var grid=(DataGrid)window.FindName("GridEquipment");
             foreach(object row in grid.Items) if((string?)row.GetType().GetProperty("EquipmentCode")?.GetValue(row)=="EQ001-E2E"){grid.SelectedItem=row;break;}

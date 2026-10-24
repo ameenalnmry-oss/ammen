@@ -8,20 +8,35 @@ namespace PharmaLIMS;
 
 public partial class TrustedEquipmentSignature : Window
 {
-    private readonly EquipmentSigningRequest _request;
+    private readonly EquipmentSigningRequest? _request;
+    private readonly ActivitySigningRequest? _activityRequest;
     private readonly string _username;
     private readonly WindowsTrustedPipeClient _client;
     private readonly CancellationTokenSource _stop = new();
     private bool _closed;
     public bool IsConfirmed { get; private set; }
 
-    public TrustedEquipmentSignature(EquipmentSigningRequest request, string username, WindowsTrustedPipeClient client)
+    private TrustedEquipmentSignature(string username, WindowsTrustedPipeClient client)
     {
         InitializeComponent();
-        _request = request; _username = username; _client = client;
-        LblRecord.Text = request.EquipmentCode + " — " + request.Action;
+        _username = username; _client = client;
         LblSigner.Text = "PharmaLIMS account: " + username;
         Closed += (_, _) => { _closed = true; _stop.Cancel(); TxtPassword.Clear(); };
+    }
+
+    public TrustedEquipmentSignature(EquipmentSigningRequest request, string username, WindowsTrustedPipeClient client)
+        : this(username, client)
+    {
+        _request = request;
+        LblRecord.Text = request.EquipmentCode + " — " + request.Action;
+    }
+
+    public TrustedEquipmentSignature(ActivitySigningRequest request, string username, WindowsTrustedPipeClient client)
+        : this(username, client)
+    {
+        _activityRequest = request;
+        LblRecord.Text = "Equipment activity " + request.ActivityId + " — " + request.Stage;
+        TxtReason.Text = request.Reason;
     }
 
     private async void Confirm_Click(object sender, RoutedEventArgs e)
@@ -35,8 +50,16 @@ public partial class TrustedEquipmentSignature : Window
         LblError.Text = "";
         try
         {
-            var request = _request with { RequestId = Guid.NewGuid(), IssuedAtUtc = DateTimeOffset.UtcNow, Reason = reason };
-            await _client.CommitAsync(request, _username, password, _stop.Token);
+            if (_activityRequest is not null)
+            {
+                var request = _activityRequest with { RequestId = Guid.NewGuid(), IssuedAtUtc = DateTimeOffset.UtcNow, Reason = reason };
+                await _client.CommitActivityAsync(request, _username, password, _stop.Token);
+            }
+            else
+            {
+                var request = _request! with { RequestId = Guid.NewGuid(), IssuedAtUtc = DateTimeOffset.UtcNow, Reason = reason };
+                await _client.CommitAsync(request, _username, password, _stop.Token);
+            }
             if (_closed) return;
             IsConfirmed = true;
             DialogResult = true;

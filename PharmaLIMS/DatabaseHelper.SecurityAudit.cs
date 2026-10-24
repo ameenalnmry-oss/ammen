@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -156,8 +156,15 @@ WHERE Username = @UserIdentifier
                 throw new ArgumentNullException(nameof(connection));
             if (transaction == null)
                 throw new ArgumentNullException(nameof(transaction));
-            if (string.IsNullOrWhiteSpace(permissionColumn) ||
-                !AllowedPermissionColumns.Contains(permissionColumn))
+            // Submit-for-review is a workflow action, not a Users table column.
+            // Its existing UI policy requires CanEnterResults. Normalize the
+            // semantic action here while keeping the physical SQL-column allowlist.
+            string effectivePermissionColumn =
+                string.Equals(permissionColumn, "CanSubmitForReview", StringComparison.OrdinalIgnoreCase)
+                    ? "CanEnterResults"
+                    : permissionColumn;
+            if (string.IsNullOrWhiteSpace(effectivePermissionColumn) ||
+                !AllowedPermissionColumns.Contains(effectivePermissionColumn))
             {
                 throw new InvalidOperationException("The requested workflow permission is not recognized.");
             }
@@ -172,7 +179,7 @@ WHERE Username = @UserIdentifier
             string query = $@"
 SELECT
        ISNULL(Role, N'') AS Role,
-       ISNULL([{permissionColumn}], 0) AS PermissionGranted,
+       ISNULL([{effectivePermissionColumn}], 0) AS PermissionGranted,
        ISNULL(IsActive, 1) AS IsActive,
        ISNULL(MustChangePassword, 0) AS MustChangePassword,
        CASE WHEN ISNULL(IsLocked,0)=1 AND (LockedUntil IS NULL OR LockedUntil>SYSDATETIME())

@@ -9,7 +9,7 @@
   <StackPanel Grid.Row="1" Margin="0,0,0,16">
    <TextBlock x:Name="LblRecord" FontWeight="SemiBold"/>
    <TextBlock x:Name="LblSigner" Margin="0,6,0,0"/>
-   <TextBlock Text="Signing confirms responsibility for this equipment change." TextWrapping="Wrap" Margin="0,6,0,0"/>
+   <TextBlock Text="Signing confirms responsibility for this equipment action." TextWrapping="Wrap" Margin="0,6,0,0"/>
   </StackPanel>
   <StackPanel Grid.Row="2" Margin="0,0,0,14"><TextBlock Text="Your PharmaLIMS password"/><PasswordBox x:Name="TxtPassword" MaxLength="4096" Height="32" Margin="0,5,0,0"/></StackPanel>
   <StackPanel Grid.Row="3"><TextBlock Text="Reason for this change"/><TextBox x:Name="TxtReason" MaxLength="500" Height="75" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,5,0,8"/><TextBlock x:Name="LblError" Foreground="#B91C1C" TextWrapping="Wrap"/></StackPanel>

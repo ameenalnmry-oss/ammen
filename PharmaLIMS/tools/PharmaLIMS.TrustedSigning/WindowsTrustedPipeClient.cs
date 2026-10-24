@@ -28,6 +28,19 @@ public sealed class WindowsTrustedPipeClient
     public Task<TrustedSigningReply> ApplicationAsync(TrustedApplicationRequest request, CancellationToken cancellationToken = default) =>
         ExchangeAsync(new(null, "", "", request), request.RequestId, cancellationToken);
 
+    public async Task CommitActivityAsync(ActivitySigningRequest request, string expectedUsername, string password,
+        CancellationToken cancellationToken = default)
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Trusted activity signing requires Windows.");
+        TrustedActivitySigningCoordinator.ValidateShape(request, DateTimeOffset.UtcNow);
+        if (string.IsNullOrWhiteSpace(expectedUsername) || expectedUsername.Length > 100 ||
+            string.IsNullOrEmpty(password) || password.Length > 4096)
+            throw new ArgumentException("The active account and fresh password are required.");
+        var reply = await ExchangeAsync(new(null, expectedUsername, password, Activity:request), request.RequestId, cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(reply.SignedBy, expectedUsername, StringComparison.OrdinalIgnoreCase))
+            throw new SecurityException("Trusted activity signer differs from the active account.");
+    }
+
     private async Task<TrustedSigningReply> ExchangeAsync(TrustedSigningEnvelope envelope, Guid requestId, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
