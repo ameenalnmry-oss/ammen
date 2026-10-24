@@ -265,6 +265,12 @@
       "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
       "ExpectedNormalizedSha256": null,
       "Remove": false
+    },
+    {
+      "Path": "Infrastructure/SystemPreflightService.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-SystemPreflightService.cs.txt",
+      "ExpectedNormalizedSha256": "9dd81929c8f986c0cc26918e1c0bc86d24a93b8f7794a0186367e10ea77114d0",
+      "Remove": false
     }
   ]
 }

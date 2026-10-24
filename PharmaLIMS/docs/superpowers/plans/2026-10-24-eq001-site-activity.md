@@ -50,3 +50,14 @@ Files: new `tools/PharmaLIMS.TrustedSigning/TrustedActivitySigning.cs`, SQL adap
 - [ ] Publish source/evidence to the same PR with exact commit and CI references.
 - [ ] Execute installation in the original Windows directory only after source reconciliation, certificate trust and disposable SQL UAT prerequisites pass.
 - [ ] Report each pending site gate honestly; no production-ready claim until complete site evidence exists.
+
+### Site follow-up: credential preflight under the restricted reviewer
+
+Site evidence (2026-10-24) confirms the original Release executable, reviewer Windows SID, isolated database and trusted pipe. A read-only reproduction rejects SELECT on Users.PasswordHashNew/PasswordSalt. The supplied site preflight also calls the old Development-only WindowsSigningUatRuntime gate, incompatible with this Release deployment.
+
+1. Add a real Windows/SQL regression invoking the actual credential preflight with the existing verifier-column DENY intact; reproduce failure before changing production code.
+2. Stage an isolated-UAT-only, ownership-chained readiness view exposing username, active state and a non-secret initialized flag. Preserve NULL/whitespace detection; never grant raw credential reads or update user/history records.
+3. Select the protected readiness query when TrustedSigning is enabled. Missing readiness metadata remains a blocker. Short-circuit the site's old Development gate without altering its other workflows.
+4. Preserve every unrelated local Water/PRM/review-closure change in a complete site overlay, guarded by the normalized digest of the newly supplied original file. Existing installer checks/rollback remain mandatory.
+5. Build and run affected regression and Windows CI checks, then apply the guarded source update to the original site only. Refresh protected binaries with the service stopped; retain all private configuration and certificate files.
+6. Correct the inherited reviewer profile environment for future diagnostics. Recheck preflight and continue reviewer credential recovery and site E2E. The unrelated PRM historical-evidence blocker must remain visible and unresolved until handled by its controlled workflow.

@@ -2619,7 +2619,15 @@ FROM
             else
                 Add(checks, "Identity", "BLOCKER", "User identity", JoinDetails(identityFindings));
 
-            DataTable legacyCredentialFindings = await _database.ExecuteQueryAsync(@"
+            string legacyCredentialQuery = AppConfig.TrustedSigningEnabled ? @"
+IF OBJECT_ID(N'dbo.EQ001_CredentialReadiness',N'V') IS NULL
+BEGIN
+    SELECT N'Missing protected credential readiness view; controlled deployment is required.' AS Details;
+    RETURN;
+END;
+EXEC(N'SELECT N''Active account pending one-time secure credential migration: '' + Username AS Details
+       FROM dbo.EQ001_CredentialReadiness
+       WHERE IsActive=1 AND CredentialInitialized=0;');" : @"
 IF OBJECT_ID(N'dbo.Users', N'U') IS NULL
 BEGIN
     SELECT N'Missing dbo.Users.' AS Details;
@@ -2634,7 +2642,8 @@ WHERE ISNULL(IsActive,1) = 1
   (
       NULLIF(LTRIM(RTRIM(PasswordHashNew)),N'') IS NULL
       OR NULLIF(LTRIM(RTRIM(PasswordSalt)),N'') IS NULL
-  );" ).ConfigureAwait(false);
+  );";
+            DataTable legacyCredentialFindings = await _database.ExecuteQueryAsync(legacyCredentialQuery).ConfigureAwait(false);
 
             if (legacyCredentialFindings.Rows.Count == 0)
             {

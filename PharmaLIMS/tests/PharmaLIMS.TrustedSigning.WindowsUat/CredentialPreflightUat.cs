@@ -1,12 +1,16 @@
 using System.Reflection;
 using PharmaLIMS.Infrastructure;
+using PharmaLIMS;
 
 internal sealed partial class UatRun
 {
     private async Task CheckProtectedCredentialPreflight()
     {
-        // RED fixture: readiness metadata can be read; raw verifier columns remain denied.
-        await Exec(_admin,"CREATE VIEW dbo.EQ001_CredentialReadiness AS SELECT Username,IsActive,CONVERT(bit,CASE WHEN NULLIF(LTRIM(RTRIM(PasswordHashNew)),N'') IS NOT NULL AND NULLIF(LTRIM(RTRIM(PasswordSalt)),N'') IS NOT NULL THEN 1 ELSE 0 END) AS CredentialInitialized FROM dbo.Users;");
+        string deployment = System.IO.File.ReadAllText(System.IO.Path.Combine(settings.RepositoryRoot,"scripts/EQ001_UAT_Credential_Readiness.sql"));
+        await Exec(_admin,deployment);
+        await Exec(_admin,deployment); // A second apply must preserve the reviewed view.
+        await SqlDenied(()=>Exec(AppConfig.ConnectionString,"SELECT PasswordHashNew,PasswordSalt FROM dbo.Users"),
+            "readiness view deployment does not grant raw credential access",230);
         var ready = await ReadIdentityPreflight();
         Check(ready.Any(x=>x.Check=="Secure credentials" && x.Status=="PASS"),
             "real preflight succeeds without desktop access to credential columns");
@@ -21,6 +25,12 @@ internal sealed partial class UatRun
         Check(blank.Any(x=>x.Check=="Secure credential transition" && x.Status=="BLOCKER" && x.Details.Contains("uat-preflight-pending",StringComparison.Ordinal)),
             "protected preflight still blocks whitespace credential fields");
         await Exec(_admin,"DELETE dbo.Users WHERE Username=N'uat-preflight-pending';");
+
+        await Exec(_admin,"DROP VIEW dbo.EQ001_CredentialReadiness;");
+        var absent = await ReadIdentityPreflight();
+        Check(absent.Any(x=>x.Check=="Secure credential transition" && x.Status=="BLOCKER" && x.Details.Contains("Missing protected credential readiness view",StringComparison.Ordinal)),
+            "missing readiness deployment blocks preflight without a credential-reading fallback");
+        await Exec(_admin,deployment);
     }
 
     private static async Task<List<SystemPreflightCheck>> ReadIdentityPreflight()
