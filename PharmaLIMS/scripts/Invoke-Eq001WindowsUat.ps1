@@ -7,9 +7,16 @@ if (-not $IsolatedGithubUat -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_E
 }
 if (-not [OperatingSystem]::IsWindows()) { throw 'Windows is required.' }
 $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-& (Join-Path $project 'tests/Test-Eq001SourceInstaller.ps1')
 $results = Join-Path $project 'artifacts/eq001-windows-uat'
 New-Item -ItemType Directory -Force -Path $results | Out-Null
+try {
+    & (Join-Path $project 'tests/Test-Eq001SourceInstaller.ps1') 2>&1 |
+        Tee-Object -FilePath (Join-Path $results 'source-installer-checks.txt')
+} catch {
+    $details = ($_.Exception.Message + '; ' + $_.ScriptStackTrace).Replace("`r",' ').Replace("`n",' ')
+    Write-Host "::error title=EQ001 source installer qualification::$details"
+    throw
+}
 $stamp = [Guid]::NewGuid().ToString('N').Substring(0,10)
 $serviceName = "eq001_$stamp"
 $privateRoot = Join-Path $env:ProgramData "PharmaLIMS-EQ001-UAT-$stamp"
