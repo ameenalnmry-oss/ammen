@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj" />
+    <Compile Include="../../Infrastructure/TrustedAuditActorContext.cs" Link="Shared/TrustedAuditActorContext.cs" />
   </ItemGroup>
 </Project>

@@ -16,6 +16,8 @@ The desktop SQL principal must not be a database owner, sysadmin, or a member of
 
 When trusted signing is enabled, login, reauthentication, password changes and signed account administration use the service. This preserves these workflows without granting desktop users the ability to replace a signer's password, permissions or lockout state. Account administration consumes a fresh, single-use, 30-second proof bound to the actual Windows SID, verified application account and current authentication rowversion. The server supplies the audit actor and signer.
 
+The host establishes an internal audit-actor scope only after independent credential verification or validation of that administration proof. This asynchronous scope lets existing audited operations run without a WPF login session. It rejects a different requested actor and restores the previous context on disposal; it never assigns the desktop's global `Login.CurrentUser`. Desktop operations retain their existing session-based audit behavior.
+
 The isolated CI fixture applies these permissions only to disposable UAT principals. It gives the service Windows SQL login the Users read/write and audit/signature INSERT permissions required by existing guarded authentication/administration code, plus execution of the controlled equipment commit procedure. It does not apply a production grant template or modify production SQL.
 
 ## Qualification evidence

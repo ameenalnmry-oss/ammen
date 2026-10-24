@@ -1,5 +1,21 @@
 using System.Security.Cryptography;
 using PharmaLIMS.TrustedSigning;
+using PharmaLIMS.Infrastructure;
+
+Assert(TrustedAuditActorContext.Resolve("untrusted") is null, "Desktop claims cannot establish a trusted audit actor.");
+using (TrustedAuditActorContext.Enter("verified-host-user"))
+{
+    await Task.Yield();
+    Assert(TrustedAuditActorContext.Resolve("verified-host-user") == "verified-host-user", "Verified audit identity must flow across awaits.");
+    try { TrustedAuditActorContext.Resolve("forged-actor"); throw new Exception("Forged audit actor was accepted."); }
+    catch (UnauthorizedAccessException) { }
+    await Task.Run(() => {
+        using (TrustedAuditActorContext.Enter("independent-request"))
+            Assert(TrustedAuditActorContext.Resolve("independent-request") == "independent-request", "Independent request gets its own verified actor.");
+    });
+    Assert(TrustedAuditActorContext.Resolve("verified-host-user") == "verified-host-user", "Concurrent execution contexts cannot replace the caller's actor.");
+}
+Assert(TrustedAuditActorContext.Resolve("verified-host-user") is null, "Disposing a request must clear its trusted audit identity.");
 
 string salt = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 string hash = Convert.ToBase64String(Rfc2898DeriveBytes.Pbkdf2(

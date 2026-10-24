@@ -31,6 +31,7 @@ internal sealed class TrustedApplicationEndpoint(string connectionString) : ITru
                     var state = await repository.GetByUsernameAsync(request.Username,cancellationToken);
                     return new(request.RequestId,false,null,state?.IsLocked==true?"Locked":state?.IsActive==false?"Inactive":"CredentialsRejected");
                 }
+                using var authenticatedAuditActor = TrustedAuditActorContext.Enter(user.Username);
                 if(request.Action=="ChangePassword")
                 {
                     if(!await auth.ChangeCurrentUserPasswordAsync(request.Password,request.NewPassword,cancellationToken))return new(request.RequestId,false,null,"CredentialsRejected");
@@ -52,6 +53,7 @@ internal sealed class TrustedApplicationEndpoint(string connectionString) : ITru
                 return new(request.RequestId,false,null,"Denied");
             var actor=await repository.GetByUsernameAsync(proof.Username,cancellationToken);
             if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || !actor.CanManageUsers || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
+            using var authorizedAuditActor = TrustedAuditActorContext.Enter(actor.Username);
             var administration=new UserAdministrationService(database,useTrustedTransport:false);
             int result=0;
             switch(request.Action)

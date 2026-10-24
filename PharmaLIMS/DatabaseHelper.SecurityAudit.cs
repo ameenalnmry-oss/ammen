@@ -1038,6 +1038,9 @@ ORDER BY SignedAt DESC;";
 
         private static string ResolveAuthenticatedSigner(string requestedSigner)
         {
+            string trustedActor = TrustedAuditActorContext.Resolve(requestedSigner);
+            if (trustedActor != null) return trustedActor;
+
             string activeAccount = string.IsNullOrWhiteSpace(Login.CurrentUser)
                 ? string.Empty
                 : Login.CurrentUser.Trim();
