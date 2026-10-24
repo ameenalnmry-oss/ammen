@@ -15,7 +15,7 @@ internal sealed partial class UatRun
         Check(ready.Any(x=>x.Check=="Secure credentials" && x.Status=="PASS"),
             "real preflight succeeds without desktop access to credential columns");
 
-        await Exec(_admin,"INSERT dbo.Users(Username,Role,PasswordHash,IsActive) VALUES(N'uat-preflight-pending',N'Technician',N'[MIGRATED]',1);");
+        await Exec(_admin,"INSERT dbo.Users(Username,FullName,Role,PasswordHash,IsActive) VALUES(N'uat-preflight-pending',N'UAT credential readiness fixture',N'Technician',N'[MIGRATED]',1);");
         var missing = await ReadIdentityPreflight();
         Check(missing.Any(x=>x.Check=="Secure credential transition" && x.Status=="BLOCKER" && x.Details.Contains("uat-preflight-pending",StringComparison.Ordinal)),
             "protected preflight still blocks active accounts with missing credential fields");
