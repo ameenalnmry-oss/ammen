@@ -86,7 +86,7 @@ internal sealed class UatRun(UatSettings settings)
     }
     private async Task<object?> Scalar(string sql)
     {await using var c=new SqlConnection(_admin);await c.OpenAsync();await using var cmd=new SqlCommand(sql,c);return await cmd.ExecuteScalarAsync();}
-    private void Check(bool ok,string label) { if(!ok)throw new Exception("Assertion: "+label);_passes.Add(label);Console.WriteLine("PASS: "+label);Console.WriteLine("::notice title=EQ001 completed check::"+label); }
+    private void Check(bool ok,string label) { if(!ok)throw new Exception("Assertion: "+label);_passes.Add(label);Console.WriteLine("PASS: "+label);if(_passes.Count%10==0)Console.WriteLine("::notice title=EQ001 completed milestone::"+Progress); }
     private async Task Denied(Func<Task> action,string label,string expectedCode="Denied")
     {
         try {await action();} catch(TrustedSigningRejectedException e) {if(e.ErrorCode==expectedCode){Check(true,label+" ("+expectedCode+")");return;}throw new Exception("Wrong rejection for "+label+": expected "+expectedCode+", received "+e.ErrorCode,e);}
@@ -151,8 +151,13 @@ internal sealed class UatRun(UatSettings settings)
             var probeInfo=ServiceAccountProcess(Path.Combine(probeDirectory,"PharmaLIMS.TrustedSigning.WindowsUat.exe"));probeInfo.ArgumentList.Add("--probe-self");probeInfo.ArgumentList.Add(settings.SettingsPath);
             using(var probe=Process.Start(probeInfo)!) {await probe.WaitForExitAsync();Check(probe.ExitCode==0,"actual service-account Windows caller is specifically refused despite valid mapped credentials");}
             _oldSettings=File.Exists(_appSettingsPath)?File.ReadAllBytes(_appSettingsPath):null;
-            File.WriteAllText(_appSettingsPath,JsonSerializer.Serialize(new {Environment="Development",Database=new{Server="localhost,14335",Database=_db,IntegratedSecurity=false,UserId=_clientLogin,Password=_sqlPassword,Encrypt=true,TrustServerCertificate=false},Runtime=new{ApplyStartupDatabaseUpdates=false,DevelopmentAdminFullPermissions=false},TrustedSigning=new{Enabled=true,PipeName=settings.PipeName,ServerCertificateSha256=settings.CertificateSha256}}));
-            Environment.SetEnvironmentVariable("PHARMALIMS_CONNECTION_STRING",client);
+            string protectedPassword=(string)typeof(DatabaseConnection).Assembly.GetType("PharmaLIMS.Infrastructure.ProtectedSecretStore")!.GetMethod("ProtectCurrentUserBase64",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new object[]{_sqlPassword})!;
+            foreach(string name in new[]{"PHARMALIMS_CONNECTION_STRING","PHARMALIMS_DPAPI_PROTECTED_PASSWORD","PHARMALIMS_APPLY_STARTUP_DATABASE_UPDATES"})Environment.SetEnvironmentVariable(name,null);
+            File.WriteAllText(_appSettingsPath,JsonSerializer.Serialize(new {Environment="Production",Database=new{Server="localhost,14335",Database=_db,IntegratedSecurity=false,UserId=_clientLogin,DpapiProtectedPassword=protectedPassword,Encrypt=true,TrustServerCertificate=false},Runtime=new{ApplyStartupDatabaseUpdates=false,DevelopmentAdminFullPermissions=false},TrustedSigning=new{Enabled=true,PipeName=settings.PipeName,ServerCertificateSha256=settings.CertificateSha256}}));
+            var effectiveClient=new SqlConnectionStringBuilder(AppConfig.ConnectionString);
+            if(effectiveClient.DataSource!="localhost,14335" || effectiveClient.InitialCatalog!=_db || effectiveClient.UserID!=_clientLogin)throw new Exception("Refusing a desktop connection outside the exact isolated UAT fixture.");
+            await Exec(AppConfig.ConnectionString,"SELECT 1");
+            Check(AppConfig.IsProduction && AppConfig.TrustedSigningEnabled && effectiveClient.InitialCatalog==_db && effectiveClient.UserID==_clientLogin && effectiveClient.Encrypt==SqlConnectionEncryptOption.Mandatory && !effectiveClient.TrustServerCertificate,"Release WPF loads Production configuration with account-bound DPAPI credentials and validated SQL TLS into isolated UAT");
             var auth=new AuthService(new UserRepository(new DatabaseConnection()));
             var user=await auth.AuthenticateAsync("uat-signer",_password);
             Check(user!=null && user.CanManageSettings,"existing application login succeeds with current PBKDF2 credential");
@@ -183,7 +188,9 @@ internal sealed class UatRun(UatSettings settings)
             Check(reviewer!.MustChangePassword,"administrator password reset preserves mandatory password rotation");
             string reviewerPassword="Reviewer!Aa1"+Guid.NewGuid().ToString("N");
             Check(await auth.ChangeCurrentUserPasswordAsync(_password,reviewerPassword) && await auth.ValidateCurrentUserPasswordAsync(reviewerPassword),"reviewer password rotation and electronic-signature reauthentication work through the trusted service");
-            await Denied(()=>pipe.CommitAsync(Request(),"uat-reviewer",_password),"review-only application account cannot obtain an equipment signature");
+            StopHost();hostSettings.WindowsAccounts[settings.CallerSid]="uat-reviewer";File.WriteAllText(_hostConfigPath,JsonSerializer.Serialize(hostSettings));ProtectHostConfig();await StartHost();
+            await Denied(()=>pipe.CommitAsync(Request(),"uat-reviewer",reviewerPassword),"correctly mapped Windows reviewer with valid credentials cannot obtain an equipment signature");
+            StopHost();hostSettings.WindowsAccounts[settings.CallerSid]="uat-signer";File.WriteAllText(_hostConfigPath,JsonSerializer.Serialize(hostSettings));ProtectHostConfig();await StartHost();
             await Exec(_admin,"UPDATE dbo.Users SET CanManageSettings=0 WHERE Username=N'uat-signer'");
             await Denied(()=>pipe.CommitAsync(Request(),"uat-signer",_password),"server refuses revoked equipment permission even when client session is stale");
             await Exec(_admin,"UPDATE dbo.Users SET CanManageSettings=1 WHERE Username=N'uat-signer'");
@@ -206,7 +213,7 @@ internal sealed class UatRun(UatSettings settings)
             try {await auth.AuthenticateAsync("uat-signer",_password);}
             catch(Exception e)when(e is IOException or OperationCanceledException or System.TimeoutException){unavailable=true;}
             Check(unavailable && auth.GetCurrentUser() is null,"login transport failure clears the prior authenticated session");
-            File.WriteAllText(Path.Combine(settings.ResultsDirectory,"results.json"),JsonSerializer.Serialize(new{Commit=Environment.GetEnvironmentVariable("GITHUB_SHA"),Platform=Environment.OSVersion.ToString(),WindowsCallerSid=settings.CallerSid,ServiceSid=settings.ServiceSid,Passed=_passes.Count,Checks=_passes,ProductionActivated=false},new JsonSerializerOptions{WriteIndented=true}));
+            File.WriteAllText(Path.Combine(settings.ResultsDirectory,"results.json"),JsonSerializer.Serialize(new{Commit=Environment.GetEnvironmentVariable("GITHUB_SHA"),Platform=Environment.OSVersion.ToString(),BuildConfiguration="Release",DesktopRuntime=AppConfig.EnvironmentName,WindowsCallerSid=settings.CallerSid,ServiceSid=settings.ServiceSid,Passed=_passes.Count,Checks=_passes,ProductionActivated=false},new JsonSerializerOptions{WriteIndented=true}));
             Console.WriteLine($"EQ001 WINDOWS/WPF/SQL UAT: {_passes.Count} checks passed.");
         }
         finally

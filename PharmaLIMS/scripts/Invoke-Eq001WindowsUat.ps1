@@ -100,13 +100,27 @@ try {
         PipeName="PharmaLIMS_EQ001_UAT_$stamp";RepositoryRoot=$project;ResultsDirectory=$results;SettingsPath=$fixture
     }
     $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $fixture -Encoding utf8
-    dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Debug -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
+    dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
     if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
-    if ($outcome.Passed -lt 20 -or $outcome.ProductionActivated) { throw 'Incomplete or invalid Windows UAT outcome.' }
+    if ($outcome.Passed -ne 46 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 46 checks must belong to this Release commit.' }
     Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."
     Write-Host "::notice title=EQ001 Windows UAT verified::$($outcome.Passed) actual Windows/WPF/SQL checks passed; production inactive; sanitized evidence in eq001-windows-wpf-sql-uat artifact."
-    $outcome.Checks | ForEach-Object { Write-Host "::notice title=EQ001 verified check::$_" }
+    $report = @(
+        '# EQ-001 actual Windows / WPF / SQL UAT'
+        ''
+        "Validated commit: $($outcome.Commit)"
+        "CI: https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+        "Platform: $($outcome.Platform)"
+        "Desktop: $($outcome.BuildConfiguration) build / $($outcome.DesktopRuntime) configuration; isolated UAT database only."
+        "Result: $($outcome.Passed) checks passed. Production activation: false."
+        ''
+        'The Windows service and desktop caller use distinct real Windows accounts. SQL and UI fixtures are isolated and disposable; historical controls are synthetic UAT records.'
+        ''
+        ($outcome.Checks | ForEach-Object { "- PASS: $_" })
+    ) -join "`n"
+    $report | Set-Content -LiteralPath (Join-Path $results 'report.md') -Encoding utf8
+    $report | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 }
 catch {
     Write-Host ("::error title=EQ001 UAT provisioning::" + $_.Exception.Message.Replace("`r", " ").Replace("`n", " "))
