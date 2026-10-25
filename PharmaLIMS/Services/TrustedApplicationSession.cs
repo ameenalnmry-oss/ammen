@@ -27,6 +27,27 @@ public static class TrustedApplicationSession
         catch (TrustedSigningRejectedException ex) when(ex.ErrorCode is "CredentialsRejected" or "Locked" or "Inactive") { LastCredentialRejection=ex.ErrorCode; return null; }
     }
 
+    public static async Task<int> PrmAsync(string action, PrmSpecificationRequest specification, string actor,
+        string reason, string meaning, CancellationToken cancellationToken = default)
+    {
+        PrmSpecificationPolicy.Validate(specification,action);
+        string ticket=_ticket; _ticket="";
+        if(string.IsNullOrEmpty(ticket)) throw new UnauthorizedAccessException("Fresh trusted reauthentication is required for PRM changes.");
+        var request=new TrustedApplicationRequest(Guid.NewGuid(),action,actor,Ticket:ticket,
+            UserJson:JsonSerializer.Serialize(specification),Reason:reason,Meaning:meaning);
+        try
+        {
+            var reply=await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(request,cancellationToken);
+            if(!string.Equals(reply.SignedBy,actor,StringComparison.OrdinalIgnoreCase) || !int.TryParse(reply.UserJson,out int version) || version<=0)
+                throw new InvalidOperationException("Invalid trusted PRM response.");
+            return version;
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="HistoricalVersionPreserved")
+        { throw new InvalidOperationException("The existing approved version was preserved. Activation requires a separately controlled supersession decision.",ex); }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="PrmSnapshotChanged")
+        { throw new InvalidOperationException("The complete specification changed. Reload before signing; no changes were committed.",ex); }
+    }
+
     public static async Task<int> AdminAsync(string action, User? user, int id, byte[]? version, string password, string actor, string reason, string meaning, CancellationToken cancellationToken)
     {
         string ticket = _ticket; _ticket = "";

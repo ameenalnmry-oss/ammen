@@ -146,6 +146,7 @@ internal sealed partial class UatRun(UatSettings settings)
             const string serviceUser="PharmaLIMS_TrustedEquipmentSigner";
             await Exec(_admin,$"CREATE USER [{serviceUser}] FOR LOGIN [{_serviceLogin}];GRANT SELECT,INSERT,UPDATE ON dbo.Users TO [{serviceUser}];GRANT INSERT ON dbo.UserAdministrationSignatures TO [{serviceUser}];GRANT INSERT ON dbo.AuditTrail TO [{serviceUser}];GRANT EXECUTE ON dbo.EQ001_CommitEquipmentSignature TO [{serviceUser}];CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.Users TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
             await PrepareActivitySchema();
+            await PreparePrmSchema();
             string service = new SqlConnectionStringBuilder(_admin){IntegratedSecurity=true}.ConnectionString;
             string client = new SqlConnectionStringBuilder(_admin){IntegratedSecurity=false,UserID=_clientLogin,Password=_sqlPassword}.ConnectionString;
             await SqlDenied(()=>Exec(client,"UPDATE dbo.Users SET PasswordHashNew=N'forged',PasswordSalt=N'forged' WHERE Username=N'uat-signer'"),"WPF principal cannot replace signer credentials");
@@ -186,6 +187,7 @@ internal sealed partial class UatRun(UatSettings settings)
             await Exec(AppConfig.ConnectionString,"SELECT 1");
             Check(AppConfig.IsProduction && AppConfig.TrustedSigningEnabled && effectiveClient.InitialCatalog==_db && effectiveClient.UserID==_clientLogin && effectiveClient.Encrypt==SqlConnectionEncryptOption.Mandatory && !effectiveClient.TrustServerCertificate,"Release WPF loads Production configuration with account-bound DPAPI credentials and validated SQL TLS into isolated UAT");
             await CheckProtectedCredentialPreflight();
+            await CheckPrmService(pipe,client);
             var auth=new AuthService(new UserRepository(new DatabaseConnection()));
             var user=await auth.AuthenticateAsync("uat-signer",_password);
             Check(user!=null && user.CanManageSettings,"existing application login succeeds with current PBKDF2 credential");

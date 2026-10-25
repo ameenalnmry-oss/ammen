@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-internal sealed class TrustedApplicationEndpoint(string connectionString) : ITrustedApplicationEndpoint
+internal sealed class TrustedApplicationEndpoint(string connectionString, bool enablePrmUat = false) : ITrustedApplicationEndpoint
 {
     private sealed record Ticket(string Sid,string Username,DateTimeOffset Expires,byte[] Version);
     private readonly ConcurrentDictionary<string,Ticket> _tickets = new();
@@ -48,12 +48,20 @@ internal sealed class TrustedApplicationEndpoint(string connectionString) : ITru
                 user.ClearSensitivePasswordData();
                 return new(request.RequestId,true,user.Username,"",JsonSerializer.Serialize(user),ticket);
             }
-            if(request.Action is not ("CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser"))return new(request.RequestId,false,null,"InvalidRequest");
+            bool prm=request.Action is "PrmSaveDraft" or "PrmReview" or "PrmApprove";
+            if(prm && !enablePrmUat) return new(request.RequestId,false,null,"Denied");
+            if(!prm && request.Action is not ("CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser"))return new(request.RequestId,false,null,"InvalidRequest");
             if(!_tickets.TryRemove(request.Ticket,out var proof) || proof.Sid!=sid || !proof.Username.Equals(request.Username,StringComparison.OrdinalIgnoreCase) || proof.Expires<DateTimeOffset.UtcNow)
                 return new(request.RequestId,false,null,"Denied");
             var actor=await repository.GetByUsernameAsync(proof.Username,cancellationToken);
-            if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || !actor.CanManageUsers || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
+            if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || (!prm && !actor.CanManageUsers) || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
             using var authorizedAuditActor = TrustedAuditActorContext.Enter(actor.Username);
+            if(prm)
+            {
+                int version=await new TrustedPrmSpecificationStore(connectionString).CommitAsync(
+                    request with { Username=proof.Username },proof.Version,proof.Sid,cancellationToken);
+                return new(request.RequestId,true,proof.Username,"",version.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
             var administration=new UserAdministrationService(database,useTrustedTransport:false);
             int result=0;
             switch(request.Action)
@@ -69,6 +77,14 @@ internal sealed class TrustedApplicationEndpoint(string connectionString) : ITru
         catch(JsonException){return new(request.RequestId,false,null,"InvalidRequest");}
         catch(InvalidOperationException){return new(request.RequestId,false,null,"Denied");}
         catch(UnauthorizedAccessException){return new(request.RequestId,false,null,"Denied");}
-        catch(SqlException){return new(request.RequestId,false,null,"StoreUnavailable");}
+        catch(System.Data.DBConcurrencyException){return new(request.RequestId,false,null,"PrmSnapshotChanged");}
+        catch(SqlException ex) when(ex.Number==56806){return new(request.RequestId,false,null,"HistoricalVersionPreserved");}
+        catch(SqlException ex) when(ex.Number is >=56800 and <=56808){return new(request.RequestId,false,null,"PrmStateRejected");}
+        catch(SqlException ex)
+        {
+            if(request.Action.StartsWith("Prm",StringComparison.Ordinal))
+                ApplicationLogger.Error("Trusted PRM store failed; request " + request.RequestId.ToString("N") + ".",ex);
+            return new(request.RequestId,false,null,"StoreUnavailable");
+        }
     }
 }

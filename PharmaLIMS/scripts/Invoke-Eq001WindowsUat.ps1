@@ -112,7 +112,7 @@ try {
     dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
     if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
-    if ($outcome.Passed -ne 74 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 74 checks must belong to this Release commit.' }
+    if ($outcome.Passed -ne 108 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 108 checks must belong to this Release commit.' }
     Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."
     Write-Host "::notice title=EQ001 Windows UAT verified::$($outcome.Passed) actual Windows/WPF/SQL checks passed; production inactive; sanitized evidence in eq001-windows-wpf-sql-uat artifact."
     $report = @(

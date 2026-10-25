@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using PharmaLIMS.TrustedSigning;
 using PharmaLIMS.Infrastructure;
 
+PrmSpecificationChecks.Run();
 await ActivitySigningChecks.RunAsync();
 
 Assert(TrustedAuditActorContext.Resolve("untrusted") is null, "Desktop claims cannot establish a trusted audit actor.");
