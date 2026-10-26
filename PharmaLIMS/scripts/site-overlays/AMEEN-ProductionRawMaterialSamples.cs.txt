@@ -157,14 +157,14 @@ namespace PharmaLIMS
 
                 DataTable table = DatabaseHelper.ExecuteQuery(@"
 SELECT *
-FROM dbo.PRM_SpecificationTests
+FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @"
 WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
   AND LTRIM(RTRIM(SampleCategory))=@Category
   AND ApprovalStatus=N'Approved'
   AND IsActive=1
   AND VersionNo=(
       SELECT MAX(VersionNo)
-      FROM dbo.PRM_SpecificationTests
+      FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @"
       WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
         AND LTRIM(RTRIM(SampleCategory))=@Category
         AND ApprovalStatus=N'Approved'
@@ -962,6 +962,33 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                 DpMasterEffective.SelectedDate?.Date,
                 _masterVersion > 0 ? PrmSpecificationPolicy.SnapshotHash(_loadedSpecificationSnapshot ??
                     throw new InvalidOperationException("Reload the complete specification before continuing.")) : "", tests);
+            if (action == "PrmApprove")
+            {
+                DataTable predecessors = DatabaseHelper.ExecuteQuery(@"
+SELECT DISTINCT t.VersionNo, CONVERT(varchar(64), e.EvidenceHash, 2) AS EvidenceHash
+FROM dbo.EQ001_UAT_EffectivePrmSpecificationTests t
+JOIN dbo.EQ001_UAT_PrmVersionEvidence e ON e.SpecificationNo=t.SpecificationNo AND e.SampleCategory=t.SampleCategory AND e.VersionNo=t.VersionNo
+WHERE t.SpecificationNo=@No AND t.SampleCategory=@Category AND t.VersionNo<>@Version
+  AND t.IsActive=1 AND t.ApprovalStatus=N'Approved';", new[] {
+                    new SqlParameter("@No", SqlDbType.NVarChar,120) { Value=request.SpecificationNo },
+                    new SqlParameter("@Category", SqlDbType.NVarChar,40) { Value=request.Category },
+                    new SqlParameter("@Version", SqlDbType.Int) { Value=request.Version }
+                });
+                if (predecessors.Rows.Count > 1)
+                    throw new InvalidOperationException("Multiple active approved predecessors require separate investigation.");
+                if (predecessors.Rows.Count == 1)
+                {
+                    int predecessor=Convert.ToInt32(predecessors.Rows[0]["VersionNo"], CultureInfo.InvariantCulture);
+                    if (MessageBox.Show("Approve " + request.SpecificationNo + " v" + request.Version +
+                        " and supersede v" + predecessor + " for new UAT registrations?\n\n" +
+                        "The prior version, its signatures and historical sample links will remain unchanged. " +
+                        "A separate immutable supersession decision will be recorded with your approval reason.",
+                        "Controlled UAT Supersession", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                        MessageBoxResult.No) != MessageBoxResult.Yes) return 0;
+                    request=request with { SupersedesVersion=predecessor,
+                        SupersededEvidenceHash=Convert.ToString(predecessors.Rows[0]["EvidenceHash"], CultureInfo.InvariantCulture) ?? "" };
+                }
+            }
             PrmSpecificationPolicy.Validate(request, action);
             _trustedPrmBusy = true;
             try
@@ -1341,7 +1368,7 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                           AND UPPER(LTRIM(RTRIM(ISNULL(configured.ProductionStage,N''))))=UPPER(LTRIM(RTRIM(@ProductionStage)))
                      THEN 1 ELSE 0 END)
            ) AS MatchRank
-    FROM dbo.PRM_SpecificationTests configured
+    FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @" configured
     WHERE configured.SampleCategory=@Category
       AND configured.ApprovalStatus=N'Approved'
       AND configured.IsActive=1
@@ -1743,7 +1770,7 @@ ORDER BY SampleID DESC;";
                 throw new InvalidOperationException(BuildNoApprovedProfileOperatorMessage(category, itemCode, productionStage));
             object approvedSpecification = DatabaseHelper.ExecuteScalar(@"
 SELECT COUNT(1)
-FROM dbo.PRM_SpecificationTests configured
+FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @" configured
 WHERE configured.SpecificationNo=@SpecificationNo
   AND configured.SampleCategory=@Category
   AND UPPER(LTRIM(RTRIM(ISNULL(configured.ItemCode,N'')))) IN (UPPER(LTRIM(RTRIM(@ItemCode))),N'*')
@@ -2205,7 +2232,7 @@ WHERE SampleID = @SampleID
 
             using SqlCommand command = new SqlCommand(@"
 SELECT ISNULL(MAX(configured.VersionNo),0)
-FROM dbo.PRM_SpecificationTests configured WITH (UPDLOCK, HOLDLOCK)
+FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @" configured WITH (UPDLOCK, HOLDLOCK)
 WHERE LTRIM(RTRIM(configured.SpecificationNo)) = @SpecificationNo
   AND LTRIM(RTRIM(configured.SampleCategory)) = @Category
   AND UPPER(LTRIM(RTRIM(ISNULL(configured.ItemCode,N'')))) IN (UPPER(LTRIM(RTRIM(@ItemCode))),N'*')

@@ -269,13 +269,13 @@
     {
       "Path": "Infrastructure/SystemPreflightService.cs",
       "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-SystemPreflightService.cs.txt",
-      "ExpectedNormalizedSha256": "9dd81929c8f986c0cc26918e1c0bc86d24a93b8f7794a0186367e10ea77114d0",
+      "ExpectedNormalizedSha256": "f72a8cfad01b8782b74e828e5be12e7f9359ef72fd42b1ae2082f8b9cd4b465e",
       "Remove": false
     },
     {
       "Path": "ProductionRawMaterialSamples.xaml.cs",
       "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ProductionRawMaterialSamples.cs.txt",
-      "ExpectedNormalizedSha256": "4b5772004324252998b0a805a880aade8c2ead746a181a5bea7f7786ac699c78",
+      "ExpectedNormalizedSha256": "71255932189dc85a0fce1b0faa94f6a63824a97e293d66377f153a1bfabea48d",
       "Remove": false
     },
     {
@@ -299,12 +299,18 @@
     {
       "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmSpecificationStore.cs",
       "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmSpecificationStore.cs",
-      "ExpectedNormalizedSha256": null,
+      "ExpectedNormalizedSha256": "8dbcc113b418b3d44ea4aa6e6273e5797945a5ffa75eed1ac9a02277943cc8be",
       "Remove": false
     },
     {
       "Path": "tools/PharmaLIMS.TrustedSigning/PrmSpecificationRequest.cs",
       "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PrmSpecificationRequest.cs",
+      "ExpectedNormalizedSha256": "179fd162156a65a100a7fd986d27bbce56d3f8060af8e829136ef6c3326cfd8a",
+      "Remove": false
+    },
+    {
+      "Path": "Infrastructure/PrmEffectiveProfileSource.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/PrmEffectiveProfileSource.cs",
       "ExpectedNormalizedSha256": null,
       "Remove": false
     }

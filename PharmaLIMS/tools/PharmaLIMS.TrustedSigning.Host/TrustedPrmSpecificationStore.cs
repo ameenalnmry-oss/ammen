@@ -45,6 +45,8 @@ internal sealed class TrustedPrmSpecificationStore(string connectionString)
                 ValidateCriteria(stored);
             }
         }
+        if(request.SupersedesVersion>0 && (request.EffectiveDate is null || request.EffectiveDate.Value.Date>DateTime.Today))
+            throw new ArgumentException("A controlled replacement must be effective now.");
         using var write=new SqlCommand("dbo.EQ001_UAT_WritePrmSpecification",connection,transaction){CommandType=CommandType.StoredProcedure,CommandTimeout=15};
         write.Parameters.Add("@Action",SqlDbType.NVarChar,30).Value=envelope.Action;
         write.Parameters.Add("@Payload",SqlDbType.NVarChar,-1).Value=JsonSerializer.Serialize(request);

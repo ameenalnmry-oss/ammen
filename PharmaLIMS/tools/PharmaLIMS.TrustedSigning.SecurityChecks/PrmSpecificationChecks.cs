@@ -33,11 +33,18 @@ internal static class PrmSpecificationChecks
         Check(valid.Replace("\"ResultType\":\"Numeric\"","\"ResultType\":\"arbitrary\""),"PrmSaveDraft",true);
         Check(valid.Replace("\"Reference\":\"Synthetic UAT only\"","\"Reference\":null"),"PrmSaveDraft",true);
         Check(valid,"ExecuteSql",true);
+        string saved = valid.Replace("\"Version\":0", "\"Version\":2").Replace("\"ExpectedSnapshotHash\":\"\"", "\"ExpectedSnapshotHash\":\"" + new string('A',64) + "\"");
+        string Replacement(int version, string evidence) => saved.Replace("\"Tests\":", "\"SupersedesVersion\":"+version+",\"SupersededEvidenceHash\":\""+evidence+"\",\"Tests\":");
+        Check(Replacement(0,new string('B',64)),"PrmApprove",true);
+        Check(Replacement(1,new string('B',64)),"PrmApprove",false);
+        Check(Replacement(1,new string('B',64)),"PrmReview",true);
+        Check(Replacement(2,new string('B',64)),"PrmApprove",true);
+        Check(Replacement(1,"invalid"),"PrmApprove",true);
         using var rows=new DataTable(); rows.Columns.Add("SpecificationTestID",typeof(int)); rows.Columns.Add("Value",typeof(decimal));rows.Rows.Add(1,10m);
         string original=(string)hash.Invoke(null,new object[]{rows})!;
         if(original!=(string)hash.Invoke(null,new object[]{rows.Copy()})!)throw new Exception("FAIL: snapshot hash is unstable.");
         rows.Rows[0]["Value"]=2m;
         if(original==(string)hash.Invoke(null,new object[]{rows})!)throw new Exception("FAIL: changed specification content has the same hash.");
-        Console.WriteLine("PASS: PRM request validation and immutable snapshot checks (10 checks).");
+        Console.WriteLine("PASS: PRM request validation and immutable snapshot checks (15 checks).");
     }
 }

@@ -1869,12 +1869,22 @@ THEN 1 ELSE 0 END;").ConfigureAwait(false);
             }
             else
             {
+                if (PrmEffectiveProfileSource.Enabled)
+                {
+                    int controls = await _database.ExecuteScalarAsync<int>(PrmEffectiveProfileSource.ControlValidationSql).ConfigureAwait(false);
+                    if (Convert.ToInt32(controls, System.Globalization.CultureInfo.InvariantCulture) != 1)
+                    {
+                        Add(checks, "Master Data", "BLOCKER", "PRM supersession integrity",
+                            "Controlled UAT supersession views or append-only protections are missing or changed. No historical profile finding was suppressed.");
+                        return;
+                    }
+                }
                 DataTable unsupportedApprovedProfiles = await _database.ExecuteQueryAsync(@"
 SELECT DISTINCT
     configured.SpecificationNo,
     configured.SampleCategory,
     configured.VersionNo
-FROM dbo.PRM_SpecificationTests configured
+FROM " + PrmEffectiveProfileSource.Sql + @" configured
 WHERE configured.ApprovalStatus=N'Approved'
   AND configured.IsActive=1
   AND (configured.EffectiveDate IS NULL OR configured.EffectiveDate<=CAST(SYSDATETIME() AS date))

@@ -13,6 +13,10 @@ internal sealed partial class UatRun
         script=script.Replace("DECLARE @VerifiedIsolatedUat bit = 0;","DECLARE @VerifiedIsolatedUat bit = 1;",StringComparison.Ordinal);
         await Exec(_admin,script);
         await Exec(_admin,script);
+        string supersession=System.IO.File.ReadAllText(System.IO.Path.Combine(settings.RepositoryRoot,"scripts/EQ001_UAT_Prm_Controlled_Supersession.sql"));
+        supersession=supersession.Replace("DECLARE @VerifiedIsolatedUat bit = 0;","DECLARE @VerifiedIsolatedUat bit = 1;",StringComparison.Ordinal);
+        await Exec(_admin,supersession);
+        await Exec(_admin,supersession);
         Check(true,"PRM UAT procedure deployment is idempotent and preserves protected history");
         await Exec(_admin,$"GRANT EXECUTE ON dbo.EQ001_UAT_ReadPrmSpecification TO PharmaLIMS_TrustedEquipmentSigner;GRANT EXECUTE ON dbo.EQ001_UAT_WritePrmSpecification TO PharmaLIMS_TrustedEquipmentSigner;DENY INSERT,UPDATE,DELETE ON dbo.PRM_SpecificationTests TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.PRM_SpecificationSignatures TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.PRM_SpecificationContentHistory TO [{_clientLogin}];");
     }
@@ -72,13 +76,35 @@ internal sealed partial class UatRun
         await SqlDenied(()=>Exec(_admin,"UPDATE dbo.PRM_SpecificationContentHistory SET ChangeReason=N'forged' WHERE SpecificationNo=N'EQ001-PRM-E2E'"),"PRM content history remains append-only even for an administrator",56456);
         await SqlDenied(()=>Exec(_admin,"DELETE dbo.PRM_SpecificationSignatures WHERE SpecificationNo=N'EQ001-PRM-E2E'"),"PRM signature history remains append-only",51050);
         await SqlDenied(()=>Exec(_admin,"DELETE dbo.EQ001_PrmSigningRequests WHERE SpecificationNo=N'EQ001-PRM-E2E'"),"PRM replay evidence remains append-only",56808);
-        var second=await pipe.ApplicationAsync(await Proof("PrmSaveDraft","uat-prm-author",draft));
+        var successorDraft=edited with { Version=0,ExpectedSnapshotHash="" };
+        var second=await pipe.ApplicationAsync(await Proof("PrmSaveDraft","uat-prm-author",successorDraft));
         Check(second.UserJson=="2","a replacement proposal is created as a separate unapproved draft");
-        var replacement=await Loaded(draft,2);
+        var replacement=await Loaded(successorDraft,2);
         await pipe.ApplicationAsync(await Proof("PrmReview","uat-prm-reviewer",replacement));
-        replacement=await Loaded(draft,2);
+        replacement=await Loaded(successorDraft,2);
         await Denied(async()=>{await pipe.ApplicationAsync(await Proof("PrmApprove","uat-prm-qa",replacement));},"activation cannot silently deactivate or rewrite an existing approved version","HistoricalVersionPreserved");
         Check((await Loaded(edited,1)).ExpectedSnapshotHash==historical,"the complete existing approved specification row set remains unchanged");
+        string predecessorEvidence=Convert.ToString(await Scalar("SELECT CONVERT(varchar(64),EvidenceHash,2) FROM dbo.EQ001_UAT_PrmVersionEvidence WHERE SpecificationNo=N'EQ001-PRM-E2E' AND VersionNo=1"))!;
+        var explicitReplacement=replacement with { SupersedesVersion=1,SupersededEvidenceHash=predecessorEvidence };
+        await Denied(async()=>{await pipe.ApplicationAsync(await Proof("PrmApprove","uat-prm-qa",explicitReplacement with { SupersededEvidenceHash=new string('0',64) }));},"stale predecessor evidence cannot authorize supersession","PrmStateRejected");
+        await Denied(async()=>{await pipe.ApplicationAsync(await Proof("PrmApprove","uat-prm-qa",explicitReplacement with { EffectiveDate=DateTime.Today.AddDays(1) }));},"future-effective replacement cannot retire a currently effective predecessor","InvalidRequest");
+        await Denied(async()=>{await pipe.ApplicationAsync(await Proof("PrmApprove","uat-prm-qa",explicitReplacement with { ItemCode="EQ001-UNRELATED" }));},"supersession rejects a mismatching item scope","PrmStateRejected");
+        await Exec(_admin,"UPDATE dbo.Users SET Role=N'QA',CanApproveResults=1 WHERE Username=N'uat-prm-author';");
+        try {
+            await Denied(async()=>{await pipe.ApplicationAsync(await Proof("PrmApprove","uat-prm-author",explicitReplacement));},"an author with QA privileges still cannot approve their own successor","PrmStateRejected");
+        } finally { await Exec(_admin,"UPDATE dbo.Users SET Role=N'Analyst',CanApproveResults=0 WHERE Username=N'uat-prm-author';"); }
+        var approveReplacement=await Proof("PrmApprove","uat-prm-qa",explicitReplacement);
+        var replacementReply=await pipe.ApplicationAsync(approveReplacement);
+        Check(replacementReply.UserJson=="2","explicit independent QA approval atomically supersedes the predecessor");
+        await Denied(()=>pipe.ApplicationAsync(approveReplacement),"successful supersession proof cannot be replayed");
+        Check((await Loaded(edited,1)).ExpectedSnapshotHash==historical,"supersession preserves every physical predecessor specification field including IsActive");
+        Check(Convert.ToString(await Scalar("SELECT CONVERT(varchar(64),EvidenceHash,2) FROM dbo.EQ001_UAT_PrmVersionEvidence WHERE SpecificationNo=N'EQ001-PRM-E2E' AND VersionNo=1"))==predecessorEvidence,"supersession preserves predecessor content, signatures and history byte hash");
+        Check(Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.EQ001_UAT_EffectivePrmSpecificationTests WHERE SpecificationNo=N'EQ001-PRM-E2E' AND IsActive=1 AND VersionNo=2"))==1 && Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.EQ001_UAT_EffectivePrmSpecificationTests WHERE SpecificationNo=N'EQ001-PRM-E2E' AND IsActive=1 AND VersionNo=1"))==0,"only the approved successor is effective for new registrations");
+        Check(Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.EQ001_PrmSupersessions x JOIN dbo.PRM_SpecificationSignatures s ON s.SignatureID=x.ApprovalSignatureID JOIN dbo.EQ001_PrmSigningRequests r ON r.RequestId=x.RequestId WHERE x.SpecificationNo=N'EQ001-PRM-E2E' AND x.OldVersion=1 AND x.NewVersion=2 AND s.SignedBy=N'uat-prm-qa' AND r.WindowsCallerSid=N'"+settings.CallerSid+"'"))==1,"supersession links the independent QA signature and native Windows request");
+        Check(Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.AuditTrail WHERE TableName=N'EQ001_PrmSupersessions' AND Action=N'Supersede Specification' AND PerformedBy=N'uat-prm-qa'"))==1,"supersession records attributable QA audit evidence");
+        await SqlDenied(()=>Exec(_admin,"UPDATE dbo.EQ001_PrmSupersessions SET DecisionReason=N'forged'"),"supersession decisions cannot be updated",56809);
+        await SqlDenied(()=>Exec(_admin,"DELETE dbo.EQ001_PrmSupersessions"),"supersession decisions cannot be deleted",56809);
+        await SqlDenied(()=>Exec(client,"INSERT dbo.EQ001_PrmSupersessions(SpecificationNo) VALUES(N'forged')"),"desktop cannot insert supersession decisions directly");
         await Exec(_admin,"INSERT dbo.PRM_SpecificationTests(SpecificationNo,SampleCategory,VersionNo,TestCode,TestName,SpecificationText,SpecificationLimit,Unit,ResultType,RequiredTest,MinimumElapsedHours,SortOrder,ApprovalStatus,IsActive,CreatedBy,CreatedDate,ItemCode,CompendialReference,IsDefaultForCategory) VALUES(N'EQ001-PRM-LEGACY',N'Primary Packaging',1,N'TBC',N'Synthetic legacy count',N'NMT 10 CFU/25 cm2',10,N'CFU/25 cm2',N'Numeric',1,120,1,N'Draft',0,N'uat-prm-author',SYSDATETIME(),N'EQ001-SYNTHETIC',N'Synthetic legacy attribution fixture',0);INSERT dbo.PRM_SpecificationContentHistory(SpecificationNo,SampleCategory,VersionNo,ActionType,OldRowsJson,NewRowsJson,ChangedBy,ChangedAt,ChangeReason,ContentHash) VALUES(N'EQ001-PRM-LEGACY',N'Primary Packaging',1,N'Draft Created',N'[]',N'[]',N'uat-prm-author',SYSDATETIME(),N'Synthetic prior non-native attribution',0x00);");
         var legacy=await Loaded(draft with { SpecificationNo="EQ001-PRM-LEGACY",Reference="Synthetic legacy attribution fixture" },1);
         await Denied(async()=>{await pipe.ApplicationAsync(await Proof("PrmReview","uat-prm-reviewer",legacy));},"legacy attribution without native trusted creation cannot be converted into a trusted review signature","PrmStateRejected");

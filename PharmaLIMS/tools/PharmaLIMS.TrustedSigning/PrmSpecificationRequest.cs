@@ -11,7 +11,8 @@ public sealed record PrmSpecificationTest(string TestCode, string TestName, stri
 
 public sealed record PrmSpecificationRequest(string SpecificationNo, string Category, int Version,
     string Reference, string ItemCode, string ProductionStage, DateTime? EffectiveDate,
-    string ExpectedSnapshotHash, PrmSpecificationTest[] Tests);
+    string ExpectedSnapshotHash, PrmSpecificationTest[] Tests,
+    int SupersedesVersion = 0, string SupersededEvidenceHash = "");
 
 public static class PrmSpecificationPolicy
 {
@@ -26,6 +27,11 @@ public static class PrmSpecificationPolicy
         if (request.Version < 0 || (action != "PrmSaveDraft" && request.Version == 0) || request.ExpectedSnapshotHash is null ||
             (request.Version > 0 && (request.ExpectedSnapshotHash.Length != 64 || !request.ExpectedSnapshotHash.All(Uri.IsHexDigit))))
             throw new ArgumentException("A complete saved snapshot is required.");
+        if (request.SupersedesVersion < 0 || request.SupersededEvidenceHash is null ||
+            (request.SupersedesVersion == 0 && request.SupersededEvidenceHash.Length != 0) ||
+            (request.SupersedesVersion > 0 && (action != "PrmApprove" || request.SupersedesVersion >= request.Version ||
+                request.SupersededEvidenceHash.Length != 64 || !request.SupersededEvidenceHash.All(Uri.IsHexDigit))))
+            throw new ArgumentException("Explicit approval and a complete predecessor evidence hash are required for supersession.");
         if (request.Tests is null || request.Tests.Length is < 1 or > 16) throw new ArgumentException("One to sixteen tests are required.");
         var codes=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach(var test in request.Tests)
