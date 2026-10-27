@@ -29,7 +29,7 @@ if(new SqlConnectionStringBuilder(SqlActor("Server=localhost;Integrated Security
  throw new Exception("Water SQL test identities must not inherit the Windows master administrator identity.");
 try{
  await Exec(master.ConnectionString,$"CREATE DATABASE [{db}]; CREATE LOGIN [{login}] WITH PASSWORD='{pw}',CHECK_POLICY=OFF; CREATE LOGIN [{clientLogin}] WITH PASSWORD='{pw}',CHECK_POLICY=OFF;");
- await Exec(admin,File.ReadAllText(project+"/tests/Fixtures/Eq001WaterActualSchema.sql"));
+ await Exec(admin,File.ReadAllText(project+"/tests/fixtures/Eq001WaterActualSchema.sql"));
  await Exec(admin,$"CREATE USER PharmaLIMS_TrustedEquipmentSigner FOR LOGIN [{login}]; CREATE USER water_client FOR LOGIN [{clientLogin}]; GRANT SELECT ON SCHEMA::dbo TO PharmaLIMS_TrustedEquipmentSigner; GRANT SELECT ON SCHEMA::dbo TO water_client;");
  string stage=File.ReadAllText(project+"/scripts/EQ001_UAT_Water_Registration.sql");
  // Local disposable qualification adapts only target/origin type, preserving real distinct SQL service/client logins.
