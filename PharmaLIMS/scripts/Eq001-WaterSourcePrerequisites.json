@@ -1,5 +1,5 @@
 {
-  "Evidence": "Exact installed f2c20c7 sources. User verified raw DatabaseHelper/NewSampleDialog hashes and actual Water schema 2026-10-27. Preserve site project/App/Main overlays and all configuration.",
+  "Evidence": "Exact installed f2c20c7 sources. User verified raw DatabaseHelper/NewSampleDialog hashes and actual Water schema 2026-10-27. Preserve site project/App/Main overlays and all configuration. Deployment-parser correction upgrades only its script from applied exact e4d6633; other Water source files already match and are skipped.",
   "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
   "Files": [
     {
@@ -71,7 +71,7 @@
     {
       "Path": "scripts/Deploy-Eq001WaterRegistration.ps1",
       "SourcePath": "PharmaLIMS/scripts/Deploy-Eq001WaterRegistration.ps1",
-      "ExpectedNormalizedSha256": null,
+      "ExpectedNormalizedSha256": "12e42f8e59f0bba92546da0bf81ee6e97de5787a0cf0c687d5cdcb288d0232c0",
       "Remove": false
     },
     {

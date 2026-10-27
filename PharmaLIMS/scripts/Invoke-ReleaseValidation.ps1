@@ -63,6 +63,7 @@ try {
 
     Write-Host "::notice title=Release validation checkpoint::Source manifest verification"
     ./scripts/Test-SourceManifest.ps1
+    ./tests/Test-Eq001WaterDeploymentSettings.ps1
     Write-Host "::notice title=Release validation checkpoint::Code-signing release guard"
     ./tests/Test-CodeSigningReleaseGuard.ps1
 

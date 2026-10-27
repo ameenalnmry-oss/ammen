@@ -97,7 +97,7 @@ if ($settings.Database.Server -ne 'tcp:AMEEN,1433' -or $settings.Database.Databa
 $hostBytes = [IO.File]::ReadAllBytes($hostConfigFile)
 $hostConfig = [Text.Encoding]::UTF8.GetString($hostBytes).TrimStart([char]0xFEFF) | ConvertFrom-Json
 $dbOptions = [System.Data.Common.DbConnectionStringBuilder]::new()
-$dbOptions.ConnectionString = $hostConfig.ConnectionString
+$dbOptions.set_ConnectionString($hostConfig.ConnectionString)
 if ($hostConfig.DeploymentMode -ne 'UAT' -or $hostConfig.ProductionActivationApproved -ne $false -or
     $hostConfig.PipeName -ne 'PharmaLIMS_EQ001_AMEEN_UAT' -or
     (Get-DbOption $dbOptions @('Server','Data Source')) -ne 'tcp:AMEEN,1433' -or
