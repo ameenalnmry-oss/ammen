@@ -1,0 +1,90 @@
+{
+  "Evidence": "Exact installed f2c20c7 sources. User verified raw DatabaseHelper/NewSampleDialog hashes and actual Water schema 2026-10-27. Preserve site project/App/Main overlays and all configuration.",
+  "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
+  "Files": [
+    {
+      "Path": "NewSampleDialog.xaml.cs",
+      "SourcePath": "PharmaLIMS/NewSampleDialog.xaml.cs",
+      "ExpectedNormalizedSha256": "4fb9dd2790aec71df78a703f45a2e13b8f919ab8fef58bfa5548a7d82669af12",
+      "Remove": false
+    },
+    {
+      "Path": "NewSampleDialog.TrustedWater.cs",
+      "SourcePath": "PharmaLIMS/NewSampleDialog.TrustedWater.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/TrustedApplicationSession.cs",
+      "SourcePath": "PharmaLIMS/Services/TrustedApplicationSession.cs",
+      "ExpectedNormalizedSha256": "d1f4d6c4579f4e5781797165b08d6ffc90dd960a5fd6e93fd7134c6867bc33eb",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterRegistrationRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterRegistrationRecovery.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj",
+      "ExpectedNormalizedSha256": "79cfa30c83db7a174cfb1359a1272df1be6817565a810d8dafdb9257fdbac125",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WaterRegistrationRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WaterRegistrationRequest.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "ExpectedNormalizedSha256": "c0089135d99559260babf4a9158ce81878c260a09f8248c602caf9baf80f26e8",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "ExpectedNormalizedSha256": "7585bec592e149d0ca8a085140add9d652e36f292489ad9a2fc6bfe7abf739de",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "ExpectedNormalizedSha256": "5f9a05876ccc53038616e46028bfd6e436fe002b408dbc6dba500d2ef38e7cd5",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterRegistrationStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterRegistrationStore.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "scripts/EQ001_UAT_Water_Registration.sql",
+      "SourcePath": "PharmaLIMS/scripts/EQ001_UAT_Water_Registration.sql",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "scripts/Deploy-Eq001WaterRegistration.ps1",
+      "SourcePath": "PharmaLIMS/scripts/Deploy-Eq001WaterRegistration.ps1",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterNumericResultEvaluator.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterNumericResultEvaluator.cs",
+      "ExpectedNormalizedSha256": "08cf6aa824976b90fc6396bd8d9e8dfcfc317d32df4954a37a8e9731491d07cd",
+      "Remove": false
+    },
+    {
+      "Path": "Services/ControlledNumericValue.cs",
+      "SourcePath": "PharmaLIMS/Services/ControlledNumericValue.cs",
+      "ExpectedNormalizedSha256": "16d40f36d69a42070f504e804e385d4204c5546f913888488ee21cd97a764271",
+      "Remove": false
+    }
+  ]
+}

@@ -16,6 +16,7 @@ public sealed class TrustedHostSettings
     public string CertificatePassword { get; set; } = "";
     public string DeploymentMode { get; set; } = "UAT";
     public bool ProductionActivationApproved { get; set; }
+    public bool EnableWaterRegistrationUat { get; set; }
     public Dictionary<string,string> WindowsAccounts { get; set; } = new();
 
     [SupportedOSPlatform("windows")]
@@ -43,6 +44,12 @@ public sealed class TrustedHostSettings
         else if (DeploymentMode != "Production" || !ProductionActivationApproved)
             throw new UnauthorizedAccessException("Production signing is not activated by approved host configuration.");
         _ = new SqlTrustedSignerAccountRepository(ConnectionString);
+        if (EnableWaterRegistrationUat)
+        {
+            if (DeploymentMode != "UAT" || ProductionActivationApproved)
+                throw new UnauthorizedAccessException("Water registration is isolated UAT only.");
+            WaterRegistrationPolicy.RequireTarget(ConnectionString);
+        }
         _ = new SqlTrustedEquipmentSignatureStore(ConnectionString);
         if (string.IsNullOrWhiteSpace(CertificatePath)) throw new ArgumentException("A service TLS certificate is required.");
     }

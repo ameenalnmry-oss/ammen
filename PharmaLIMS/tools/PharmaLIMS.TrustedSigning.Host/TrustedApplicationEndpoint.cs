@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-internal sealed class TrustedApplicationEndpoint(string connectionString, bool enablePrmUat = false) : ITrustedApplicationEndpoint
+internal sealed class TrustedApplicationEndpoint(string connectionString, bool enablePrmUat = false, bool enableWaterUat = false) : ITrustedApplicationEndpoint
 {
     private sealed record Ticket(string Sid,string Username,DateTimeOffset Expires,byte[] Version);
     private readonly ConcurrentDictionary<string,Ticket> _tickets = new();
@@ -49,13 +49,21 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
                 return new(request.RequestId,true,user.Username,"",JsonSerializer.Serialize(user),ticket);
             }
             bool prm=request.Action is "PrmSaveDraft" or "PrmReview" or "PrmApprove";
+            bool water=request.Action is "WaterRegister" or "WaterResolve" or "WaterCancel" or "WaterLabel";
+            if(water && !enableWaterUat) return new(request.RequestId,false,null,"WaterDisabled");
             if(prm && !enablePrmUat) return new(request.RequestId,false,null,"Denied");
-            if(!prm && request.Action is not ("CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser"))return new(request.RequestId,false,null,"InvalidRequest");
+            if(!prm && !water && request.Action is not ("CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser"))return new(request.RequestId,false,null,"InvalidRequest");
             if(!_tickets.TryRemove(request.Ticket,out var proof) || proof.Sid!=sid || !proof.Username.Equals(request.Username,StringComparison.OrdinalIgnoreCase) || proof.Expires<DateTimeOffset.UtcNow)
                 return new(request.RequestId,false,null,"Denied");
             var actor=await repository.GetByUsernameAsync(proof.Username,cancellationToken);
-            if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || (!prm && !actor.CanManageUsers) || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
+            if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || (!prm && !water && !actor.CanManageUsers) || (water && !actor.CanRegisterSamples) || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
             using var authorizedAuditActor = TrustedAuditActorContext.Enter(actor.Username);
+            if(water)
+            {
+                var committed=await new TrustedWaterRegistrationStore(connectionString).ExecuteAsync(
+                    request with { Username=proof.Username },proof.Version,proof.Sid,cancellationToken);
+                return new(request.RequestId,true,proof.Username,"",JsonSerializer.Serialize(committed));
+            }
             if(prm)
             {
                 int version=await new TrustedPrmSpecificationStore(connectionString).CommitAsync(
@@ -80,10 +88,17 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
         catch(System.Data.DBConcurrencyException){return new(request.RequestId,false,null,"PrmSnapshotChanged");}
         catch(SqlException ex) when(ex.Number==56806){return new(request.RequestId,false,null,"HistoricalVersionPreserved");}
         catch(SqlException ex) when(ex.Number is >=56800 and <=56808){return new(request.RequestId,false,null,"PrmStateRejected");}
+        catch(SqlException ex) when(ex.Number is >=56900 and <=56916)
+        {
+            ApplicationLogger.Error("Trusted Water operation rejected; request "+request.RequestId.ToString("N")+".",ex);
+            return new(request.RequestId,false,null,"WaterStateRejected");
+        }
         catch(SqlException ex)
         {
             if(request.Action.StartsWith("Prm",StringComparison.Ordinal))
                 ApplicationLogger.Error("Trusted PRM store failed; request " + request.RequestId.ToString("N") + ".",ex);
+            if(request.Action.StartsWith("Water",StringComparison.Ordinal))
+                ApplicationLogger.Error("Trusted Water store failed; request " + request.RequestId.ToString("N") + ".",ex);
             return new(request.RequestId,false,null,"StoreUnavailable");
         }
     }

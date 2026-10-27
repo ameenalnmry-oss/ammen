@@ -24,6 +24,12 @@ try {
     Write-Host "::error title=EQ001 source installer qualification::$details"
     throw
 }
+& dotnet run --project (Join-Path $project 'tests/PharmaLIMS.WaterRegistrationRegression/PharmaLIMS.WaterRegistrationRegression.csproj') --configuration Release 2>&1 |
+    Tee-Object -FilePath (Join-Path $results 'water-policy-regression.txt')
+if ($LASTEXITCODE -ne 0) { throw 'Water registration policy checks failed.' }
+& dotnet run --project (Join-Path $project 'tests/PharmaLIMS.WaterRecoveryWindows/PharmaLIMS.WaterRecoveryWindows.csproj') --configuration Release -- $project 2>&1 |
+    Tee-Object -FilePath (Join-Path $results 'water-recovery-windows.txt')
+if ($LASTEXITCODE -ne 0) { throw 'Native Windows Water recovery checks failed.' }
 $stamp = [Guid]::NewGuid().ToString('N').Substring(0,10)
 $serviceName = "eq001_$stamp"
 $privateRoot = Join-Path $env:ProgramData "PharmaLIMS-EQ001-UAT-$stamp"
@@ -117,6 +123,13 @@ try {
     $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $fixture -Encoding utf8
     dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
     if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
+    $env:EQ001_SQL_TEST_SETTINGS = $fixture
+    try {
+        dotnet run --project (Join-Path $project 'tests/PharmaLIMS.WaterSqlRegression/PharmaLIMS.WaterSqlRegression.csproj') --configuration Release -- $project 2>&1 |
+            Tee-Object -FilePath (Join-Path $results 'water-actual-schema-sql.txt')
+        if ($LASTEXITCODE -ne 0) { throw 'Actual-site Water SQL regression failed.' }
+    }
+    finally { Remove-Item Env:\EQ001_SQL_TEST_SETTINGS -ErrorAction SilentlyContinue }
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
     if ($outcome.Passed -ne 122 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 122 checks must belong to this Release commit.' }
     Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."

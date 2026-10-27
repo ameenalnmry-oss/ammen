@@ -7,6 +7,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Services/WaterNumericResultEvaluator.cs" Link="Shared/WaterNumericResultEvaluator.cs" />
+    <Compile Include="../../Services/ControlledNumericValue.cs" Link="Shared/ControlledNumericValue.cs" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
   </ItemGroup>

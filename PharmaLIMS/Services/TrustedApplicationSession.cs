@@ -57,4 +57,23 @@ public static class TrustedApplicationSession
         var reply=await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(request,cancellationToken);
         return int.TryParse(reply.UserJson,out int result)?result:0;
     }
+
+    public static async Task<WaterRegistrationResult> WaterAsync(string action,Guid requestId,
+        WaterRegistrationRequest payload,string actor,string reason,string meaning,CancellationToken cancellationToken=default)
+    {
+        if(action is not ("WaterRegister" or "WaterResolve" or "WaterCancel" or "WaterLabel") || requestId==Guid.Empty)
+            throw new ArgumentException("Invalid Water operation.");
+        WaterRegistrationPolicy.RequireTarget(AppConfig.ConnectionString);
+        string canonical=WaterRegistrationPolicy.CanonicalPayload(payload);
+        string ticket=_ticket; _ticket="";
+        if(string.IsNullOrEmpty(ticket)) throw new UnauthorizedAccessException("Fresh trusted reauthentication is required for Water registration.");
+        var reply=await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(
+            new(requestId,action,actor,Ticket:ticket,UserJson:canonical,Reason:reason,Meaning:meaning),cancellationToken);
+        var result=reply.UserJson is null?null:JsonSerializer.Deserialize<WaterRegistrationResult>(reply.UserJson);
+        if(!string.Equals(reply.SignedBy,actor,StringComparison.OrdinalIgnoreCase) || result is null || result.RequestId!=requestId ||
+            result.State is not ("Pending" or "Cancelled" or "Committed") ||
+            result.State=="Committed" && (result.SampleId<=0 || string.IsNullOrWhiteSpace(result.SampleNumber) || result.TestCount!=payload.TestIds.Length))
+            throw new InvalidOperationException("Invalid trusted Water response; recover the same request before registering again.");
+        return result;
+    }
 }

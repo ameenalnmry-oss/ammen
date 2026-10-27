@@ -1,6 +1,7 @@
 {
   "PipeName": "PharmaLIMS_EQ001",
   "DeploymentMode": "UAT",
+  "EnableWaterRegistrationUat": false,
   "ProductionActivationApproved": false,
   "ConnectionString": "Server=YOUR-UAT-SQL;Database=PharmaLIMS_EQ001_UAT_site;Integrated Security=true;Encrypt=Mandatory;TrustServerCertificate=false",
   "CertificatePath": "C:\\ProgramData\\PharmaLIMS\\TrustedSigning\\service.pfx",

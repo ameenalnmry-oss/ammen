@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-fA-F0-9]{40}$')][string]$SourceCommit,
     [switch]$Apply,
-    [switch]$DesktopSessionOnly
+    [switch]$DesktopSessionOnly,
+    [switch]$WaterRegistrationOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,7 +64,8 @@ function Get-TargetPath([string]$RelativePath) {
     return $fullPath
 }
 
-$manifestPath = if ($DesktopSessionOnly) { 'PharmaLIMS/scripts/Eq001-SessionSourcePrerequisites.json' } else { 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json' }
+if ($DesktopSessionOnly -and $WaterRegistrationOnly) { throw 'Choose one source installation mode.' }
+$manifestPath = if ($WaterRegistrationOnly) { 'PharmaLIMS/scripts/Eq001-WaterSourcePrerequisites.json' } elseif ($DesktopSessionOnly) { 'PharmaLIMS/scripts/Eq001-SessionSourcePrerequisites.json' } else { 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json' }
 $manifestBytes = Get-RepositoryBytes $manifestPath
 $manifest = [Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
 if ($manifest.OriginalProject -ne $project) { throw 'Source manifest targets a different project.' }
@@ -74,6 +76,29 @@ if ($DesktopSessionOnly) {
         @(Compare-Object $desktopPaths @($manifest.Files.Path)).Count -ne 0 -or
         @($manifest.Files | Where-Object { $_.Remove }).Count -ne 0) {
         throw 'Desktop-only source changes must match the reviewed session feature allowlist.'
+    }
+}
+if ($WaterRegistrationOnly) {
+    $waterPaths = @(
+        'NewSampleDialog.xaml.cs'
+,        'NewSampleDialog.TrustedWater.cs'
+,        'Services/TrustedApplicationSession.cs'
+,        'Services/WaterRegistrationRecovery.cs'
+,        'tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj'
+,        'tools/PharmaLIMS.TrustedSigning/WaterRegistrationRequest.cs'
+,        'tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs'
+,        'tools/PharmaLIMS.TrustedSigning.Host/Program.cs'
+,        'tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs'
+,        'tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterRegistrationStore.cs'
+,        'scripts/EQ001_UAT_Water_Registration.sql'
+,        'scripts/Deploy-Eq001WaterRegistration.ps1'
+,        'Services/WaterNumericResultEvaluator.cs'
+,        'Services/ControlledNumericValue.cs'
+)
+    if (@($manifest.Files).Count -ne $waterPaths.Count -or
+        @(Compare-Object $waterPaths @($manifest.Files.Path)).Count -ne 0 -or
+        @($manifest.Files | Where-Object { $_.Remove }).Count -ne 0) {
+        throw 'Water source changes must match the reviewed allowlist.'
     }
 }
 $changes = New-Object 'System.Collections.Generic.List[object]'
