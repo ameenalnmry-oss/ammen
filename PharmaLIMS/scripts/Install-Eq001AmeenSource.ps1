@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-fA-F0-9]{40}$')][string]$SourceCommit,
-    [switch]$Apply
+    [switch]$Apply,
+    [switch]$DesktopSessionOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,9 +63,19 @@ function Get-TargetPath([string]$RelativePath) {
     return $fullPath
 }
 
-$manifestBytes = Get-RepositoryBytes 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json'
+$manifestPath = if ($DesktopSessionOnly) { 'PharmaLIMS/scripts/Eq001-SessionSourcePrerequisites.json' } else { 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json' }
+$manifestBytes = Get-RepositoryBytes $manifestPath
 $manifest = [Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
 if ($manifest.OriginalProject -ne $project) { throw 'Source manifest targets a different project.' }
+if ($DesktopSessionOnly) {
+    $desktopPaths = @('App.xaml.cs','Login.xaml','Login.xaml.cs','MainWindow.xaml','MainWindow.xaml.cs',
+        'Services/SessionTransitionCoordinator.cs','Services/SwitchedProcessEnvironment.cs','Services/WindowsUserSwitchService.cs')
+    if (@($manifest.Files).Count -ne $desktopPaths.Count -or
+        @(Compare-Object $desktopPaths @($manifest.Files.Path)).Count -ne 0 -or
+        @($manifest.Files | Where-Object { $_.Remove }).Count -ne 0) {
+        throw 'Desktop-only source changes must match the reviewed session feature allowlist.'
+    }
+}
 $changes = New-Object 'System.Collections.Generic.List[object]'
 foreach ($entry in $manifest.Files) {
     $target = Get-TargetPath $entry.Path
@@ -110,7 +121,7 @@ foreach ($process in @(Get-Process -Name PharmaLIMS -ErrorAction SilentlyContinu
     if ($process.Path -and $process.Path.StartsWith($project + '\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Close the original application before changing its source.' }
 }
 $service = Get-Service -Name 'PharmaLIMS.TrustedSigning' -ErrorAction SilentlyContinue
-if ($service -and $service.Status -ne 'Stopped') { throw 'Do not change source while the signing service is running.' }
+if (-not $DesktopSessionOnly -and $service -and $service.Status -ne 'Stopped') { throw 'Do not change source while the signing service is running.' }
 
 if (-not ('Eq001SiteSourceFile' -as [type])) {
     $nativeSource = Get-RepositoryBytes 'PharmaLIMS/scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt'

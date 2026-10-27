@@ -9,6 +9,9 @@ if (-not [OperatingSystem]::IsWindows()) { throw 'Windows is required.' }
 $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $results = Join-Path $project 'artifacts/eq001-windows-uat'
 New-Item -ItemType Directory -Force -Path $results | Out-Null
+& dotnet run --project (Join-Path $project 'tests/PharmaLIMS.SessionRegression/PharmaLIMS.SessionRegression.csproj') --configuration Release 2>&1 |
+    Tee-Object -FilePath (Join-Path $results 'session-regression.txt')
+if ($LASTEXITCODE -ne 0) { throw 'Session handoff regression checks failed.' }
 try {
     & (Join-Path $project 'tests/Test-Eq001SourceInstaller.ps1') 2>&1 |
         Tee-Object -FilePath (Join-Path $results 'source-installer-checks.txt')

@@ -1,0 +1,54 @@
+{
+  "Evidence": "Desktop session feature; original App.xaml.cs from user source bundle; other existing files guarded against exact 8036813 source. Local drift must be reviewed, never overwritten.",
+  "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
+  "Files": [
+    {
+      "Path": "App.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-App.xaml.cs.txt",
+      "ExpectedNormalizedSha256": "41a305d827b54545c1396a3a975088ad992cbffe6cf4d56fe706f44ddedbb762",
+      "Remove": false
+    },
+    {
+      "Path": "Login.xaml",
+      "SourcePath": "PharmaLIMS/Login.xaml",
+      "ExpectedNormalizedSha256": "9bb19228d8f41e5cabd29079aa552a5c015ef08b27450f5508f780a85f101743",
+      "Remove": false
+    },
+    {
+      "Path": "Login.xaml.cs",
+      "SourcePath": "PharmaLIMS/Login.xaml.cs",
+      "ExpectedNormalizedSha256": "21481ce5b17db5b478587748ca00f78a6ecf9badcd14638b2d0986176bc55303",
+      "Remove": false
+    },
+    {
+      "Path": "MainWindow.xaml",
+      "SourcePath": "PharmaLIMS/MainWindow.xaml",
+      "ExpectedNormalizedSha256": "61f8a40b427f58d47d151840b76b5d8425eb0288f42ee904457aac45685165ab",
+      "Remove": false
+    },
+    {
+      "Path": "MainWindow.xaml.cs",
+      "SourcePath": "PharmaLIMS/MainWindow.xaml.cs",
+      "ExpectedNormalizedSha256": "3c167a4e7341153d230c18f711d5473e8021c9ab01e8bf50adab049a4414c5ef",
+      "Remove": false
+    },
+    {
+      "Path": "Services/SessionTransitionCoordinator.cs",
+      "SourcePath": "PharmaLIMS/Services/SessionTransitionCoordinator.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/SwitchedProcessEnvironment.cs",
+      "SourcePath": "PharmaLIMS/Services/SwitchedProcessEnvironment.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WindowsUserSwitchService.cs",
+      "SourcePath": "PharmaLIMS/Services/WindowsUserSwitchService.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    }
+  ]
+}
