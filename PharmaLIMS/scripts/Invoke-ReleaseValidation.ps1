@@ -12,6 +12,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 function Assert-NativeExit([string]$Step) {
     if ($LASTEXITCODE -ne 0) {
+        Write-Host "::error title=Release validation gate::$Step failed with native exit code $LASTEXITCODE."
         throw "$Step failed with native exit code $LASTEXITCODE."
     }
 }
@@ -52,13 +53,17 @@ Push-Location $root
 try {
     $env:PYTHONDONTWRITEBYTECODE = '1'
 
+    Write-Host "::notice title=Release validation checkpoint::Delivery source validation"
     python -B scripts/validate_project.py --delivery-package
     Assert-NativeExit 'Delivery source validation'
 
+    Write-Host "::notice title=Release validation checkpoint::Python source-control regression suite"
     python -B -m unittest discover -s tests -p "test_*.py" -v
     Assert-NativeExit 'Python source-control regression suite'
 
+    Write-Host "::notice title=Release validation checkpoint::Source manifest verification"
     ./scripts/Test-SourceManifest.ps1
+    Write-Host "::notice title=Release validation checkpoint::Code-signing release guard"
     ./tests/Test-CodeSigningReleaseGuard.ps1
 
     if ($SourceOnly) {
@@ -80,12 +85,15 @@ try {
     # Complete RID-specific builds before any non-RID ProjectReference restore,
     # because those restores can rewrite PharmaLIMS\obj\project.assets.json
     # and remove the net8.0-windows7.0/win-x64 target.
+    Write-Host "::notice title=Release validation checkpoint::WPF win-x64 restore"
     dotnet restore PharmaLIMS.csproj --runtime win-x64
     Assert-NativeExit 'WPF win-x64 restore'
 
+    Write-Host "::notice title=Release validation checkpoint::DatabaseMaintenance restore"
     dotnet restore tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --runtime win-x64
     Assert-NativeExit 'DatabaseMaintenance restore'
 
+    Write-Host "::notice title=Release validation checkpoint::WPF Release build"
     dotnet build PharmaLIMS.csproj --configuration Release --runtime win-x64 --no-restore
     Assert-NativeExit 'WPF Release build'
 

@@ -8,8 +8,9 @@ using var settings=JsonDocument.Parse(File.ReadAllText(Environment.GetEnvironmen
 var master=settings.RootElement.TryGetProperty("MasterConnectionString",out var existingMaster) ? new SqlConnectionStringBuilder(existingMaster.GetString()) : new SqlConnectionStringBuilder {DataSource=settings.RootElement.GetProperty("server").GetString(),InitialCatalog="master",UserID="sa",Password=settings.RootElement.GetProperty("password").GetString(),Encrypt=SqlConnectionEncryptOption.Mandatory,TrustServerCertificate=false,Pooling=false,ConnectTimeout=10};
 string suffix=Guid.NewGuid().ToString("N")[..10],db="EQ001_UAT_Water_"+suffix,login="water_svc_"+suffix,clientLogin="water_client_"+suffix,pw="Aa1!"+Guid.NewGuid().ToString("N");
 string admin=new SqlConnectionStringBuilder(master.ConnectionString){InitialCatalog=db}.ConnectionString;
-string service=new SqlConnectionStringBuilder(admin){UserID=login,Password=pw}.ConnectionString;
-string client=new SqlConnectionStringBuilder(admin){UserID=clientLogin,Password=pw}.ConnectionString;
+static string SqlActor(string baseConnection,string username,string password) => new SqlConnectionStringBuilder(baseConnection){IntegratedSecurity=false,UserID=username,Password=password}.ConnectionString;
+string service=SqlActor(admin,login,pw);
+string client=SqlActor(admin,clientLogin,pw);
 int count=0;
 async Task<object?> Exec(string cs,string sql){await using var c=new SqlConnection(cs);await c.OpenAsync();using var cmd=new SqlCommand(sql,c){CommandTimeout=30};return await cmd.ExecuteScalarAsync();}
 void Check(bool ok,string msg){if(!ok)throw new Exception(msg);count++;Console.WriteLine("PASS "+msg);}
@@ -24,6 +25,8 @@ async Task<WaterRegistrationResult> Call(Guid rid,string action,WaterRegistratio
  cmd.Parameters.AddWithValue("@Action",action);cmd.Parameters.AddWithValue("@RequestId",rid);cmd.Parameters.AddWithValue("@Payload",WaterRegistrationPolicy.CanonicalPayload(input));cmd.Parameters.AddWithValue("@Actor",actor);cmd.Parameters.Add("@ActorVersion",SqlDbType.Binary,8).Value=staleVersion??version;cmd.Parameters.AddWithValue("@CallerSid",sid);cmd.Parameters.AddWithValue("@Reason","Synthetic UAT registration verification");cmd.Parameters.AddWithValue("@Meaning","I confirm this UAT registration");
  var json=(string)(await cmd.ExecuteScalarAsync())!;if(fail){await tx.RollbackAsync();throw new InvalidOperationException("Simulated lost precommit execution");}await tx.CommitAsync();return JsonSerializer.Deserialize<WaterRegistrationResult>(json)!;
 }
+if(new SqlConnectionStringBuilder(SqlActor("Server=localhost;Integrated Security=true",login,pw)).IntegratedSecurity)
+ throw new Exception("Water SQL test identities must not inherit the Windows master administrator identity.");
 try{
  await Exec(master.ConnectionString,$"CREATE DATABASE [{db}]; CREATE LOGIN [{login}] WITH PASSWORD='{pw}',CHECK_POLICY=OFF; CREATE LOGIN [{clientLogin}] WITH PASSWORD='{pw}',CHECK_POLICY=OFF;");
  await Exec(admin,File.ReadAllText(project+"/tests/Fixtures/Eq001WaterActualSchema.sql"));
