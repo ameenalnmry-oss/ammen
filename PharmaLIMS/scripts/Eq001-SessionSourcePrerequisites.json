@@ -1,5 +1,5 @@
 {
-  "Evidence": "Desktop session feature; original App.xaml.cs from user source bundle; other existing files guarded against exact 8036813 source. Local drift must be reviewed, never overwritten.",
+  "Evidence": "User-supplied original App.xaml.cs (2026-10-24) and MainWindow pair (2026-10-27); reviewed full site overlays preserve verify-only startup and controlled Development COA cancellation. Login files remain guarded against qualified803 source. Unknown local drift is refused.",
   "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
   "Files": [
     {
@@ -22,14 +22,14 @@
     },
     {
       "Path": "MainWindow.xaml",
-      "SourcePath": "PharmaLIMS/MainWindow.xaml",
-      "ExpectedNormalizedSha256": "61f8a40b427f58d47d151840b76b5d8425eb0288f42ee904457aac45685165ab",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-MainWindow.xaml.txt",
+      "ExpectedNormalizedSha256": "0231685ad0f2c59cb383a046d1f0dcdccb668b45d79acd02fecffdf6d55341cc",
       "Remove": false
     },
     {
       "Path": "MainWindow.xaml.cs",
-      "SourcePath": "PharmaLIMS/MainWindow.xaml.cs",
-      "ExpectedNormalizedSha256": "3c167a4e7341153d230c18f711d5473e8021c9ab01e8bf50adab049a4414c5ef",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-MainWindow.xaml.cs.txt",
+      "ExpectedNormalizedSha256": "7d22999e758248706d9bf38305b4f442bba356e97ff4cc589fcae290cc4cfac0",
       "Remove": false
     },
     {

@@ -12,6 +12,9 @@ New-Item -ItemType Directory -Force -Path $results | Out-Null
 & dotnet run --project (Join-Path $project 'tests/PharmaLIMS.SessionRegression/PharmaLIMS.SessionRegression.csproj') --configuration Release 2>&1 |
     Tee-Object -FilePath (Join-Path $results 'session-regression.txt')
 if ($LASTEXITCODE -ne 0) { throw 'Session handoff regression checks failed.' }
+& (Join-Path $project 'scripts/Test-Eq001SessionSiteBuild.ps1') 2>&1 |
+    Tee-Object -FilePath (Join-Path $results 'session-site-build.txt')
+if (-not $?) { throw 'Original-site session desktop build failed.' }
 try {
     & (Join-Path $project 'tests/Test-Eq001SourceInstaller.ps1') 2>&1 |
         Tee-Object -FilePath (Join-Path $results 'source-installer-checks.txt')
