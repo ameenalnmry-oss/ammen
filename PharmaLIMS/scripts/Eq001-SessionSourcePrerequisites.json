@@ -1,5 +1,5 @@
 {
-  "Evidence": "User-supplied original App.xaml.cs (2026-10-24) and MainWindow pair (2026-10-27); reviewed full site overlays preserve verify-only startup and controlled Development COA cancellation. Login files remain guarded against qualified803 source. Unknown local drift is refused.",
+  "Evidence": "User-supplied original App.xaml.cs (2026-10-24) and MainWindow pair (2026-10-27); reviewed full site overlays preserve verify-only startup and controlled Development COA cancellation. Login files remain guarded against qualified803 source. Unknown local drift is refused. Cancellation correction upgrades the three affected files from installed exact 4098038; unrelated installed files already match and are skipped.",
   "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
   "Files": [
     {
@@ -17,7 +17,7 @@
     {
       "Path": "Login.xaml.cs",
       "SourcePath": "PharmaLIMS/Login.xaml.cs",
-      "ExpectedNormalizedSha256": "21481ce5b17db5b478587748ca00f78a6ecf9badcd14638b2d0986176bc55303",
+      "ExpectedNormalizedSha256": "0687512352d03db458b0dfb65869cc2dc0389c3121d8dfa854d719232755f755",
       "Remove": false
     },
     {
@@ -35,7 +35,7 @@
     {
       "Path": "Services/SessionTransitionCoordinator.cs",
       "SourcePath": "PharmaLIMS/Services/SessionTransitionCoordinator.cs",
-      "ExpectedNormalizedSha256": null,
+      "ExpectedNormalizedSha256": "93f6ca97356db820930cbad795c86d3c1cccd23ecbecdedf9dd8d29042d8c729",
       "Remove": false
     },
     {
@@ -47,7 +47,7 @@
     {
       "Path": "Services/WindowsUserSwitchService.cs",
       "SourcePath": "PharmaLIMS/Services/WindowsUserSwitchService.cs",
-      "ExpectedNormalizedSha256": null,
+      "ExpectedNormalizedSha256": "65cda40f466a6ae906a4927167144caa84b88f77e54b21076e53d7ad2dbe463e",
       "Remove": false
     }
   ]

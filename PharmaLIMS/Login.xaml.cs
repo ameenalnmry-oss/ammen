@@ -279,6 +279,8 @@ namespace PharmaLIMS
         {
             if (_isSigningIn || _isSwitchingWindowsUser || !BtnSwitchWindowsUser.IsEnabled) return;
             _isSwitchingWindowsUser = true;
+            lblError.Text = string.Empty;
+            lblError.Visibility = Visibility.Collapsed;
             txtPassword.Clear();
             _authService?.ClearCurrentUser();
             ClearCurrentUserContext();
@@ -295,6 +297,8 @@ namespace PharmaLIMS
                     Application.Current.Shutdown();
                     return;
                 }
+                if (ready is null)
+                    ApplicationLogger.Information("Windows user switch cancelled or no complete credentials supplied. Session remains signed out.");
                 if (ready == false)
                     ShowError("The new application has started but is not ready yet. This session remains signed out. Check the new window before trying again.");
             }

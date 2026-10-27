@@ -58,3 +58,14 @@ class SessionSwitchContractTests(unittest.TestCase):
         development=app.split('if (AppConfig.IsDevelopment)',1)[1].split('                else',1)[0]
         self.assertIn('VerifyControlledMigrationAsync',development)
         self.assertNotIn('ApplyControlledMigrationAsync',development)
+
+    def test_empty_native_return_cancels_before_logon_without_required_field_exception(self):
+        service=source('Services/WindowsUserSwitchService.cs')
+        self.assertIn('SessionTransitionCoordinator.ShouldCancelWindowsSwitch',service)
+        self.assertLess(service.index('ShouldCancelWindowsSwitch'),service.index('if (!LogonUser'))
+        self.assertNotIn('throw new InvalidOperationException("Enter a Windows account and its Windows password.")',service)
+    def test_switch_clears_stale_inline_error_before_opening_native_prompt(self):
+        login=source('Login.xaml.cs').split('internal async Task SwitchWindowsUserAsync()',1)[1]
+        prompt=login.index('await WindowsUserSwitchService.SwitchAsync')
+        self.assertLess(login.index('lblError.Text = string.Empty;'),prompt)
+        self.assertLess(login.index('lblError.Visibility = Visibility.Collapsed;'),prompt)

@@ -64,4 +64,20 @@ Check("effective SQL connection overrides take precedence over descriptive setti
  try { SwitchedProcessEnvironment.ReadTarget("Server=tcp:AMEEN,1433;Integrated Security=true"); throw new Exception("Did not throw"); }
  catch(InvalidOperationException) { }
 });
+Check("native cancel never requests another Windows authentication", () => {
+ Expect(SessionTransitionCoordinator.ShouldCancelWindowsSwitch(1223,"AMEEN\\Reviewer",12));
+ Expect(SessionTransitionCoordinator.ShouldCancelWindowsSwitch(1223,"",0));
+});
+Check("empty or incomplete credential return leaves the session signed out", () => {
+ Expect(SessionTransitionCoordinator.ShouldCancelWindowsSwitch(0,"",0));
+ Expect(SessionTransitionCoordinator.ShouldCancelWindowsSwitch(0," ",12));
+ Expect(SessionTransitionCoordinator.ShouldCancelWindowsSwitch(0,"AMEEN\\Reviewer",0));
+});
+Check("complete credentials still require Windows verification", () => {
+ Expect(!SessionTransitionCoordinator.ShouldCancelWindowsSwitch(0,"AMEEN\\Reviewer",12));
+});
+Check("Windows errors are not silently converted to cancellation", () => {
+ Expect(!SessionTransitionCoordinator.ShouldCancelWindowsSwitch(1326,"",0));
+ Expect(!SessionTransitionCoordinator.ShouldCancelWindowsSwitch(5,"AMEEN\\Reviewer",12));
+});
 Console.WriteLine($"Session regression: {passed} checks passed.");

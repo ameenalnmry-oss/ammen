@@ -68,8 +68,7 @@ internal static class WindowsUserSwitchService
             int result = CredUIPromptForCredentials(ref prompt, "PharmaLIMS Windows User Switch",
                 IntPtr.Zero, 0, username, CredentialCharacters, passwordBuffer, CredentialCharacters,
                 ref save, 0x40000 | 0x80 | 0x2 | 0x8);
-            if (result == 1223) return null;
-            if (result != 0) throw new Win32Exception(result);
+            if (result != 0 && result != 1223) throw new Win32Exception(result);
             using var password = new SecureString();
             for (int i = 0; i < CredentialCharacters; i++)
             {
@@ -80,8 +79,8 @@ internal static class WindowsUserSwitchService
             password.MakeReadOnly();
             ClearBuffer(passwordBuffer);
             string account = username.ToString().Trim();
-            if (password.Length == 0 || account.Length == 0)
-                throw new InvalidOperationException("Enter a Windows account and its Windows password.");
+            if (SessionTransitionCoordinator.ShouldCancelWindowsSwitch(result, account, password.Length))
+                return null;
             string domain = Environment.MachineName;
             string user = account;
             int separator = account.IndexOf('\\');
