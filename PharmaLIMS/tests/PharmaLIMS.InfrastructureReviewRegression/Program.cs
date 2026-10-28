@@ -87,4 +87,34 @@ await Test("Incomplete pipe connections do not serialize callers and expire", as
         foreach(var pipe in pipes) pipe.Dispose();
     }
 });
+await Test("Completed replies survive delayed consumption before pipe reuse", async () => {
+    var name = "pr62-pipe-drain-" + Guid.NewGuid().ToString("N");
+    var pipes = Enumerable.Range(0,TrustedPipeConnectionPool.MaximumConnections)
+        .Select(_ => new NamedPipeServerStream(name,PipeDirection.InOut,TrustedPipeConnectionPool.MaximumConnections,
+            PipeTransmissionMode.Byte,PipeOptions.Asynchronous)).ToArray();
+    using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    var written = new TaskCompletionSource<NamedPipeServerStream>(TaskCreationOptions.RunContinuationsAsynchronously);
+    byte[] expected = System.Text.Encoding.UTF8.GetBytes("SameAccountDenied");
+    var running = TrustedPipeConnectionPool.RunAsync(pipes, async (pipe,token) => {
+        await pipe.WriteAsync(expected,token);
+        written.TrySetResult(pipe);
+    },stop.Token);
+    using var client = new NamedPipeClientStream(".",name,PipeDirection.InOut,PipeOptions.Asynchronous);
+    try {
+        await client.ConnectAsync(stop.Token);
+        var listener = await written.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        // Deliberately leave the reply in the OS buffer after the handler returns.
+        // DisconnectNamedPipe would discard it before a scheduled Windows caller reads.
+        await Task.Delay(200,stop.Token);
+        Check(listener.IsConnected, "Server disconnected before the peer consumed its completed reply");
+        var actual = new byte[expected.Length];
+        await client.ReadExactlyAsync(actual,stop.Token);
+        Check(actual.SequenceEqual(expected), "Buffered refusal reply was truncated before client consumption");
+    }
+    finally {
+        client.Dispose(); stop.Cancel();
+        try { await running; } catch(OperationCanceledException) when(stop.IsCancellationRequested) { }
+        foreach(var pipe in pipes) pipe.Dispose();
+    }
+});
 if(failures.Count != 0) throw new Exception($"{failures.Count} infrastructure regressions failed: {string.Join(", ",failures)}");

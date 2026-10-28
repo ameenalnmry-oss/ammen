@@ -42,9 +42,11 @@ internal static class Program
 
     private static async Task<int> ProbeSelf(UatSettings s)
     {
+        if (WindowsIdentity.GetCurrent().User?.Value != s.ServiceSid) return ProbeFailure(29, "UnexpectedWindowsIdentity");
         try { await new WindowsTrustedPipeClient(new(s.PipeName,s.CertificateSha256)).CommitAsync(UatRun.Request(),"uat-signer",s.ProbePassword); }
         catch (TrustedSigningRejectedException e) when(e.ErrorCode=="SameAccountDenied") { return 0; }
-        return 1;
+        catch (Exception e) { return ProbeException(e); }
+        return ProbeFailure(28, "UnexpectedSigningSuccess");
     }
 
     private static async Task<int> ProbeActivityStore(UatSettings settings)
@@ -64,7 +66,27 @@ internal static class Program
             DateTimeOffset.UtcNow, Convert.FromBase64String(settings.ActivityProbeVersion), settings.ActivityProbeDatabase);
         try { await new WindowsTrustedPipeClient(new(settings.PipeName,settings.CertificateSha256)).CommitActivityAsync(request,"uat-signer",settings.ProbePassword); }
         catch (TrustedSigningRejectedException exception) when (exception.ErrorCode == "SameAccountDenied") { return 0; }
-        return 1;
+        catch (Exception exception) { return ProbeException(exception); }
+        return ProbeFailure(28, "UnexpectedSigningSuccess");
+    }
+
+    private static int ProbeException(Exception exception) => exception switch
+    {
+        TrustedSigningRejectedException rejected => ProbeFailure(21, "UnexpectedServiceRejection_" +
+            (rejected.ErrorCode is "Denied" or "InvalidRequest" or "Conflict" or "StoreUnavailable" ? rejected.ErrorCode : "Unrecognized")),
+        IOException => ProbeFailure(22, "PipeIoFailure"),
+        System.Security.Authentication.AuthenticationException => ProbeFailure(23, "TlsAuthenticationFailure"),
+        OperationCanceledException => ProbeFailure(24, "TransportDeadline"),
+        UnauthorizedAccessException => ProbeFailure(25, "WindowsAccessDenied"),
+        SecurityException => ProbeFailure(26, "ReplyIdentityFailure"),
+        _ => ProbeFailure(27, "UnexpectedProbeException")
+    };
+
+    private static int ProbeFailure(int exitCode, string category)
+    {
+        // Do not print exception messages: probe settings contain live UAT secrets.
+        Console.WriteLine($"::error title=EQ001 service-account probe::{category}; exit={exitCode}");
+        return exitCode;
     }
 }
 
@@ -183,7 +205,12 @@ internal sealed partial class UatRun(UatSettings settings)
             string probeDirectory=Path.Combine(settings.PrivateDirectory,"probe");Directory.CreateDirectory(probeDirectory);
             foreach(string source in Directory.EnumerateFiles(AppContext.BaseDirectory,"*",SearchOption.AllDirectories)) {string target=Path.Combine(probeDirectory,Path.GetRelativePath(AppContext.BaseDirectory,source));Directory.CreateDirectory(Path.GetDirectoryName(target)!);File.Copy(source,target,true);}
             var probeInfo=ServiceAccountProcess(Path.Combine(probeDirectory,"PharmaLIMS.TrustedSigning.WindowsUat.exe"));probeInfo.ArgumentList.Add("--probe-self");probeInfo.ArgumentList.Add(settings.SettingsPath);
-            using(var probe=Process.Start(probeInfo)!) {await probe.WaitForExitAsync();Check(probe.ExitCode==0,"actual service-account Windows caller is specifically refused despite valid mapped credentials");}
+            using(var probe=Process.Start(probeInfo)!) {
+                await probe.WaitForExitAsync();
+                if (probe.ExitCode != 0)
+                    Console.WriteLine($"::error title=EQ001 service-account probe::exit={probe.ExitCode}; expected exact SameAccountDenied; 21=other rejection,22=pipe IO,23=TLS,24=deadline,25=ACL,26=reply identity,27=other exception,28=unexpected success,29=wrong Windows account");
+                Check(probe.ExitCode==0,"actual service-account Windows caller is specifically refused despite valid mapped credentials");
+            }
             _oldSettings=File.Exists(_appSettingsPath)?File.ReadAllBytes(_appSettingsPath):null;
             string protectedPassword=(string)typeof(DatabaseConnection).Assembly.GetType("PharmaLIMS.Infrastructure.ProtectedSecretStore")!.GetMethod("ProtectCurrentUserBase64",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new object[]{_sqlPassword})!;
             foreach(string name in new[]{"PHARMALIMS_CONNECTION_STRING","PHARMALIMS_DPAPI_PROTECTED_PASSWORD","PHARMALIMS_APPLY_STARTUP_DATABASE_UPDATES"})Environment.SetEnvironmentVariable(name,null);
