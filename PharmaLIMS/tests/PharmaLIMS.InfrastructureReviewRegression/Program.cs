@@ -108,7 +108,10 @@ await Test("Completed replies survive delayed consumption before pipe reuse", as
     var name = "pr62-pipe-drain-" + Guid.NewGuid().ToString("N");
     var pipes = Enumerable.Range(0,TrustedPipeConnectionPool.MaximumConnections)
         .Select(_ => new NamedPipeServerStream(name,PipeDirection.InOut,TrustedPipeConnectionPool.MaximumConnections,
-            PipeTransmissionMode.Byte,PipeOptions.Asynchronous)).ToArray();
+            // Match WindowsTrustedPipeServer's explicit frame-sized buffers. A
+            // zero-quota Windows pipe can hold WriteAsync until the client reads,
+            // which deadlocks this deliberate "write, delay, then read" scenario.
+            PipeTransmissionMode.Byte,PipeOptions.Asynchronous,65536,65536)).ToArray();
     using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
     var written = new TaskCompletionSource<NamedPipeServerStream>(TaskCreationOptions.RunContinuationsAsynchronously);
     byte[] expected = System.Text.Encoding.UTF8.GetBytes("SameAccountDenied");
@@ -119,7 +122,11 @@ await Test("Completed replies survive delayed consumption before pipe reuse", as
     using var client = new NamedPipeClientStream(".",name,PipeDirection.InOut,PipeOptions.Asynchronous);
     try {
         await client.ConnectAsync(stop.Token);
-        var listener = await written.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        NamedPipeServerStream listener;
+        try { listener = await written.Task.WaitAsync(TimeSpan.FromSeconds(2)); }
+        catch (TimeoutException exception) {
+            throw new Exception("Buffered server reply did not complete before delayed client consumption.", exception);
+        }
         // Deliberately leave the reply in the OS buffer after the handler returns.
         // DisconnectNamedPipe would discard it before a scheduled Windows caller reads.
         await Task.Delay(200,stop.Token);
