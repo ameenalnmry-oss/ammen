@@ -319,6 +319,12 @@
       "SourcePath": "PharmaLIMS/Infrastructure/PreflightTimestamp.cs",
       "ExpectedNormalizedSha256": null,
       "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
     }
   ]
 }

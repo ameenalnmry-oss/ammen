@@ -34,7 +34,7 @@ The site's previous build/runtime copy succeeded, but SQL staging logged `Timeou
 - `tests/PharmaLIMS.WaterCertificateRegression`: 416/416.
 - `tests/PharmaLIMS.InfrastructureReviewRegression`: 4 portable groups; native first-instance check explicitly skips on Linux and runs on Windows.
 - `tests/PharmaLIMS.WaterSqlRegression`: 40 actual-shape checks including production completion-batch builder.
-- Python discovery: 652 tests.
+- Python discovery: 653 tests.
 - `tests/Test-Eq001WaterDeploymentSettings.ps1`: actual parser, fail-closed commit proof, pure completion builder.
 
 Four new SQL suites run in PR CI through `scripts/Invoke-Eq001WindowsUat.ps1` → `scripts/Invoke-Pr62ReviewRegressions.ps1` using the disposable integrated-authentication/TLS fixture. Certificate tests run in `Invoke-ReleaseValidation.ps1`; infrastructure tests run on the hosted Windows job. CI results must be checked against the exact commit on PR62. The first run exposed a source-delivery contamination issue in the new infrastructure test step; its artifacts now build outside the checkout, with a RED/GREEN workflow regression. A Windows CI run also reproduced installer success without an SQLEXPRESS service; ephemeral provisioning now requests pinned SQLENGINE/SQLEXPRESS explicitly and verifies service plus registry registration, with sanitized failure diagnostics and three mocked RED/GREEN scenarios in `tests/Test-Eq001SqlProvisioning.ps1`.
@@ -43,4 +43,4 @@ The combined WPF application and signing host build succeeded with zero warnings
 
 These are executable SQL/helper/method tests and source wiring checks, not complete interactive WPF workflow or physical printing tests. Actual laboratory UAT, local overlay build, report layout/printing, role handoff and QA acceptance remain required. Historical signed evidence is preserved; previously closed EM decisions without a current evidence snapshot fail closed rather than receiving fabricated backdated evidence. A fresh investigation is required.
 
-GitHub runner-group restrictions and Production environment branch rules must be enforced by repository administrators: branch-controlled YAML alone cannot defend against an attacker authorized to rewrite the workflow itself. No external runner or Production settings were changed.
+GitHub runner-group restrictions and Production environment branch rules must be enforced by repository administrators: branch-controlled YAML alone cannot defend against an attacker authorized to rewrite the workflow itself. No external runner or Production settings were changed. The guarded AMEEN source list includes the new pipe-pool and date-format dependencies; it is not a complete local rollout of all review fixes.

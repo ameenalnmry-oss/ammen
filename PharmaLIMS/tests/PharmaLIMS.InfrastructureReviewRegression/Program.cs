@@ -3,10 +3,27 @@ using System.IO.Pipes;
 using System.Reflection;
 using PharmaLIMS.TrustedSigning;
 
+void Annotate(string label, Exception cause) {
+    var message = label + ": " + cause.GetType().FullName + ": " + cause.Message;
+    var escaped = message.Replace("%", "%25").Replace("\r", "%0D").Replace("\n", "%0A");
+    Console.WriteLine("::error title=Infrastructure review regression::" + escaped);
+}
+AppDomain.CurrentDomain.UnhandledException += (_, failure) => {
+    if (failure.ExceptionObject is Exception exception)
+        Annotate("Unhandled transport failure", exception.GetBaseException());
+};
 var failures = new List<string>();
 async Task Test(string name, Func<Task> test) {
     try { await test(); Console.WriteLine("PASS " + name); }
-    catch (Exception ex) { failures.Add(name); Console.WriteLine("FAIL " + name + ": " + ex.GetBaseException().Message); }
+    catch (Exception ex) {
+        failures.Add(name);
+        var cause = ex.GetBaseException();
+        var diagnostic = name + ": " + cause.GetType().FullName + ": " + cause.Message;
+        Console.WriteLine("FAIL " + diagnostic);
+        // GitHub annotations must escape workflow-command message characters.
+        // These tests use synthetic identities/payloads and contain no credentials.
+        Annotate(name, cause);
+    }
 }
 void Check(bool value, string message) { if (!value) throw new Exception(message); }
 await Test("Gregorian report timestamp under Hijri culture", () => {

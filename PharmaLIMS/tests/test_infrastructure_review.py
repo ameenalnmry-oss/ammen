@@ -1,5 +1,6 @@
 """Executable dispatch-policy evaluation and transport/date wiring regressions."""
 import pathlib
+import json
 import unittest
 import yaml
 
@@ -48,6 +49,13 @@ class InfrastructureReviewTests(unittest.TestCase):
             self.assertIn('$env:RUNNER_TEMP', command)
             self.assertIn('-p:ArtifactsPath=', command)
             self.assertIn('dotnet build', command)
+
+    def test_site_source_manifest_includes_new_transport_and_date_dependencies(self):
+        manifest = json.loads((ROOT / 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json').read_text())
+        sources = {entry['SourcePath'] for entry in manifest['Files'] if not entry.get('Remove')}
+        for dependency in ('tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs',
+                           'Infrastructure/PreflightTimestamp.cs'):
+            self.assertIn('PharmaLIMS/' + dependency, sources)
 
     def test_date_output_uses_one_invariant_formatter(self):
         ui = (ROOT / 'PharmaLIMS/SystemPreflight.xaml.cs').read_text(encoding='utf-8-sig')
