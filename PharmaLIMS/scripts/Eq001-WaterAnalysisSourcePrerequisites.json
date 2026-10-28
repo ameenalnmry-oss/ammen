@@ -546,6 +546,10 @@
       "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
     },
     {
+      "Path": "Infrastructure/WindowsSigningUatRuntime.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-WindowsSigningUatRuntime.cs.txt"
+    },
+    {
       "Path": "Interfaces/ICultureMediaRepository.cs",
       "SourcePath": "PharmaLIMS/Interfaces/ICultureMediaRepository.cs",
       "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
@@ -1006,6 +1010,16 @@
     {
       "Path": "Services/SessionTransitionCoordinator.cs",
       "SourcePath": "PharmaLIMS/Services/SessionTransitionCoordinator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SpecificationEvidenceService.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-SpecificationEvidenceService.cs.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SpecificationNumericStorage.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-SpecificationNumericStorage.cs.txt",
       "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
     },
     {
