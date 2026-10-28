@@ -313,6 +313,12 @@
       "SourcePath": "PharmaLIMS/Infrastructure/PrmEffectiveProfileSource.cs",
       "ExpectedNormalizedSha256": null,
       "Remove": false
+    },
+    {
+      "Path": "Infrastructure/PreflightTimestamp.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/PreflightTimestamp.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
     }
   ]
 }

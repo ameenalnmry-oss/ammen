@@ -111,6 +111,10 @@ try {
     dotnet run --project tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-build --no-restore
     Assert-NativeExit 'ReviewRegression execution'
 
+    dotnet run --project tests/PharmaLIMS.WaterCertificateRegression/PharmaLIMS.WaterCertificateRegression.csproj --configuration Release
+    Assert-NativeExit 'Water certificate precision and frozen-range regression execution'
+
+
     if ($RunDatabaseIntegration) {
         dotnet restore tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj
         Assert-NativeExit 'DatabaseIntegration restore'

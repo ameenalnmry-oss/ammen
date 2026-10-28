@@ -128,6 +128,9 @@ try {
         dotnet run --project (Join-Path $project 'tests/PharmaLIMS.WaterSqlRegression/PharmaLIMS.WaterSqlRegression.csproj') --configuration Release -- $project 2>&1 |
             Tee-Object -FilePath (Join-Path $results 'water-actual-schema-sql.txt')
         if ($LASTEXITCODE -ne 0) { throw 'Actual-site Water SQL regression failed.' }
+        & (Join-Path $project 'scripts/Invoke-Pr62ReviewRegressions.ps1') -SqlSettings $fixture 2>&1 |
+            Tee-Object -FilePath (Join-Path $results 'pr62-review-sql-regressions.txt')
+        if (-not $?) { throw 'PR62 disposable SQL regressions failed.' }
     }
     finally { Remove-Item Env:\EQ001_SQL_TEST_SETTINGS -ErrorAction SilentlyContinue }
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json

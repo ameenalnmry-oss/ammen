@@ -11,6 +11,14 @@ public sealed class TrustedCallerMap
         _accounts = new Dictionary<string, string>(accounts, StringComparer.OrdinalIgnoreCase);
     }
 
+    public IReadOnlyCollection<string> AllowedWindowsSids => _accounts.Keys.ToArray();
+
+    // Admission is independent of the PharmaLIMS username held in a login ticket.
+    public bool IsAllowedCaller(string? callerSid, string serviceSid) =>
+        callerSid is not null &&
+        !string.Equals(callerSid, serviceSid, StringComparison.OrdinalIgnoreCase) &&
+        _accounts.ContainsKey(callerSid);
+
     public string Resolve(string callerSid, string serviceSid, string expectedUsername)
     {
         if (string.Equals(callerSid, serviceSid, StringComparison.OrdinalIgnoreCase) ||

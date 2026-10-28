@@ -1478,9 +1478,10 @@ WHERE PlanID=@Plan
             if (_samples.Any(s => s.IsNegativeControl && !string.Equals(s.NegativeControlResult, "No Growth", StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("Negative control must be recorded as 'No Growth' before release to results.");
 
-            List<IGrouping<int, PlanSampleRow>> resultGroups = _samples
+            var resultGroups = _samples
                 .Where(s => !s.IsNegativeControl && s.AreaID.HasValue)
-                .GroupBy(s => s.AreaID!.Value)
+                .GroupBy(s => PharmaLIMS.Services.EmControlledLifecycleGuard.ReleaseGroupKey(
+                    s.AreaID!.Value, s.Method, s.EmployeeID, s.EmployeeName))
                 .ToList();
             if (resultGroups.Count == 0)
                 throw new InvalidOperationException("No valid area samples are available for EM Results Entry.");
@@ -1491,19 +1492,48 @@ WHERE PlanID=@Plan
             List<string> events = new();
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
-                foreach (IGrouping<int, PlanSampleRow> group in resultGroups)
+                // Freeze identity and release eligibility from the saved rows before creating events.
+                using (SqlCommand gate = new SqlCommand(@"
+SELECT Status FROM dbo.EM_Plans WITH(UPDLOCK,HOLDLOCK) WHERE PlanID=@Plan;", connection, transaction))
+                {
+                    gate.Parameters.AddExplicit("@Plan", SqlDbType.Int, plan.PlanID);
+                    if (!string.Equals(Convert.ToString(gate.ExecuteScalar(), CultureInfo.InvariantCulture), "Incubation Complete", StringComparison.Ordinal))
+                        throw new DBConcurrencyException("The EM plan changed before release. Refresh and retry.");
+                }
+                using (SqlCommand gate = new SqlCommand(@"
+SELECT PlanSampleID,EmployeeID,EmployeeName,Status,EventID FROM dbo.EM_PlanSamples WITH(UPDLOCK,HOLDLOCK)
+WHERE PlanID=@Plan ORDER BY PlanSampleID;", connection, transaction))
+                {
+                    gate.Parameters.AddExplicit("@Plan", SqlDbType.Int, plan.PlanID);
+                    using SqlDataReader reader = gate.ExecuteReader();
+                    var remaining = _samples.ToDictionary(s => s.PlanSampleID);
+                    while (reader.Read())
+                    {
+                        int id = reader.GetInt32(0);
+                        if (!remaining.TryGetValue(id, out PlanSampleRow? sample) ||
+                            !string.Equals(Convert.ToString(reader[1]), sample.EmployeeID, StringComparison.Ordinal) ||
+                            !string.Equals(Convert.ToString(reader[2]), sample.EmployeeName, StringComparison.Ordinal) ||
+                            !string.Equals(Convert.ToString(reader[3]), "Incubation Complete", StringComparison.Ordinal) || !reader.IsDBNull(4))
+                            throw new DBConcurrencyException("EM sample identity or release state changed. Refresh and retry.");
+                        remaining.Remove(id);
+                    }
+                    if (remaining.Count != 0) throw new DBConcurrencyException("EM sample membership changed. Refresh and retry.");
+                }
+                foreach (var group in resultGroups)
                 {
                     string eventNo = DatabaseHelper.GetNextEMEventNumber(connection, transaction);
                     int eventId;
                     using (SqlCommand ev = new SqlCommand(@"
 INSERT dbo.EM_Events(EventNo,AreaId,EventDate,AreaCodeSnapshot,AreaNameSnapshot,GradeSnapshot,AreaSnapshotSource,MediaUsed,MediaLotNo,MediaPreparationID,SamplingTimeFrom,SamplingTimeTo,
 IncubationStart,IncubationEnd,IncubationTemperature,IncubatorNo1,IncubatorNo2,NegativeControlResult,
-FinalResult,Remarks,MonitoringCategory,WorkflowStatus,PlanID,CreatedAt)
+FinalResult,Remarks,MonitoringCategory,WorkflowStatus,PlanID,EmployeeId,EmployeeName,CreatedAt)
 OUTPUT INSERTED.Id VALUES(@No,@Area,@Date,@AreaCode,@AreaName,@Grade,N'Native controlled plan release',@Media,@Lot,@MediaPreparationID,@From,@To,@Inc,@IncEnd,@IncTemp,@Inc1,@Inc2,@Control,
-N'Pending',@Remarks,N'Plan Based',N'Pending',@Plan,SYSDATETIME());", connection, transaction))
+N'Pending',@Remarks,N'Plan Based',N'Pending',@Plan,@EmployeeId,@EmployeeName,SYSDATETIME());", connection, transaction))
                     {
                         PlanSampleRow first = group.First();
-                        ev.Parameters.AddExplicit("@No", SqlDbType.NVarChar, eventNo, size: 50); ev.Parameters.AddExplicit("@Area", SqlDbType.Int, group.Key);
+                        ev.Parameters.AddExplicit("@No", SqlDbType.NVarChar, eventNo, size: 50); ev.Parameters.AddExplicit("@Area", SqlDbType.Int, group.Key.Area);
+                        ev.Parameters.AddExplicit("@EmployeeId", SqlDbType.NVarChar, Db(group.Key.EmployeeId), size: 100);
+                        ev.Parameters.AddExplicit("@EmployeeName", SqlDbType.NVarChar, Db(group.Key.EmployeeName), size: 200);
                         ev.Parameters.AddExplicit("@Date", SqlDbType.DateTime2, first.SamplingStart ?? databaseNow); ev.Parameters.AddExplicit("@AreaCode", SqlDbType.NVarChar, Db(first.AreaCode), size: 100); ev.Parameters.AddExplicit("@AreaName", SqlDbType.NVarChar, Db(first.AreaName), size: 200); ev.Parameters.AddExplicit("@Grade", SqlDbType.NVarChar, Db(first.Grade), size: 100);
                         ev.Parameters.AddExplicit("@Media", SqlDbType.NVarChar, Db(first.MediaUsed), size: 200); ev.Parameters.AddExplicit("@Lot", SqlDbType.NVarChar, Db(first.MediaLotNo), size: 100);
                         ev.Parameters.AddExplicit("@MediaPreparationID", SqlDbType.Int, first.MediaPreparationID.HasValue ? first.MediaPreparationID.Value : DBNull.Value);

@@ -60,6 +60,14 @@ function Get-DbOption($Builder,[string[]]$Names) {
     foreach ($name in $Names) { if ($Builder.ContainsKey($name)) { return [string]$Builder[$name] } }
     return ''
 }
+function Assert-WaterStageResult([int]$ExitCode,[string]$LogText) {
+    $marker = 'PASS: Water SQL boundary staged; existing business rows preserved.'
+    $lines = @($LogText -split '\r?\n' | ForEach-Object { $_.Trim() })
+    if ($ExitCode -ne 0 -or $marker -cnotin $lines -or
+        $LogText -match '(?im)timeout expired|^\s*(Msg\s+\d+|Sqlcmd:\s*Error)') {
+        throw 'Water SQL staging has no committed completion proof. Keep the service stopped and inspect stage.txt.'
+    }
+}
 function Backup-Tree([string]$Source,[string]$Target) {
     [void][IO.Directory]::CreateDirectory($Target)
     foreach ($file in @(Get-ChildItem -LiteralPath $Source -File -Recurse -Force)) {
@@ -156,7 +164,7 @@ try {
     sqlcmd.exe -S 'lpc:.\SQLEXPRESS' -E -d 'EQ001_UAT_AMEEN_20261024' -I -b -l 10 -t 90 -w 240 -f 65001 -i $sqlFile -o $sqlLog
     $sqlCode = $LASTEXITCODE
     Get-Content -LiteralPath $sqlLog
-    if ($sqlCode -ne 0) { throw "Water SQL staging failed. Keep service stopped. Log: $sqlLog" }
+    Assert-WaterStageResult -ExitCode $sqlCode -LogText (Get-Content -LiteralPath $sqlLog -Raw)
     $buildOutput = Join-Path $project 'tools\PharmaLIMS.TrustedSigning.Host\bin\Release\net8.0-windows'
     $inventory = @(Get-ChildItem -LiteralPath $buildOutput -File -Recurse -Force)
     if ($inventory.Count -eq 0) { throw 'Host build inventory is empty.' }

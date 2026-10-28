@@ -36,7 +36,16 @@ try{
  stage=stage.Replace("EQ001_UAT_AMEEN_20261024",db).Replace("@@SERVERNAME<>N'AMEEN\\SQLEXPRESS'","1=0").Replace("@@SERVERNAME<>N''AMEEN\\SQLEXPRESS''","1=0").Replace("AND type=N''U''","AND type=N''S''");
  await Denied(()=>Exec(admin,stage),"default staging opt-in rejected");
  stage=stage.Replace("DECLARE @VerifiedIsolatedUat bit = 0;","DECLARE @VerifiedIsolatedUat bit = 1;");
- await Exec(admin,stage);await Exec(admin,stage);Check(true,"staging idempotent against exact site column/trigger shape");
+ string batchFile=Path.Combine(Path.GetTempPath(),"water-completion-"+Guid.NewGuid().ToString("N")+".sql");
+ try {
+  var psi=new System.Diagnostics.ProcessStartInfo(Environment.GetEnvironmentVariable("EQ001_TEST_PWSH")??"pwsh") { UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true };
+  foreach(var a in new[]{"-NoProfile","-File",project+"/tests/Export-WaterCompletionBatch.ps1","-StagePath",project+"/scripts/EQ001_UAT_Water_Registration.sql","-OutputPath",batchFile}) psi.ArgumentList.Add(a);
+  using var process=System.Diagnostics.Process.Start(psi)!;var stdout=process.StandardOutput.ReadToEndAsync();var stderr=process.StandardError.ReadToEndAsync();await process.WaitForExitAsync();
+  if(process.ExitCode!=0)throw new Exception("Actual SQL-only batch builder failed: "+await stderr+await stdout);
+  string completion=File.ReadAllText(batchFile).Replace("EQ001_UAT_AMEEN_20261024",db).Replace("@@SERVERNAME<>N'AMEEN\\SQLEXPRESS'","1=0").Replace("@@SERVERNAME<>N''AMEEN\\SQLEXPRESS''","1=0").Replace("AND type=N''U''","AND type=N''S''");
+  await Exec(admin,completion);Check(true,"actual SQL-only completion builder preserves rows and commits");
+ } finally { if(File.Exists(batchFile))File.Delete(batchFile); }
+ await Exec(admin,stage);Check(true,"staging idempotent against exact site column/trigger shape");
  await Exec(admin,"INSERT dbo.Users(Username,Role,IsActive,IsLocked,MustChangePassword,CanRegisterSamples) VALUES(N'admin',N'Admin',1,0,0,1),(N'reviewer',N'Supervisor',1,0,0,0); INSERT dbo.WaterSamplingPoints(PointCode,PointName,WaterType,Location,Status,CreatedAt) VALUES(N'UAT-PW',N'Synthetic UAT point',N'Purified',N'UAT',N'Active',SYSDATETIME()),(N'UAT-PTW',N'Synthetic potable point',N'Potable',N'UAT',N'Active',SYSDATETIME()); INSERT dbo.Tests(TestCode,TestName,TestCategory,Unit,IsWaterTest,IsActive) VALUES(N'COND',N'Conductivity',N'Chemical',N'uS/cm',1,1),(N'TAMC',N'Total Bacterial Count',N'Microbiology',N'CFU/mL',1,1); INSERT dbo.WaterTestProfiles(ProfileCode,ProfileName,VersionNo,ApprovalStatus,IsActive,ApprovedBy,ApprovedAt,CreatedBy,ControlledReference) VALUES(N'PW',N'UAT profile',1,N'Approved',1,N'qa',SYSDATETIME(),N'admin',N'UAT SOP'),(N'PTW',N'UAT potable profile',1,N'Approved',1,N'qa',SYSDATETIME(),N'admin',N'UAT SOP'); INSERT dbo.WaterSpecifications(ProfileCode,ProfileID,TestID,ActionLimit,SpecificationText,ApprovalStatus,IsActive,CreatedBy) VALUES(N'PW',1,1,10,N'NMT 10 uS/cm',N'Approved',1,N'admin'),(N'PW',1,2,100,N'NMT 100 CFU/mL',N'Approved',1,N'admin'),(N'PTW',2,1,20,N'NMT 20 uS/cm',N'Approved',1,N'admin');");
  await Denied(()=>Exec(client,"UPDATE dbo.LIMS_NumberSequences SET LastNumber=0"),"client direct numbering denied");
  await Denied(()=>Exec(client,"EXEC dbo.EQ001_UAT_WaterRegistration"),"client procedure execute denied");

@@ -1,4 +1,4 @@
-﻿using PharmaLIMS.Services;
+using PharmaLIMS.Services;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
@@ -23,6 +23,7 @@ namespace PharmaLIMS.Infrastructure
     public sealed class SystemPreflightReport
     {
         public DateTime ExecutedAt { get; init; }
+        public string ExecutedAtDisplay => PreflightTimestamp.Format(ExecutedAt);
         public string Server { get; init; } = string.Empty;
         public string Database { get; init; } = string.Empty;
         public IReadOnlyList<SystemPreflightCheck> Checks { get; init; } = Array.Empty<SystemPreflightCheck>();
@@ -595,7 +596,7 @@ FROM (VALUES
     (N'CultureMediaLots'), (N'MediaPreparations'), (N'MediaQualifications'), (N'CultureMediaSignatures'), (N'CultureMediaPrintHistory'),
     (N'CultureMediaQualificationRequirements'), (N'MediaQualificationRequirementSnapshots'),
     (N'PRM_NumberSequences'), (N'PRM_Samples'), (N'PRM_SampleTests'),
-    (N'PRM_SpecificationTests'), (N'PRM_SpecificationSignatures'), (N'PRM_TimingMigrationHistory'), (N'PRM_TimingMigrationTestEvidence'), (N'PRM_SpecificationTimingReapprovalHistory'), (N'PRM_TimingGovernanceMigrationState'), (N'PRM_TimingQELegacyLinkCorrections'),
+    (N'PRM_SpecificationTests'), (N'PRM_SpecificationSignatures'), (N'PRM_SpecificationContentHistory'), (N'PRM_TimingMigrationHistory'), (N'PRM_TimingMigrationTestEvidence'), (N'PRM_SpecificationTimingReapprovalHistory'), (N'PRM_TimingGovernanceMigrationState'), (N'PRM_TimingQELegacyLinkCorrections'),
     (N'PRM_ElectronicSignatures'), (N'PRM_Certificates'), (N'PRM_CertificateHistory'), (N'PRM_CertificateSnapshots'),
     (N'EMTrendReviewSnapshots'),
     (N'LIMS_SchemaVersions')
@@ -1017,6 +1018,10 @@ ORDER BY r.TableName,r.ColumnName;" ).ConfigureAwait(false);
         {
             DataTable missing = await _database.ExecuteQueryAsync(@"
 DECLARE @Missing TABLE(ControlName nvarchar(256) NOT NULL);
+
+IF NOT EXISTS(SELECT 1 FROM sys.triggers WHERE parent_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory')
+    AND name=N'TRG_PRM_SpecificationContentHistory_AppendOnly' AND is_disabled=0 AND is_instead_of_trigger=1)
+    INSERT @Missing VALUES(N'TRG_PRM_SpecificationContentHistory_AppendOnly');
 
 /* Review remediation: these must be actual advancing rowversions, not binary(8). */
 INSERT @Missing(ControlName)

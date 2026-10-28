@@ -117,6 +117,12 @@ internal sealed partial class UatRun(UatSettings settings)
         try {await action();} catch(TrustedSigningRejectedException e) {if(e.ErrorCode==expectedCode){Check(true,label+" ("+expectedCode+")");return;}throw new Exception("Wrong rejection for "+label+": expected "+expectedCode+", received "+e.ErrorCode,e);}
         throw new Exception("Expected exact trusted-service refusal: "+label);
     }
+    private async Task AclDenied(Func<Task> action,string label)
+    {
+        try { await action(); }
+        catch (UnauthorizedAccessException) { Check(true,label+" (Windows pipe ACL)"); return; }
+        throw new Exception("Expected Windows pipe ACL refusal: "+label);
+    }
     private async Task SqlDenied(Func<Task> action,string label,int expectedNumber=229)
     {
         try {await action();} catch(SqlException e) when(e.Number==expectedNumber) {Check(true,label+" (SQL permission "+expectedNumber+")");return;}
@@ -238,7 +244,7 @@ internal sealed partial class UatRun(UatSettings settings)
             await auth.AuthenticateAsync("uat-signer",_password);
             StopHost();
             hostSettings.WindowsAccounts=new(){["S-1-5-21-111-222-333-999"]="uat-signer"};File.WriteAllText(_hostConfigPath,JsonSerializer.Serialize(hostSettings));ProtectHostConfig();await StartHost();
-            await Denied(()=>pipe.CommitAsync(Request(),"uat-signer",_password),"unmapped actual Windows SID is refused despite a valid application password");
+            await AclDenied(()=>pipe.CommitAsync(Request(),"uat-signer",_password),"unmapped actual Windows SID is refused before authentication despite a valid application password");
             StopHost();
             long count=Convert.ToInt64(await Scalar("SELECT COUNT_BIG(*) FROM dbo.LabEquipmentSignatures"));
             Check(count==4 && Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.AuditTrail WHERE TableName=N'LabEquipment'"))==3,"all rejected Windows requests leave equipment signature and audit counts unchanged");

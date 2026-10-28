@@ -37,19 +37,26 @@ public sealed class WindowsTrustedPipeServer
         acl.SetAccessRuleProtection(true, false);
         acl.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid, null), PipeAccessRights.FullControl, AccessControlType.Deny));
         acl.AddAccessRule(new PipeAccessRule(serviceSid, PipeAccessRights.FullControl, AccessControlType.Allow));
-        acl.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null), PipeAccessRights.ReadWrite & ~PipeAccessRights.CreateNewInstance, AccessControlType.Allow));
-        while (!cancellationToken.IsCancellationRequested)
+        foreach (string sid in _callers.AllowedWindowsSids)
         {
-            await using var pipe = NamedPipeServerStreamAcl.Create(_pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance, TrustedPipeProtocol.MaximumFrameBytes, TrustedPipeProtocol.MaximumFrameBytes, acl);
-            readiness?.TrySetResult();
-            await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            deadline.CancelAfter(TimeSpan.FromSeconds(15));
-            try { await ServeAsync(pipe, serviceSid.Value, deadline.Token).ConfigureAwait(false); }
-            catch (Exception ex) when (ex is IOException or AuthenticationException or OperationCanceledException or ArgumentException or UnauthorizedAccessException or System.Text.Json.JsonException)
-            { /* Invalid/abandoned connections cannot terminate the host or reach a local SQL fallback. */ }
+            if (string.Equals(sid, serviceSid.Value, StringComparison.OrdinalIgnoreCase)) continue;
+            acl.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(sid),
+                PipeAccessRights.ReadWrite & ~PipeAccessRights.CreateNewInstance, AccessControlType.Allow));
         }
+        var pipes = new List<NamedPipeServerStream>();
+        try
+        {
+            // Keep the first handle alive until shutdown. Recreating it between callers
+            // would leave a name-squatting gap; later handles must omit FirstPipeInstance.
+            for (int i = 0; i < TrustedPipeConnectionPool.MaximumConnections; i++)
+                pipes.Add(NamedPipeServerStreamAcl.Create(_pipeName, PipeDirection.InOut,
+                    TrustedPipeConnectionPool.MaximumConnections, PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous | (i == 0 ? PipeOptions.FirstPipeInstance : PipeOptions.None),
+                    TrustedPipeProtocol.MaximumFrameBytes, TrustedPipeProtocol.MaximumFrameBytes, acl));
+            await TrustedPipeConnectionPool.RunAsync(pipes.ToArray(),
+                (pipe, token) => ServeAsync(pipe, serviceSid.Value, token), cancellationToken, readiness).ConfigureAwait(false);
+        }
+        finally { foreach (var pipe in pipes) pipe.Dispose(); }
     }
 
     private async Task ServeAsync(NamedPipeServerStream pipe, string serviceSid, CancellationToken cancellationToken)
@@ -66,9 +73,9 @@ public sealed class WindowsTrustedPipeServer
         {
             var request = envelope.Authentication;
             TrustedSigningReply result;
-            if (callerSid is null || callerSid == serviceSid || _application is null || envelope.Request is not null || envelope.Activity is not null)
+            if (!_callers.IsAllowedCaller(callerSid, serviceSid) || _application is null || envelope.Request is not null || envelope.Activity is not null)
                 result = new(request.RequestId, false, null, "Denied");
-            else result = await _application.HandleAsync(callerSid, request, cancellationToken).ConfigureAwait(false);
+            else result = await _application.HandleAsync(callerSid!, request, cancellationToken).ConfigureAwait(false);
             await TrustedPipeProtocol.WriteAsync(tls, result, cancellationToken).ConfigureAwait(false);
             return;
         }

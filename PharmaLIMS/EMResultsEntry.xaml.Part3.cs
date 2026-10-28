@@ -104,6 +104,7 @@ ORDER BY P.Id;";
             DatabaseHelper.EnsureUserPermissionInTransaction(
                 connection, transaction, signature.SignedBy, "CanAccessEM", "access EM results");
 
+            DatabaseHelper.EnsureEMParentPlanActiveInTransaction(connection, transaction, currentEventId);
             DataTable parent = ReadEmRows(connection, transaction, @"
 SELECT Id, WorkflowStatus, FinalResult, ResultRowVersion
 FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
@@ -121,6 +122,11 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
             ResultSnapshotGuard.EnsureVisibleKeys(plateItems.Select(item => item.PlateId), locked, "Id");
             Dictionary<int, DataRow> rows = locked.Rows.Cast<DataRow>().ToDictionary(row => Convert.ToInt32(row["Id"]));
 
+            // Instrument traceability can change even when the count/remarks are unchanged.
+            // Capture before assignment persistence; the fingerprint includes retained equipment history.
+            string evidenceBeforeSave = DatabaseHelper.GetEMInvestigationFingerprintInTransaction(
+                connection, transaction, currentEventId);
+            bool evidenceChanged = false;
             foreach (EMPlateResultItem item in plateItems.OrderBy(item => item.PlateId))
             {
                 DataRow source = rows[item.PlateId];
@@ -151,6 +157,7 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                     source["ResultCalculationVersion"] != DBNull.Value &&
                     Convert.ToInt16(source["ResultCalculationVersion"]) == EmResultCalculator.CalculationVersion;
                 if (unchanged) continue;
+                evidenceChanged = true;
 
                 // OUTPUT INTO supports tables with enabled triggers; the deleted
                 // values are the rows actually replaced, not pre-transaction reads.
@@ -192,6 +199,12 @@ SELECT OldValue,NewValue FROM @Changes;",
                     Convert.ToString(delta.Rows[0]["NewValue"]) + evidence,
                     signature.Reason, signature.SignedBy, "ResultCFU", null, currentEventNo, "EM");
             }
+
+            if (evidenceChanged || !string.Equals(evidenceBeforeSave,
+                DatabaseHelper.GetEMInvestigationFingerprintInTransaction(connection, transaction, currentEventId),
+                StringComparison.Ordinal))
+                DatabaseHelper.InvalidateEMInvestigationEvidenceInTransaction(
+                    connection, transaction, currentEventId, currentEventNo, signature.SignedBy);
 
             // Derive the event summary from the authoritative complete post-write set.
             DataTable saved = ReadEmRows(connection, transaction, PlateSnapshotSql(true),
