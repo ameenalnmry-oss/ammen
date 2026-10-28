@@ -1563,14 +1563,24 @@ ORDER BY SampleID DESC;";
             TxtStatus.Text = "Loaded " + table.Rows.Count + " PRM sample record(s).";
         }
 
-        private void BtnSave_Click(object sender, RoutedEventArgs e)
+        private async void BtnSave_Click(object sender, RoutedEventArgs e)
         {
+            if (_prmRegistrationBusy) return;
+            _prmRegistrationBusy = true;
             try
             {
                 string actor = GetCurrentUserDisplayName();
                 if (!DatabaseHelper.CanRegisterSamples(actor))
                     throw new UnauthorizedAccessException("Sample Registration permission is required to create or edit PRM samples.");
 
+                // Recovery must remain reachable even when the current form is empty or its specification changed.
+                if (_selectedSampleId <= 0 && AppConfig.TrustedSigningEnabled)
+                {
+                    IsEnabled = false;
+                    await SaveTrustedPrmSampleAsync();
+                    LoadSamples();
+                    return;
+                }
                 ValidateForm();
 
                 if (_selectedSampleId > 0)
@@ -1584,6 +1594,7 @@ ORDER BY SampleID DESC;";
             {
                 ShowOperationError("Save Sample", ex);
             }
+            finally { IsEnabled = true; _prmRegistrationBusy = false; }
         }
 
         private void ValidateForm()

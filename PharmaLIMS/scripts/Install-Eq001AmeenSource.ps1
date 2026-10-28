@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-fA-F0-9]{40}$')][string]$SourceCommit,
     [switch]$Apply,
     [switch]$DesktopSessionOnly,
-    [switch]$WaterRegistrationOnly
+    [switch]$WaterRegistrationOnly,
+    [switch]$WaterAnalysisOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,11 +62,20 @@ function Get-TargetPath([string]$RelativePath) {
     if (-not $fullPath.StartsWith($project + '\', [StringComparison]::OrdinalIgnoreCase)) {
         throw 'Target escapes original project.'
     }
+    if ($WaterAnalysisOnly) {
+        $ancestor = $fullPath
+        while ($ancestor -and -not (Test-Path -LiteralPath $ancestor)) { $ancestor=[IO.Path]::GetDirectoryName($ancestor) }
+        while ($ancestor) {
+            $item=Get-Item -LiteralPath $ancestor -Force
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Reparse points are not allowed in analysis source paths.' }
+            $ancestor=[IO.Path]::GetDirectoryName($ancestor)
+        }
+    }
     return $fullPath
 }
 
-if ($DesktopSessionOnly -and $WaterRegistrationOnly) { throw 'Choose one source installation mode.' }
-$manifestPath = if ($WaterRegistrationOnly) { 'PharmaLIMS/scripts/Eq001-WaterSourcePrerequisites.json' } elseif ($DesktopSessionOnly) { 'PharmaLIMS/scripts/Eq001-SessionSourcePrerequisites.json' } else { 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json' }
+if (@($DesktopSessionOnly,$WaterRegistrationOnly,$WaterAnalysisOnly | Where-Object { $_ }).Count -gt 1) { throw 'Choose one source installation mode.' }
+$manifestPath = if ($WaterAnalysisOnly) { 'PharmaLIMS/scripts/Eq001-WaterAnalysisSourcePrerequisites.json' } elseif ($WaterRegistrationOnly) { 'PharmaLIMS/scripts/Eq001-WaterSourcePrerequisites.json' } elseif ($DesktopSessionOnly) { 'PharmaLIMS/scripts/Eq001-SessionSourcePrerequisites.json' } else { 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json' }
 $manifestBytes = Get-RepositoryBytes $manifestPath
 $manifest = [Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
 if ($manifest.OriginalProject -ne $project) { throw 'Source manifest targets a different project.' }
@@ -99,6 +109,57 @@ if ($WaterRegistrationOnly) {
         @(Compare-Object $waterPaths @($manifest.Files.Path)).Count -ne 0 -or
         @($manifest.Files | Where-Object { $_.Remove }).Count -ne 0) {
         throw 'Water source changes must match the reviewed allowlist.'
+    }
+}
+if ($WaterAnalysisOnly) {
+    $analysisPaths = @(
+        'ElectronicSignature.xaml.cs',
+        'ResultsEntry.xaml',
+        'ResultsEntry.xaml.cs',
+        'ResultsEntry.xaml.Part2.cs',
+        'ResultsEntry.xaml.Part3.cs',
+        'ResultsEntry.xaml.Part4.cs',
+        'ResultsEntry.xaml.Part5.cs',
+        'ResultsEntry.xaml.Part6.cs',
+        'Services/LabEquipmentUsageService.cs',
+        'Services/WaterEvidencePreflightSql.cs',
+        'Services/WaterLesExecutionService.cs',
+        'Services/WaterLesTemperatureContract.cs',
+        'Services/WaterNumericResultEvaluator.cs',
+        'Services/WaterRegistrationRecovery.cs',
+        'Services/WaterReportNumericContract.cs',
+        'Services/WaterResourceEvidenceService.cs',
+        'Services/WaterResultSnapshotSql.cs',
+        'Services/WaterResultValueContract.cs',
+        'Services/WaterTestResourcePolicy.cs',
+        'Services/WaterWorkflowEvidenceGuard.cs',
+        'ResultsEntry.TrustedWaterWorkflow.cs',
+        'Services/TrustedApplicationSession.cs',
+        'Services/WaterWorkflowMutationPlan.cs',
+        'Services/WaterWorkflowSnapshot.cs',
+        'Services/WaterWorkflowScientific.cs',
+        'Services/WaterWorkflowValidator.cs',
+        'Services/WaterWorkflowValidator.Evidence.cs',
+        'Services/WaterWorkflowRecovery.cs',
+        'tools/PharmaLIMS.TrustedSigning/WaterWorkflowRequest.cs',
+        'tools/PharmaLIMS.TrustedSigning/WaterWorkflowSqlContract.cs',
+        'tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs',
+        'tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterWorkflowStore.cs',
+        'tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs',
+        'tools/PharmaLIMS.TrustedSigning.Host/Program.cs',
+        'scripts/EQ001_UAT_Water_Analysis.sql',
+        'scripts/Deploy-Eq001WaterAnalysis.ps1',
+        'ProductionRawMaterialSamples.xaml.cs',
+        'ProductionRawMaterialSamples.TrustedRegistration.cs',
+        'Services/PrmRegistrationRecovery.cs',
+        'tools/PharmaLIMS.TrustedSigning/PrmRegistrationRequest.cs',
+        'tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmRegistrationStore.cs',
+        'scripts/EQ001_UAT_Prm_Registration.sql'
+    )
+    if (@($manifest.Files).Count -ne $analysisPaths.Count -or
+        @(Compare-Object $analysisPaths @($manifest.Files.Path)).Count -ne 0 -or
+        @($manifest.Files | Where-Object { $_.Remove }).Count -ne 0) {
+        throw 'Water analysis source changes must match the reviewed allowlist.'
     }
 }
 $changes = New-Object 'System.Collections.Generic.List[object]'
@@ -168,13 +229,14 @@ try {
     }
 
     # Save only touched source bytes, not another project or database copy.
-    $backupPath = Join-Path $privateDirectory ('source-rollback-{0}.json' -f [guid]::NewGuid())
+    $backupPath = Join-Path $privateDirectory ($(if ($WaterAnalysisOnly) { 'source-water-analysis-rollback-{0}.json' } else { 'source-rollback-{0}.json' }) -f [guid]::NewGuid())
     $rollback = @($changes | ForEach-Object {
         [pscustomobject]@{ Path=$_.Path; WasPresent=$_.WasPresent; Remove=$_.Remove
             BeforeSha256=$_.BeforeSha256; InstalledSha256=$_.AfterSha256
             OriginalBase64=[Convert]::ToBase64String($_.BeforeBytes) }
     })
-    $backupBytes = [Text.Encoding]::UTF8.GetBytes(($rollback | ConvertTo-Json -Depth 6))
+    $record = if ($WaterAnalysisOnly) { [pscustomobject]@{ Schema=1; SourceCommit=$SourceCommit; Files=$rollback } } else { $rollback }
+    $backupBytes = [Text.Encoding]::UTF8.GetBytes(($record | ConvertTo-Json -Depth 6))
     $backupStream = [IO.FileStream]::new($backupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
     try { $backupStream.Write($backupBytes,0,$backupBytes.Length); $backupStream.Flush($true) }
     finally { $backupStream.Dispose() }

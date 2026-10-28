@@ -17,6 +17,8 @@ public sealed class TrustedHostSettings
     public string DeploymentMode { get; set; } = "UAT";
     public bool ProductionActivationApproved { get; set; }
     public bool EnableWaterRegistrationUat { get; set; }
+    public bool EnableWaterAnalysisUat { get; set; }
+    public bool EnablePrmRegistrationUat { get; set; }
     public Dictionary<string,string> WindowsAccounts { get; set; } = new();
 
     [SupportedOSPlatform("windows")]
@@ -49,6 +51,19 @@ public sealed class TrustedHostSettings
             if (DeploymentMode != "UAT" || ProductionActivationApproved)
                 throw new UnauthorizedAccessException("Water registration is isolated UAT only.");
             WaterRegistrationPolicy.RequireTarget(ConnectionString);
+        }
+        if (EnableWaterAnalysisUat)
+        {
+            if (DeploymentMode != "UAT" || ProductionActivationApproved)
+                throw new UnauthorizedAccessException("Water analysis is isolated UAT only.");
+            if (!sql.IntegratedSecurity || sql.Encrypt == SqlConnectionEncryptOption.Optional || sql.TrustServerCertificate)
+                throw new ArgumentException("Water analysis requires an encrypted, certificate-validated Windows service connection.");
+        }
+        if (EnablePrmRegistrationUat)
+        {
+            if (DeploymentMode != "UAT" || ProductionActivationApproved)
+                throw new UnauthorizedAccessException("PRM registration is isolated UAT only.");
+            PrmRegistrationPolicy.RequireTarget(ConnectionString);
         }
         _ = new SqlTrustedEquipmentSignatureStore(ConnectionString);
         if (string.IsNullOrWhiteSpace(CertificatePath)) throw new ArgumentException("A service TLS certificate is required.");

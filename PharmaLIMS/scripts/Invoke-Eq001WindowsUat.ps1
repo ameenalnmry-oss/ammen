@@ -196,11 +196,31 @@ UPDATEENABLED="False"
     $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $fixture -Encoding utf8
     dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
     if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
+    # A fresh process keeps AppConfig's cached connection separate from the 122-check fixture.
+    Remove-Item -LiteralPath (Join-Path $results 'water-workflow-results.json') -ErrorAction SilentlyContinue
+    dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --water-workflow --settings $fixture 2>&1 |
+        Tee-Object -FilePath (Join-Path $results 'water-workflow-native.txt')
+    if ($LASTEXITCODE -ne 0) { throw 'Water full-cycle native Windows/WPF/SQL phase failed.' }
+    $waterOutcome = Get-Content (Join-Path $results 'water-workflow-results.json') -Raw | ConvertFrom-Json
+    $waterOperations = @('Approve','CorrectTimes','Review','SaveResults','StartAnalysis','SubmitReview')
+    if ($waterOutcome.Phase -ne 'WaterWorkflow' -or $waterOutcome.Passed -lt 30 -or
+        $waterOutcome.Commit -ne $env:GITHUB_SHA -or $waterOutcome.BuildConfiguration -ne 'Release' -or
+        $waterOutcome.DesktopRuntime -ne 'Production' -or $waterOutcome.ExpectedOperations -ne 6 -or
+        @($waterOutcome.Operations).Count -ne 6 -or
+        (Compare-Object $waterOperations @($waterOutcome.Operations | Sort-Object)) -or
+        $waterOutcome.WindowsCallerSid -ne $callerSid -or $waterOutcome.ServiceSid -ne $serviceSid -or
+        $waterOutcome.WindowsCallerSid -eq $waterOutcome.ServiceSid -or $waterOutcome.ProductionActivated -or
+        $waterOutcome.SiteUatQualified -or $waterOutcome.CertificateLifecycleQualified) {
+        throw 'Incomplete, stale, or invalid native Water six-operation evidence.'
+    }
     $env:EQ001_SQL_TEST_SETTINGS = $fixture
     try {
         dotnet run --project (Join-Path $project 'tests/PharmaLIMS.WaterSqlRegression/PharmaLIMS.WaterSqlRegression.csproj') --configuration Release -- $project 2>&1 |
             Tee-Object -FilePath (Join-Path $results 'water-actual-schema-sql.txt')
         if ($LASTEXITCODE -ne 0) { throw 'Actual-site Water SQL regression failed.' }
+        & (Join-Path $project 'scripts/Invoke-WaterAnalysisRegressions.ps1') -SqlSettings $fixture 2>&1 |
+            Tee-Object -FilePath (Join-Path $results 'water-analysis-prm-registration-boundary-regressions.txt')
+        if (-not $?) { throw 'Water analysis / PRM registration restricted SQL regression failed.' }
         & (Join-Path $project 'scripts/Invoke-Pr62ReviewRegressions.ps1') -SqlSettings $fixture 2>&1 |
             Tee-Object -FilePath (Join-Path $results 'pr62-review-sql-regressions.txt')
         if (-not $?) { throw 'PR62 disposable SQL regressions failed.' }
@@ -218,10 +238,13 @@ UPDATEENABLED="False"
         "Platform: $($outcome.Platform)"
         "Desktop: $($outcome.BuildConfiguration) build / $($outcome.DesktopRuntime) configuration; isolated UAT database only."
         "Result: $($outcome.Passed) checks passed. Production activation: false."
+        "Separate Water phase: $($waterOutcome.Passed) checks; six signed real WPF operations with three app actors."
+        'Water evidence applies only to disposable native CI. Site UAT and certificate lifecycle remain unqualified.'
         ''
         'The Windows service and desktop caller use distinct real Windows accounts. SQL and UI fixtures are isolated and disposable; historical controls are synthetic UAT records.'
         ''
         ($outcome.Checks | ForEach-Object { "- PASS: $_" })
+        ($waterOutcome.Checks | ForEach-Object { "- PASS WATER: $_" })
     ) -join "`n"
     $report | Set-Content -LiteralPath (Join-Path $results 'report.md') -Encoding utf8
     $report | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

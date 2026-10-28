@@ -11,6 +11,44 @@ namespace PharmaLIMS
 {
     public partial class ResultsEntry
     {
+        private bool _isRefreshingEquipmentAtSave;
+
+        // The water result window may remain open while equipment readiness changes
+        // in Laboratory Resources. Refresh from SQL before validating and signing,
+        // without ever weakening the signed transaction's server-side recheck.
+        private async System.Threading.Tasks.Task<bool> RefreshWaterEquipmentBeforeSaveAsync()
+        {
+            _isRefreshingEquipmentAtSave = true;
+            try
+            {
+                int sampleIdAtRefresh = currentSampleId;
+                var freshEquipment = await System.Threading.Tasks.Task.Run(
+                    () => LabEquipmentUsageService.LoadAvailableEquipment(_equipmentDatabase));
+                if (currentSampleId != sampleIdAtRefresh)
+                {
+                    lblStatus.Text = "Sample changed while refreshing equipment. Reload before saving.";
+                    return false;
+                }
+                AvailableEquipmentChoices.Clear();
+                foreach (LabEquipmentChoice equipment in freshEquipment)
+                    AvailableEquipmentChoices.Add(equipment);
+                foreach (ResultItem loaded in resultItems)
+                    loaded.EquipmentChoices = WaterTestResourcePolicy.FilterEquipment(loaded.TestName, freshEquipment);
+                dgResults.Items.Refresh();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Refresh laboratory equipment"),
+                    "Equipment Readiness", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            finally
+            {
+                _isRefreshingEquipmentAtSave = false;
+            }
+        }
+
         public partial class ResultItem
         {
             public string SupportingEquipmentCodes { get; set; } = "";

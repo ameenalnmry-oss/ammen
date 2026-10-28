@@ -109,6 +109,13 @@ jobs:
           dotnet (Join-Path $artifacts 'bin/PharmaLIMS.InfrastructureReviewRegression/release/PharmaLIMS.InfrastructureReviewRegression.dll')
           if ($LASTEXITCODE -ne 0) { throw "Infrastructure review regressions failed." }
 
+      - name: Restricted Water analysis and PRM registration boundary regressions
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./scripts/Invoke-WaterAnalysisRegressions.ps1
+          if (-not $?) { throw "Water analysis / PRM registration boundary regressions failed." }
+
       - name: Build and test independent EQ-001 trusted-signing service
         working-directory: PharmaLIMS
         run: |
@@ -314,6 +321,13 @@ jobs:
           if (-not $?) {
               throw "Controlled source manifest verification did not complete successfully."
           }
+
+      - name: Restricted Water analysis and PRM registration boundary regressions
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./scripts/Invoke-WaterAnalysisRegressions.ps1
+          if (-not $?) { throw "Water analysis / PRM registration boundary regressions failed." }
 
       - name: Build and test independent EQ-001 trusted-signing service
         working-directory: PharmaLIMS

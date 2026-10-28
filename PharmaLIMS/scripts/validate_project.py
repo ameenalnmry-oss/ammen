@@ -40,6 +40,8 @@ def source_family(path: Path) -> str:
     """Read a C# source file plus any controlled partial continuation files."""
     parts = [path]
     parts.extend(sorted(path.parent.glob(path.stem + ".Part*.cs")))
+    # Named trusted adapters are partial continuations of the same window.
+    parts.extend(sorted(path.parent.glob(path.stem.removesuffix(".xaml") + ".Trusted*.cs")))
     return "\n".join(text(part) for part in parts if part.is_file())
 
 

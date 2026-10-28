@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+<ItemGroup><ProjectReference Include="../../tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj" />
+<Compile Include="../../Services/WaterWorkflow*.cs" Link="Shared/%(Filename)%(Extension)" Exclude="../../Services/WaterWorkflowEvidenceGuard.cs;../../Services/WaterWorkflowRecovery.cs" />
+<Compile Include="../../Services/ControlledNumericValue.cs" Link="Shared/ControlledNumericValue.cs" />
+<Compile Include="../../Services/WaterNumericResultEvaluator.cs" Link="Shared/WaterNumericResultEvaluator.cs" />
+<Compile Include="../../Services/WaterResultValueContract.cs" Link="Shared/WaterResultValueContract.cs" />
+<Compile Include="../../Services/WaterLesTemperatureContract.cs" Link="Shared/WaterLesTemperatureContract.cs" />
+<Compile Include="../../Services/WaterResourceEvidenceService.cs" Link="Shared/WaterResourceEvidenceService.cs" />
+<Compile Include="../../Services/WaterTestResourcePolicy.cs" Link="Shared/WaterTestResourcePolicy.cs" />
+<Compile Include="../../Services/WaterLesExecutionService.cs" Link="Shared/WaterLesExecutionService.cs" />
+</ItemGroup></Project>

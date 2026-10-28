@@ -32,7 +32,7 @@ internal static class Program
         var run = new UatRun(settings);
         int result = 1;
         app.Startup += async (_, _) => {
-            try { await run.ExecuteAsync(); result = 0; }
+            try { if (args.Contains("--water-workflow")) await run.ExecuteWaterWorkflowAsync(); else await run.ExecuteAsync(); result = 0; }
             catch (Exception ex) { Console.WriteLine("::error title=EQ001 Windows UAT::After "+run.Progress+"; " + ex.GetType().Name + ": " + ex.Message.Replace("\r", " ").Replace("\n", " ")+"; "+ex.StackTrace?.Split('\n').FirstOrDefault(x=>x.Contains("Program.cs:line",StringComparison.Ordinal))); Console.WriteLine(ex.StackTrace); }
             finally { app.Shutdown(result); }
         };

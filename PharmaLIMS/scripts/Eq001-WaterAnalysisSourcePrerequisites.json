@@ -1,0 +1,1306 @@
+{
+  "Evidence": "Actual supplied Water family and known installed b4 source/AMEEN overlays; new Water analysis and PRM registration only. Untouched build inputs are pinned to installed b4. Unknown local compile inputs or drift stop rollout before build/SQL; never overwritten.",
+  "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
+  "Files": [
+    {
+      "Path": "ElectronicSignature.xaml.cs",
+      "SourcePath": "PharmaLIMS/ElectronicSignature.xaml.cs",
+      "ExpectedNormalizedSha256": "ffad7d2aa9e12513acf7413f230483600146fd800251c2c951bee83924532be9",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.txt",
+      "ExpectedNormalizedSha256": "bb0af41e8124aedec854cc1d468943ff7097095fb54fbc01e36d6f04bef0cd19",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.cs.txt",
+      "ExpectedNormalizedSha256": "d3d671fa8012a9ca27de1c77aa217fdb62b56484eaa181401a84a9d916719e2d",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part2.cs.txt",
+      "ExpectedNormalizedSha256": "7c4af05e22caeeb8e57bd9b99357dcbd63ebb0838eb1de469108d0cec63228b3",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part3.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part3.cs.txt",
+      "ExpectedNormalizedSha256": "65259bd44c321fc744feaeff20784d6b201c68d00c8b374f35fd98f3be90b49e",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part4.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part4.cs.txt",
+      "ExpectedNormalizedSha256": "2985aab5a99b034fe2c44c9b4efb84d2ab30e27c59130dd46956f2a84a4e6da0",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part5.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part5.cs.txt",
+      "ExpectedNormalizedSha256": "653fcc4caced760d269409ca91195bfe173f32f38ce7b92f2a6404866d343d7d",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part6.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part6.cs.txt",
+      "ExpectedNormalizedSha256": "f318458b1138aa56a31535e00c24ece531a3829a244991058502d7002abdcfc4",
+      "Remove": false
+    },
+    {
+      "Path": "Services/LabEquipmentUsageService.cs",
+      "SourcePath": "PharmaLIMS/Services/LabEquipmentUsageService.cs",
+      "ExpectedNormalizedSha256": "fdc8b19cb1bbb3c7c931c0e62a517511a996eeecd319b17da89df6e66c8a6147",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterEvidencePreflightSql.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterEvidencePreflightSql.cs",
+      "ExpectedNormalizedSha256": "c9b32a08bb436893d31560fb65ab9998f5b0559d351c2f392fe8d516bc78bc12",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterLesExecutionService.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterLesExecutionService.cs",
+      "ExpectedNormalizedSha256": "0dd45e52011d9259bee2dfe8fd6fafd170f4bd0f1fd5555120f5b9d2e5581be2",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterLesTemperatureContract.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterLesTemperatureContract.cs",
+      "ExpectedNormalizedSha256": "c0088e9c0e25c956ff401c1901308edd0d9e72602c78e0ca80e6859061ec6e1a",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterNumericResultEvaluator.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterNumericResultEvaluator.cs",
+      "ExpectedNormalizedSha256": "08cf6aa824976b90fc6396bd8d9e8dfcfc317d32df4954a37a8e9731491d07cd",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterRegistrationRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterRegistrationRecovery.cs",
+      "ExpectedNormalizedSha256": "2ff413b0607374547b89733bfaf1338ef317c5b51973dc53abd96ce026a7bd70",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterReportNumericContract.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterReportNumericContract.cs",
+      "ExpectedNormalizedSha256": "ffb4d27eb3f7733382495415cc89a6b2aaebea29ce3fe6f5659a2d7f2a2f5e07",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterResourceEvidenceService.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterResourceEvidenceService.cs",
+      "ExpectedNormalizedSha256": "422de77d97d81df9d1790087b02a65f6bd001b8a80ceb1d7310ae8b0e4d2d435",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterResultSnapshotSql.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterResultSnapshotSql.cs",
+      "ExpectedNormalizedSha256": "554b2a0207cfd16f02c99615b142201110722c4b438247ee5fb3a492a1041b23",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterResultValueContract.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterResultValueContract.cs",
+      "ExpectedNormalizedSha256": "92b53be7fcc9497d696b4a6f172446620ee3411d52cd475027eac8d44aa21298",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterTestResourcePolicy.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterTestResourcePolicy.cs",
+      "ExpectedNormalizedSha256": "2054ec7844098b3c42479e36bb3ba6de971535f702aa43aa254a88cb664cfd81",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowEvidenceGuard.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowEvidenceGuard.cs",
+      "ExpectedNormalizedSha256": "95a30f3c7d66249e57b871fa2a280897e69c9466ebfc93fb9735ae5a1677fc77",
+      "Remove": false
+    },
+    {
+      "Path": "ResultsEntry.TrustedWaterWorkflow.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.TrustedWaterWorkflow.cs.txt",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/TrustedApplicationSession.cs",
+      "SourcePath": "PharmaLIMS/Services/TrustedApplicationSession.cs",
+      "ExpectedNormalizedSha256": "7ae231f7c071952d47291db8e8e0d01ac1a027dac15d7d053c7391894ba3741e",
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowMutationPlan.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowMutationPlan.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowSnapshot.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowSnapshot.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowScientific.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowScientific.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowValidator.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowValidator.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowValidator.Evidence.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowValidator.Evidence.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WaterWorkflowRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowRecovery.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WaterWorkflowRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WaterWorkflowRequest.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WaterWorkflowSqlContract.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WaterWorkflowSqlContract.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "ExpectedNormalizedSha256": "c982649c67afdad68e2f0d1c5ce8815370a5c73a31fb04f96e1cfb14f3f0274e",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterWorkflowStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterWorkflowStore.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "ExpectedNormalizedSha256": "6d0f6cc9804f6e3f677bbbba8385a7506b2e713df620d52ef85037bf81d0adf2",
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "ExpectedNormalizedSha256": "609f918f9c04b7a36a6080b9ddd5e3e1de7e40fda808936b2b73f5391e402dc3",
+      "Remove": false
+    },
+    {
+      "Path": "scripts/EQ001_UAT_Water_Analysis.sql",
+      "SourcePath": "PharmaLIMS/scripts/EQ001_UAT_Water_Analysis.sql",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "scripts/Deploy-Eq001WaterAnalysis.ps1",
+      "SourcePath": "PharmaLIMS/scripts/Deploy-Eq001WaterAnalysis.ps1",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "ProductionRawMaterialSamples.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ProductionRawMaterialSamples.cs.txt",
+      "ExpectedNormalizedSha256": "5b3ebbca0dc831d489f37321b30780349fd664709c8662b2fab8231f65dc7f74",
+      "Remove": false
+    },
+    {
+      "Path": "ProductionRawMaterialSamples.TrustedRegistration.cs",
+      "SourcePath": "PharmaLIMS/ProductionRawMaterialSamples.TrustedRegistration.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/PrmRegistrationRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmRegistrationRecovery.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/PrmRegistrationRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PrmRegistrationRequest.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmRegistrationStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmRegistrationStore.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "scripts/EQ001_UAT_Prm_Registration.sql",
+      "SourcePath": "PharmaLIMS/scripts/EQ001_UAT_Prm_Registration.sql",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    }
+  ],
+  "BuildInputs": [
+    {
+      "Path": "AISystemReview.xaml",
+      "SourcePath": "PharmaLIMS/AISystemReview.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "AISystemReview.xaml.cs",
+      "SourcePath": "PharmaLIMS/AISystemReview.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "App.xaml",
+      "SourcePath": "PharmaLIMS/App.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "App.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-App.xaml.cs.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "AppConfig.cs",
+      "SourcePath": "PharmaLIMS/AppConfig.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "AssemblyInfo.cs",
+      "SourcePath": "PharmaLIMS/AssemblyInfo.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ChangePassword.xaml",
+      "SourcePath": "PharmaLIMS/ChangePassword.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ChangePassword.xaml.cs",
+      "SourcePath": "PharmaLIMS/ChangePassword.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Converters/CultureMediaConverters.cs",
+      "SourcePath": "PharmaLIMS/Converters/CultureMediaConverters.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "CultureMediaPreparation.xaml",
+      "SourcePath": "PharmaLIMS/CultureMediaPreparation.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "CultureMediaPreparation.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/CultureMediaPreparation.xaml.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "CultureMediaPreparation.xaml.Part3.cs",
+      "SourcePath": "PharmaLIMS/CultureMediaPreparation.xaml.Part3.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "CultureMediaPreparation.xaml.cs",
+      "SourcePath": "PharmaLIMS/CultureMediaPreparation.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "DatabaseHelper.Certificates.cs",
+      "SourcePath": "PharmaLIMS/DatabaseHelper.Certificates.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "DatabaseHelper.EnvironmentalMonitoring.cs",
+      "SourcePath": "PharmaLIMS/DatabaseHelper.EnvironmentalMonitoring.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "DatabaseHelper.QualityEvents.cs",
+      "SourcePath": "PharmaLIMS/DatabaseHelper.QualityEvents.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "DatabaseHelper.SecurityAudit.cs",
+      "SourcePath": "PharmaLIMS/DatabaseHelper.SecurityAudit.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "DatabaseHelper.cs",
+      "SourcePath": "PharmaLIMS/DatabaseHelper.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMCollectionDialog.xaml",
+      "SourcePath": "PharmaLIMS/EMCollectionDialog.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMCollectionDialog.xaml.cs",
+      "SourcePath": "PharmaLIMS/EMCollectionDialog.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMLegacySnapshotReconciliation.xaml",
+      "SourcePath": "PharmaLIMS/EMLegacySnapshotReconciliation.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMLegacySnapshotReconciliation.xaml.cs",
+      "SourcePath": "PharmaLIMS/EMLegacySnapshotReconciliation.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMLimitsManagement.xaml",
+      "SourcePath": "PharmaLIMS/EMLimitsManagement.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMLimitsManagement.xaml.cs",
+      "SourcePath": "PharmaLIMS/EMLimitsManagement.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMPlanning.xaml",
+      "SourcePath": "PharmaLIMS/EMPlanning.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMPlanning.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/EMPlanning.xaml.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMPlanning.xaml.cs",
+      "SourcePath": "PharmaLIMS/EMPlanning.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMResultsEntry.xaml",
+      "SourcePath": "PharmaLIMS/EMResultsEntry.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMResultsEntry.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/EMResultsEntry.xaml.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMResultsEntry.xaml.Part3.cs",
+      "SourcePath": "PharmaLIMS/EMResultsEntry.xaml.Part3.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMResultsEntry.xaml.cs",
+      "SourcePath": "PharmaLIMS/EMResultsEntry.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMTrendReport.xaml",
+      "SourcePath": "PharmaLIMS/EMTrendReport.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "EMTrendReport.xaml.cs",
+      "SourcePath": "PharmaLIMS/EMTrendReport.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ElectronicSignature.xaml",
+      "SourcePath": "PharmaLIMS/ElectronicSignature.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ElectronicSignature.xaml.cs",
+      "SourcePath": "PharmaLIMS/ElectronicSignature.xaml.cs"
+    },
+    {
+      "Path": "ExternalTrendImportDialog.xaml",
+      "SourcePath": "PharmaLIMS/ExternalTrendImportDialog.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ExternalTrendImportDialog.xaml.cs",
+      "SourcePath": "PharmaLIMS/ExternalTrendImportDialog.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ExternalTrendThreeCycleReviewWindow.xaml",
+      "SourcePath": "PharmaLIMS/ExternalTrendThreeCycleReviewWindow.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ExternalTrendThreeCycleReviewWindow.xaml.cs",
+      "SourcePath": "PharmaLIMS/ExternalTrendThreeCycleReviewWindow.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/ApplicationLogger.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/ApplicationLogger.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/ComplianceRecordProtectionContract.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/ComplianceRecordProtectionContract.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/ControlledTempFiles.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/ControlledTempFiles.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/CsvSecurity.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/CsvSecurity.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/DatabaseConnection.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/DatabaseConnection.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/DatabaseLifecycleCoordinationContract.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/DatabaseLifecycleCoordinationContract.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/PasswordSecurity.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/PasswordSecurity.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/PrmEffectiveProfileSource.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/PrmEffectiveProfileSource.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/PrmSchemaReadinessService.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/PrmSchemaReadinessService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/ProtectedSecretStore.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/ProtectedSecretStore.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/SqlParameterCollectionExtensions.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/SqlParameterCollectionExtensions.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/StartupDatabaseMigrator.Part2.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/StartupDatabaseMigrator.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/StartupDatabaseMigrator.Verification.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/StartupDatabaseMigrator.Verification.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/StartupDatabaseMigrator.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/StartupDatabaseMigrator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/SystemPreflightService.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-SystemPreflightService.cs.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/TrustedAuditActorContext.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/TrustedAuditActorContext.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/TrustedSigningAssemblyAccess.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/TrustedSigningAssemblyAccess.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/UserFacingError.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/UserFacingError.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Infrastructure/WindowUsability.cs",
+      "SourcePath": "PharmaLIMS/Infrastructure/WindowUsability.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Interfaces/ICultureMediaRepository.cs",
+      "SourcePath": "PharmaLIMS/Interfaces/ICultureMediaRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Interfaces/IPrmSpecificationRepository.cs",
+      "SourcePath": "PharmaLIMS/Interfaces/IPrmSpecificationRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Interfaces/IRepository.cs",
+      "SourcePath": "PharmaLIMS/Interfaces/IRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LabResources.PrintEvidence.cs",
+      "SourcePath": "PharmaLIMS/LabResources.PrintEvidence.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LabResources.xaml",
+      "SourcePath": "PharmaLIMS/LabResources.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LabResources.xaml.cs",
+      "SourcePath": "PharmaLIMS/LabResources.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LaboratoryReceiptDialog.xaml",
+      "SourcePath": "PharmaLIMS/LaboratoryReceiptDialog.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LaboratoryReceiptDialog.xaml.cs",
+      "SourcePath": "PharmaLIMS/LaboratoryReceiptDialog.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LegacyCertificateEvidenceReconciliation.xaml",
+      "SourcePath": "PharmaLIMS/LegacyCertificateEvidenceReconciliation.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "LegacyCertificateEvidenceReconciliation.xaml.cs",
+      "SourcePath": "PharmaLIMS/LegacyCertificateEvidenceReconciliation.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Login.xaml",
+      "SourcePath": "PharmaLIMS/Login.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Login.xaml.cs",
+      "SourcePath": "PharmaLIMS/Login.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "MainWindow.xaml",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-MainWindow.xaml.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "MainWindow.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-MainWindow.xaml.cs.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Models/QualityEvent.cs",
+      "SourcePath": "PharmaLIMS/Models/QualityEvent.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Models/Sample.cs",
+      "SourcePath": "PharmaLIMS/Models/Sample.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Models/SampleSituation.cs",
+      "SourcePath": "PharmaLIMS/Models/SampleSituation.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Models/User.cs",
+      "SourcePath": "PharmaLIMS/Models/User.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "NewSampleDialog.TrustedWater.cs",
+      "SourcePath": "PharmaLIMS/NewSampleDialog.TrustedWater.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "NewSampleDialog.xaml",
+      "SourcePath": "PharmaLIMS/NewSampleDialog.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "NewSampleDialog.xaml.cs",
+      "SourcePath": "PharmaLIMS/NewSampleDialog.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "PRMQualityEventInvestigation.xaml",
+      "SourcePath": "PharmaLIMS/PRMQualityEventInvestigation.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "PRMQualityEventInvestigation.xaml.cs",
+      "SourcePath": "PharmaLIMS/PRMQualityEventInvestigation.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "PharmaLIMS.csproj",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-PharmaLIMS.csproj.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ProductionRawMaterialResults.xaml",
+      "SourcePath": "PharmaLIMS/ProductionRawMaterialResults.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ProductionRawMaterialResults.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/ProductionRawMaterialResults.xaml.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ProductionRawMaterialResults.xaml.Part3.cs",
+      "SourcePath": "PharmaLIMS/ProductionRawMaterialResults.xaml.Part3.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ProductionRawMaterialResults.xaml.cs",
+      "SourcePath": "PharmaLIMS/ProductionRawMaterialResults.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ProductionRawMaterialSamples.TrustedRegistration.cs",
+      "SourcePath": "PharmaLIMS/ProductionRawMaterialSamples.TrustedRegistration.cs"
+    },
+    {
+      "Path": "ProductionRawMaterialSamples.xaml",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ProductionRawMaterialSamples.xaml.txt",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ProductionRawMaterialSamples.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ProductionRawMaterialSamples.cs.txt"
+    },
+    {
+      "Path": "QualityEventInvestigation.xaml",
+      "SourcePath": "PharmaLIMS/QualityEventInvestigation.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "QualityEventInvestigation.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/QualityEventInvestigation.xaml.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "QualityEventInvestigation.xaml.cs",
+      "SourcePath": "PharmaLIMS/QualityEventInvestigation.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ReportCertificate.xaml",
+      "SourcePath": "PharmaLIMS/ReportCertificate.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ReportCertificate.xaml.cs",
+      "SourcePath": "PharmaLIMS/ReportCertificate.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ReportsTrends.xaml",
+      "SourcePath": "PharmaLIMS/ReportsTrends.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ReportsTrends.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/ReportsTrends.xaml.Part2.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ReportsTrends.xaml.Part3.cs",
+      "SourcePath": "PharmaLIMS/ReportsTrends.xaml.Part3.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ReportsTrends.xaml.cs",
+      "SourcePath": "PharmaLIMS/ReportsTrends.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Repositories/CultureMediaRepository.cs",
+      "SourcePath": "PharmaLIMS/Repositories/CultureMediaRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Repositories/PrmSpecificationRepository.cs",
+      "SourcePath": "PharmaLIMS/Repositories/PrmSpecificationRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Repositories/QualityEventRepository.cs",
+      "SourcePath": "PharmaLIMS/Repositories/QualityEventRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Repositories/UserRepository.cs",
+      "SourcePath": "PharmaLIMS/Repositories/UserRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "ResultsEntry.TrustedWaterWorkflow.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.TrustedWaterWorkflow.cs.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part2.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part2.cs.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part3.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part3.cs.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part4.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part4.cs.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part5.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part5.cs.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml.Part6.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.Part6.cs.txt"
+    },
+    {
+      "Path": "ResultsEntry.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-ResultsEntry.xaml.cs.txt"
+    },
+    {
+      "Path": "SampleDetails.xaml",
+      "SourcePath": "PharmaLIMS/SampleDetails.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SampleDetails.xaml.cs",
+      "SourcePath": "PharmaLIMS/SampleDetails.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SampleManagement.xaml",
+      "SourcePath": "PharmaLIMS/SampleManagement.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SampleManagement.xaml.cs",
+      "SourcePath": "PharmaLIMS/SampleManagement.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SampleReceiptRegister.xaml",
+      "SourcePath": "PharmaLIMS/SampleReceiptRegister.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SampleReceiptRegister.xaml.cs",
+      "SourcePath": "PharmaLIMS/SampleReceiptRegister.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/AuthService.cs",
+      "SourcePath": "PharmaLIMS/Services/AuthService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/AuthenticationCommitContract.cs",
+      "SourcePath": "PharmaLIMS/Services/AuthenticationCommitContract.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/ControlledNumericValue.cs",
+      "SourcePath": "PharmaLIMS/Services/ControlledNumericValue.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/DashboardSampleQuery.cs",
+      "SourcePath": "PharmaLIMS/Services/DashboardSampleQuery.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/EmLimitEvidenceSql.cs",
+      "SourcePath": "PharmaLIMS/Services/EmLimitEvidenceSql.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/EmQualityEventEvidenceGuard.cs",
+      "SourcePath": "PharmaLIMS/Services/EmQualityEventEvidenceGuard.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/EmResultCalculator.cs",
+      "SourcePath": "PharmaLIMS/Services/EmResultCalculator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/EmTrendAssessmentService.cs",
+      "SourcePath": "PharmaLIMS/Services/EmTrendAssessmentService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/ExternalTrendImportService.cs",
+      "SourcePath": "PharmaLIMS/Services/ExternalTrendImportService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/ExternalTrendNumericContract.cs",
+      "SourcePath": "PharmaLIMS/Services/ExternalTrendNumericContract.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/ExternalTrendThreeCycleService.cs",
+      "SourcePath": "PharmaLIMS/Services/ExternalTrendThreeCycleService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/IAuthService.cs",
+      "SourcePath": "PharmaLIMS/Services/IAuthService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/IQualityEventService.cs",
+      "SourcePath": "PharmaLIMS/Services/IQualityEventService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/ISampleService.cs",
+      "SourcePath": "PharmaLIMS/Services/ISampleService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/Investigations/IInvestigationChecklistService.cs",
+      "SourcePath": "PharmaLIMS/Services/Investigations/IInvestigationChecklistService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/Investigations/InvestigationChecklistFactory.cs",
+      "SourcePath": "PharmaLIMS/Services/Investigations/InvestigationChecklistFactory.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/Investigations/PRMQualityEventInvestigationService.cs",
+      "SourcePath": "PharmaLIMS/Services/Investigations/PRMQualityEventInvestigationService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/Investigations/WaterInvestigationChecklistService.cs",
+      "SourcePath": "PharmaLIMS/Services/Investigations/WaterInvestigationChecklistService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/LabEquipmentUsageService.cs",
+      "SourcePath": "PharmaLIMS/Services/LabEquipmentUsageService.cs"
+    },
+    {
+      "Path": "Services/LabelPrintingService.cs",
+      "SourcePath": "PharmaLIMS/Services/LabelPrintingService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/LaboratoryReceiptSql.cs",
+      "SourcePath": "PharmaLIMS/Services/LaboratoryReceiptSql.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/MediaGrowthPromotionEvaluator.cs",
+      "SourcePath": "PharmaLIMS/Services/MediaGrowthPromotionEvaluator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/MicroEquipmentActivityService.cs",
+      "SourcePath": "PharmaLIMS/Services/MicroEquipmentActivityService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/PRMCertificateTemplate.cs",
+      "SourcePath": "PharmaLIMS/Services/PRMCertificateTemplate.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/PrmCertificateSignatureChain.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmCertificateSignatureChain.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/PrmNumericSpecificationEvaluator.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmNumericSpecificationEvaluator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/PrmRegistrationRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmRegistrationRecovery.cs"
+    },
+    {
+      "Path": "Services/PrmResultInterpretationEvaluator.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmResultInterpretationEvaluator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/PrmResultPersistenceContract.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmResultPersistenceContract.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/PrmSampleResultStateService.cs",
+      "SourcePath": "PharmaLIMS/Services/PrmSampleResultStateService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/QualityEventService.cs",
+      "SourcePath": "PharmaLIMS/Services/QualityEventService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/ResultSnapshotGuard.cs",
+      "SourcePath": "PharmaLIMS/Services/ResultSnapshotGuard.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SampleDetailsEvidenceQuery.cs",
+      "SourcePath": "PharmaLIMS/Services/SampleDetailsEvidenceQuery.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SampleReceiptRegisterData.cs",
+      "SourcePath": "PharmaLIMS/Services/SampleReceiptRegisterData.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SampleReceiptRegisterQuery.cs",
+      "SourcePath": "PharmaLIMS/Services/SampleReceiptRegisterQuery.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SampleService.cs",
+      "SourcePath": "PharmaLIMS/Services/SampleService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SessionTransitionCoordinator.cs",
+      "SourcePath": "PharmaLIMS/Services/SessionTransitionCoordinator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/SwitchedProcessEnvironment.cs",
+      "SourcePath": "PharmaLIMS/Services/SwitchedProcessEnvironment.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/TrendPdfReportWriter.cs",
+      "SourcePath": "PharmaLIMS/Services/TrendPdfReportWriter.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/TrendReportData.cs",
+      "SourcePath": "PharmaLIMS/Services/TrendReportData.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/TrustedApplicationSession.cs",
+      "SourcePath": "PharmaLIMS/Services/TrustedApplicationSession.cs"
+    },
+    {
+      "Path": "Services/TrustedEquipmentSigningClient.cs",
+      "SourcePath": "PharmaLIMS/Services/TrustedEquipmentSigningClient.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/UserAdministrationService.cs",
+      "SourcePath": "PharmaLIMS/Services/UserAdministrationService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "Services/WaterEvidencePreflightSql.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterEvidencePreflightSql.cs"
+    },
+    {
+      "Path": "Services/WaterLesExecutionService.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterLesExecutionService.cs"
+    },
+    {
+      "Path": "Services/WaterLesTemperatureContract.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterLesTemperatureContract.cs"
+    },
+    {
+      "Path": "Services/WaterNumericResultEvaluator.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterNumericResultEvaluator.cs"
+    },
+    {
+      "Path": "Services/WaterRegistrationRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterRegistrationRecovery.cs"
+    },
+    {
+      "Path": "Services/WaterReportNumericContract.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterReportNumericContract.cs"
+    },
+    {
+      "Path": "Services/WaterResourceEvidenceService.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterResourceEvidenceService.cs"
+    },
+    {
+      "Path": "Services/WaterResultSnapshotSql.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterResultSnapshotSql.cs"
+    },
+    {
+      "Path": "Services/WaterResultValueContract.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterResultValueContract.cs"
+    },
+    {
+      "Path": "Services/WaterTestResourcePolicy.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterTestResourcePolicy.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowEvidenceGuard.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowEvidenceGuard.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowMutationPlan.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowMutationPlan.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowRecovery.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowRecovery.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowScientific.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowScientific.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowSnapshot.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowSnapshot.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowValidator.Evidence.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowValidator.Evidence.cs"
+    },
+    {
+      "Path": "Services/WaterWorkflowValidator.cs",
+      "SourcePath": "PharmaLIMS/Services/WaterWorkflowValidator.cs"
+    },
+    {
+      "Path": "Services/WindowsUserSwitchService.cs",
+      "SourcePath": "PharmaLIMS/Services/WindowsUserSwitchService.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SystemPreflight.xaml",
+      "SourcePath": "PharmaLIMS/SystemPreflight.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "SystemPreflight.xaml.cs",
+      "SourcePath": "PharmaLIMS/SystemPreflight.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "TrustedEquipmentSignature.xaml",
+      "SourcePath": "PharmaLIMS/TrustedEquipmentSignature.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "TrustedEquipmentSignature.xaml.cs",
+      "SourcePath": "PharmaLIMS/TrustedEquipmentSignature.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "UserManagement.xaml",
+      "SourcePath": "PharmaLIMS/UserManagement.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "UserManagement.xaml.cs",
+      "SourcePath": "PharmaLIMS/UserManagement.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "WaterTestProfileManagement.xaml",
+      "SourcePath": "PharmaLIMS/WaterTestProfileManagement.xaml",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "WaterTestProfileManagement.xaml.cs",
+      "SourcePath": "PharmaLIMS/WaterTestProfileManagement.xaml.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "medica-logo.png",
+      "SourcePath": "PharmaLIMS/medica-logo.png",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "packages.lock.json",
+      "SourcePath": "PharmaLIMS/packages.lock.json",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/Program.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/Program.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedActivityAuthenticator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedActivityAuthenticator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmRegistrationStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmRegistrationStore.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmSpecificationStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedPrmSpecificationStore.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterRegistrationStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterRegistrationStore.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterWorkflowStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/TrustedWaterWorkflowStore.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning.Host/packages.lock.json",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning.Host/packages.lock.json",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/PrmRegistrationRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PrmRegistrationRequest.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/PrmSpecificationRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/PrmSpecificationRequest.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SigningRequestPolicy.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SigningRequestPolicy.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlTrustedActivitySignatureStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlTrustedActivitySignatureStore.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlTrustedEquipmentSignatureStore.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlTrustedEquipmentSignatureStore.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/SqlTrustedSignerAccountRepository.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/SqlTrustedSignerAccountRepository.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedActivitySigning.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedActivitySigning.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedApplicationProtocol.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedApplicationProtocol.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedCredentialVerifier.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedCredentialVerifier.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedHostAuthenticator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedHostAuthenticator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedPipeProtocol.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedPipeProtocol.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedSigningCoordinator.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedSigningCoordinator.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WaterRegistrationRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WaterRegistrationRequest.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WaterWorkflowRequest.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WaterWorkflowRequest.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WaterWorkflowSqlContract.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WaterWorkflowSqlContract.cs"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeClient.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeClient.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/packages.lock.json",
+      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/packages.lock.json",
+      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724"
+    }
+  ]
+}

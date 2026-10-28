@@ -14,6 +14,47 @@ namespace PharmaLIMS
         private DataTable _loadedWaterSnapshot;
         private readonly Dictionary<int, string> _loadedWaterDisplayValues = new Dictionary<int, string>();
 
+        private WaterResultDisplayEvidence[] _loadedWaterDisplayEvidence = Array.Empty<WaterResultDisplayEvidence>();
+
+        private WaterResultDisplayEvidence[] CaptureWaterDisplayEvidence() => resultItems.Select(item =>
+            new WaterResultDisplayEvidence(item.SampleTestID, item.ResultValue ?? "", item.Remarks ?? "", item.EquipmentID,
+                item.SupportingEquipmentCodes ?? "", item.TestKitCode ?? "", item.TestKitLot ?? "", item.TestKitExpiry,
+                item.LesSampleTemperatureC ?? "", item.LesVerificationReference ?? "", item.LesVerificationConfirmed,
+                item.LesExecutionRemarks ?? "")).ToArray();
+
+        private void CommitWaterResultGridEdits()
+        {
+            if (!dgResults.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true) ||
+                !dgResults.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true) || HasWaterGridValidationError(dgResults))
+                throw new InvalidOperationException("Correct the invalid water result cell before this operation.");
+        }
+
+        private static bool HasWaterGridValidationError(System.Windows.DependencyObject element)
+        {
+            if (System.Windows.Controls.Validation.GetHasError(element)) return true;
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(element); i++)
+                if (HasWaterGridValidationError(System.Windows.Media.VisualTreeHelper.GetChild(element, i))) return true;
+            return false;
+        }
+
+        private void EnsureWaterVisibleEvidenceSavedAtLoad()
+        {
+            if (_loadedWaterSnapshot == null) throw new DBConcurrencyException("Reload the water result evidence before signing.");
+            WaterWorkflowEvidenceGuard.EnsureSaved(_loadedWaterSnapshot, _loadedWaterSnapshot, currentSampleId,
+                _loadedWaterDisplayEvidence, CaptureWaterDisplayEvidence());
+        }
+
+        private void EnsureWaterVisibleEvidenceSaved(SqlConnection connection, SqlTransaction transaction)
+        {
+            DataTable locked = ReadWaterRows(connection, transaction, WaterResultSnapshotSql.Build(true),
+                new SqlParameter("@sampleId", currentSampleId));
+            WaterWorkflowEvidenceGuard.EnsureSaved(_loadedWaterSnapshot, locked, currentSampleId,
+                _loadedWaterDisplayEvidence, CaptureWaterDisplayEvidence());
+        }
+
+        private bool WasWaterResultCompletedAtLoad(int resultId) => _loadedWaterSnapshot != null &&
+            _loadedWaterSnapshot.Rows.Cast<DataRow>().Any(row => Convert.ToInt32(row["SampleTestID"]) == resultId && row["ResultValue"] != DBNull.Value);
+
         private static DataTable ReadWaterRows(
             SqlConnection connection, SqlTransaction transaction, string sql, params SqlParameter[] parameters)
         {
@@ -48,11 +89,15 @@ namespace PharmaLIMS
         }
 
         private bool PersistWaterEdits(
-            SqlConnection connection, SqlTransaction transaction, ElectronicSignature signature)
+            SqlConnection connection, SqlTransaction transaction, ElectronicSignature signature,
+            bool pendingCompletionOnly, out bool newOosResult)
         {
+            newOosResult = false;
             DataTable locked = ReadWaterRows(connection, transaction, WaterResultSnapshotSql.Build(true),
                 new SqlParameter("@sampleId", currentSampleId));
             ResultSnapshotGuard.EnsureMatches(_loadedWaterSnapshot, locked, "SampleTestID", "SampleID", currentSampleId);
+            if (pendingCompletionOnly)
+                WaterWorkflowEvidenceGuard.EnsurePendingOnlyEdits(locked, _loadedWaterDisplayEvidence, CaptureWaterDisplayEvidence());
 
             DataTable visible = locked.Clone();
             foreach (DataRow row in locked.Rows)
@@ -66,6 +111,7 @@ namespace PharmaLIMS
             foreach (ResultItem edited in resultItems.OrderBy(item => item.SampleTestID))
             {
                 DataRow source = byId[edited.SampleTestID];
+                if (pendingCompletionOnly && source["ResultValue"] != DBNull.Value) continue;
                 ResultItem authoritative = WaterItemFromEvidence(source);
                 if (!_loadedWaterDisplayValues.TryGetValue(edited.SampleTestID, out string originalDisplay))
                     throw new DBConcurrencyException("The original water result display is missing. Reload the sample.");
@@ -104,7 +150,7 @@ namespace PharmaLIMS
 
                 string setClause = resultChanged
                     ? @"ResultValue=@resultValue, Remarks=@remarks, ResultStatus=@resultStatus,
-                        DeviationType=@deviationType"
+                        DeviationType=@deviationType, EnteredBy=@enteredBy, ResultEnteredDate=SYSDATETIME()"
                     : "Remarks=@remarks";
                 DataTable delta = ReadWaterRows(connection, transaction, @"
 DECLARE @Changes TABLE(OldValue nvarchar(max), NewValue nvarchar(max));
@@ -120,6 +166,7 @@ WHERE SampleTestID=@sampleTestId AND SampleID=@sampleId AND ResultRowVersion=@ex
 SELECT OldValue,NewValue FROM @Changes;",
                     new SqlParameter("@resultValue", SqlDbType.Decimal) { Precision = 18, Scale = 4, Value = resultChanged ? resultValue : DBNull.Value },
                     new SqlParameter("@remarks", SqlDbType.NVarChar, -1) { Value = remarks },
+                    new SqlParameter("@enteredBy", SqlDbType.NVarChar, 100) { Value = signature.SignedBy },
                     new SqlParameter("@resultStatus", SqlDbType.NVarChar, 50) { Value = status },
                     new SqlParameter("@deviationType", SqlDbType.NVarChar, 100) { Value = (object)BuildDeviationType(authoritative, status) ?? DBNull.Value },
                     new SqlParameter("@sampleTestId", edited.SampleTestID),
@@ -132,6 +179,7 @@ SELECT OldValue,NewValue FROM @Changes;",
                     decimal expectedValue = Convert.ToDecimal(resultValue, CultureInfo.InvariantCulture);
                     expectedWrittenValues.Add(edited.SampleTestID, expectedValue);
                 }
+                newOosResult |= resultChanged && source["ResultValue"] == DBNull.Value && status == "OOS";
                 anyResultChanged |= resultChanged;
                 DatabaseHelper.AddAuditTrailAdvanced(
                     connection, transaction, "SampleTests", edited.SampleTestID,
