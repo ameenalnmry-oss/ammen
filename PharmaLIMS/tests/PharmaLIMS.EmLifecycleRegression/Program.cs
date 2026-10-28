@@ -65,6 +65,15 @@ foreach(string boundary in new[]{"save","submit","review","approve","print"}) Ch
    (source.Contains("GetLockedEMWorkflowStatusInTransaction",StringComparison.Ordinal) && em[..em.IndexOf("private static",em.IndexOf("GetLockedEMWorkflowStatusInTransaction",StringComparison.Ordinal)+10,StringComparison.Ordinal)].Contains("EnsureEMParentPlanActiveInTransaction",StringComparison.Ordinal));
  if(wired)Call("EnsureEMParentPlanActiveInTransaction",1);
 }));
+Check("stale report preview rechecks cancelled parent after print dialog",()=>Reject(()=>{
+ string source=File.ReadAllText(Path.Combine(root,"EMResultsEntry.xaml.cs"));
+ int preview=source.IndexOf("private void ShowEMReportPreview",StringComparison.Ordinal);
+ int click=source.IndexOf("printButton.Click",preview,StringComparison.Ordinal);
+ int dialog=source.IndexOf("printDialog.ShowDialog()",click,StringComparison.Ordinal);
+ int build=source.IndexOf("FlowDocument printDocument = BuildEMResultReportDocument()",dialog,StringComparison.Ordinal);
+ if(source[dialog..build].Contains("CanPrintApprovedEMReport",StringComparison.Ordinal))
+     Call("EnsureEMParentPlanActiveInTransaction",1);
+}));
 Sql(cs,"UPDATE dbo.EM_Plans SET Status=N'Completed'");
 Check("completed plan remains readable",()=>Call("EnsureEMParentPlanActiveInTransaction",1));
 Sql(cs,"UPDATE dbo.EM_Events SET EmployeeName=N'Bob'");

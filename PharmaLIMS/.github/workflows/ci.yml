@@ -113,7 +113,10 @@ jobs:
       - name: Infrastructure caller transport and Gregorian report regressions
         shell: pwsh
         run: |
-          dotnet run --project tests/PharmaLIMS.InfrastructureReviewRegression/PharmaLIMS.InfrastructureReviewRegression.csproj --configuration Release
+          $artifacts = Join-Path $env:RUNNER_TEMP 'pr62-infrastructure-artifacts'
+          dotnet build tests/PharmaLIMS.InfrastructureReviewRegression/PharmaLIMS.InfrastructureReviewRegression.csproj --configuration Release "-p:ArtifactsPath=$artifacts"
+          if ($LASTEXITCODE -ne 0) { throw "Infrastructure regression build failed." }
+          dotnet (Join-Path $artifacts 'bin/PharmaLIMS.InfrastructureReviewRegression/release/PharmaLIMS.InfrastructureReviewRegression.dll')
           if ($LASTEXITCODE -ne 0) { throw "Infrastructure review regressions failed." }
 
   # Enforce runner-group workflow/ref restrictions and Production environment

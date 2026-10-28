@@ -39,6 +39,16 @@ class InfrastructureReviewTests(unittest.TestCase):
             self.assertIsNotNone(rejection, 'Rejected dispatch must fail visibly on a hosted runner')
             self.assertNotIn('checkout', str(rejection))
 
+    def test_transport_build_cannot_contaminate_source_delivery(self):
+        for relative in ('.github/workflows/ci.yml', 'PharmaLIMS/.github/workflows/ci.yml'):
+            jobs = yaml.safe_load((ROOT / relative).read_text(encoding='utf-8-sig'))['jobs']
+            steps = jobs['validate-build-publish']['steps']
+            regression = next(s for s in steps if s.get('name') == 'Infrastructure caller transport and Gregorian report regressions')
+            command = regression['run']
+            self.assertIn('$env:RUNNER_TEMP', command)
+            self.assertIn('-p:ArtifactsPath=', command)
+            self.assertIn('dotnet build', command)
+
     def test_date_output_uses_one_invariant_formatter(self):
         ui = (ROOT / 'PharmaLIMS/SystemPreflight.xaml.cs').read_text(encoding='utf-8-sig')
         self.assertNotIn('ExecutedAt:yyyy', ui)

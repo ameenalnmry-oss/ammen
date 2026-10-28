@@ -1174,6 +1174,15 @@ SELECT CASE
 
                 try
                 {
+                    // The preview and printer dialog can stay open while the controlled state changes.
+                    // Revalidate at physical printing before building or submitting the document.
+                    if (!CanPrintApprovedEMReport(out string validationMessage))
+                    {
+                        MessageBox.Show(validationMessage, "EM Report Printing Blocked",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
                     // Create a separate document for printing.
                     // Do not reuse the document currently attached to the preview viewer.
                     FlowDocument printDocument = BuildEMResultReportDocument();
