@@ -30,6 +30,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Water registration policy checks failed.' }
 & dotnet run --project (Join-Path $project 'tests/PharmaLIMS.WaterRecoveryWindows/PharmaLIMS.WaterRecoveryWindows.csproj') --configuration Release -- $project 2>&1 |
     Tee-Object -FilePath (Join-Path $results 'water-recovery-windows.txt')
 if ($LASTEXITCODE -ne 0) { throw 'Native Windows Water recovery checks failed.' }
+& (Join-Path $project 'tests/Test-Eq001SqlProvisioning.ps1') -RepositoryRoot $project 2>&1 |
+    Tee-Object -FilePath (Join-Path $results 'sql-provisioning-contract.txt')
+if (-not $?) { throw 'SQL provisioning contract regression failed.' }
 $stamp = [Guid]::NewGuid().ToString('N').Substring(0,10)
 $serviceName = "eq001_$stamp"
 $privateRoot = Join-Path $env:ProgramData "PharmaLIMS-EQ001-UAT-$stamp"
@@ -42,14 +45,84 @@ $serviceCreated = $false
 $scmCreated = $false
 $rootCertificate = $null
 try {
-    if (-not (Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue)) {
-        Write-Host 'Installing SQL Server Express only on the fresh disposable CI runner.'
-        choco install sql-server-express -y --no-progress --execution-timeout=1800
-        if ($LASTEXITCODE -notin @(0,1641,3010)) { throw 'SQL Server Express installation failed.' }
+    # SQL Express provisioning contract: this is only reachable on a disposable
+    # GitHub-hosted runner. Chocolatey success alone does not prove SQLENGINE exists.
+    # Upstream flcdrg/au-packages/sql-server-express supports /ConfigurationFile;
+    # its default setup arguments omit FEATURES and allow setup exit code 1116.
+    $sqlConfiguration = Join-Path $env:TEMP "eq001-sql-$stamp.ini"
+    $sqlInstallExitCode = $null
+    function Write-SqlProvisioningDiagnostics {
+        $diagnostic = [System.Collections.Generic.List[string]]::new()
+        $diagnostic.Add('SQL Express provisioning: package=sql-server-express version=2022.16.0.20260305; expected=SQLEXPRESS/SQLENGINE')
+        $diagnostic.Add("Chocolatey exit code: $sqlInstallExitCode")
+        $services = @(Get-Service -Name 'MSSQL*' -ErrorAction SilentlyContinue)
+        if ($services.Count -eq 0) { $diagnostic.Add('No MSSQL engine service was registered.') }
+        foreach ($service in $services) { $diagnostic.Add("SQL service: $($service.Name); status=$($service.Status)") }
+        # Emit only setup result fields. Full setup/Chocolatey logs can include
+        # command lines and machine configuration and must not be uploaded raw.
+        $logRoot = Join-Path $env:ProgramFiles 'Microsoft SQL Server'
+        $summaries = @(Get-ChildItem -Path "$logRoot\*\Setup Bootstrap\Log\Summary.txt" -ErrorAction SilentlyContinue)
+        foreach ($summary in $summaries) {
+            $diagnostic.Add("SQL setup summary: $($summary.FullName)")
+            $safeFields = Get-Content -LiteralPath $summary.FullName -ErrorAction SilentlyContinue |
+                Where-Object { $_ -match '^\s*(Final result|Exit code(?: \([^)]*\))?|Exit message|Requested action|Feature|Status|Component name|Component error code|Error description)\s*:' } |
+                Select-Object -First 40
+            foreach ($field in $safeFields) {
+                # Defense in depth if a future setup error embeds a credential.
+                $safeField = [regex]::Replace($field, '(?i)((?:password|pwd|token|secret)\s*[=:]\s*)(?:"[^"]*"|''[^'']*''|[^;\s]+)', '$1[redacted]')
+                $diagnostic.Add($safeField)
+            }
+        }
+        if ($summaries.Count -eq 0) { $diagnostic.Add('No SQL setup Summary.txt found; installer may not have run.') }
+        $diagnostic | Set-Content -LiteralPath (Join-Path $results 'sql-provisioning.txt') -Encoding utf8
+        $diagnostic | ForEach-Object { Write-Host $_ }
     }
-    $sqlService = Get-Service -Name 'MSSQL$SQLEXPRESS'
-    $instanceId = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL').SQLEXPRESS
-    if ([string]::IsNullOrWhiteSpace($instanceId)) { throw 'Isolated SQL Express instance was not registered.' }
+    try {
+        if (-not (Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue)) {
+            Write-Host 'Installing the explicit SQLEXPRESS SQLENGINE instance on the fresh disposable CI runner.'
+            $sqlAdministrator = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            @"
+[OPTIONS]
+ACTION="Install"
+FEATURES="SQLENGINE"
+INSTANCENAME="SQLEXPRESS"
+INSTANCEID="SQLEXPRESS"
+SQLSYSADMINACCOUNTS="$sqlAdministrator"
+SQLSVCSTARTUPTYPE="Automatic"
+TCPENABLED="1"
+NPENABLED="0"
+UPDATEENABLED="False"
+"@ | Set-Content -LiteralPath $sqlConfiguration -Encoding utf8
+            # Reapply on images that contain package metadata without the required
+            # engine service; --force is confined to this ephemeral-runner guard.
+            choco install sql-server-express --version=2022.16.0.20260305 -y --force --no-progress --execution-timeout=1800 --params "/ConfigurationFile:`"$sqlConfiguration`""
+            $sqlInstallExitCode = $LASTEXITCODE
+            if ($sqlInstallExitCode -notin @(0,3010)) { throw "SQL Server Express installation failed (Chocolatey exit $sqlInstallExitCode)." }
+        }
+        $registrationDeadline = [DateTime]::UtcNow.AddSeconds(60)
+        do {
+            $sqlService = Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
+            $instanceNames = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL' -ErrorAction SilentlyContinue
+            $instanceId = if ($instanceNames -and $instanceNames.PSObject.Properties['SQLEXPRESS']) { [string]$instanceNames.SQLEXPRESS } else { $null }
+            if ($sqlService -and -not [string]::IsNullOrWhiteSpace($instanceId)) { break }
+            if ([DateTime]::UtcNow -ge $registrationDeadline) {
+                throw 'SQL setup returned without registering both MSSQL$SQLEXPRESS and its named-instance registry entry within 60 seconds.'
+            }
+            Start-Sleep -Seconds 2
+        } while ($true)
+        if ($sqlService.Status -ne 'Running') {
+            Start-Service -Name $sqlService.Name
+            $sqlService.WaitForStatus('Running',[TimeSpan]::FromSeconds(60))
+        }
+        Write-Host "SQL Express provisioned: service=$($sqlService.Name); instance=$instanceId."
+    }
+    catch {
+        Write-SqlProvisioningDiagnostics
+        throw
+    }
+    finally {
+        Remove-Item -LiteralPath $sqlConfiguration -Force -ErrorAction SilentlyContinue
+    }
     $instanceRoot = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\$instanceId\MSSQLServer"
     $cert = New-SelfSignedCertificate -DnsName @($env:COMPUTERNAME,'localhost','PharmaLIMS.TrustedSigning') -Type SSLServerAuthentication -CertStoreLocation Cert:\LocalMachine\My -Provider 'Microsoft RSA SChannel Cryptographic Provider' -KeySpec KeyExchange -KeyLength 2048 -HashAlgorithm SHA256 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddDays(2)
     $cer = Join-Path $env:TEMP "eq001-$stamp.cer"
