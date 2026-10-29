@@ -210,10 +210,38 @@ internal sealed partial class UatRun
         if (!_db.StartsWith("EQ001_UAT_WaterNative_", StringComparison.Ordinal))
             throw new InvalidOperationException("Native Water fixture target guard failed.");
         await Exec(_admin, """
+IF COL_LENGTH(N'dbo.Samples',N'ReviewedBy') IS NULL
+ ALTER TABLE dbo.Samples ADD ReviewedBy nvarchar(100) NULL;
+IF COL_LENGTH(N'dbo.Samples',N'ReviewDate') IS NULL
+ ALTER TABLE dbo.Samples ADD ReviewDate datetime NULL;
+IF COL_LENGTH(N'dbo.Samples',N'ApprovedBy') IS NULL
+ ALTER TABLE dbo.Samples ADD ApprovedBy nvarchar(100) NULL;
+IF COL_LENGTH(N'dbo.Samples',N'ApprovalDate') IS NULL
+ ALTER TABLE dbo.Samples ADD ApprovalDate datetime NULL;
+IF COL_LENGTH(N'dbo.Samples',N'RejectionReason') IS NULL
+ ALTER TABLE dbo.Samples ADD RejectionReason nvarchar(500) NULL;
 IF COL_LENGTH(N'dbo.Samples',N'IsLocked') IS NULL
  ALTER TABLE dbo.Samples ADD IsLocked bit NULL;
+IF COL_LENGTH(N'dbo.Samples',N'LockedBy') IS NULL
+ ALTER TABLE dbo.Samples ADD LockedBy nvarchar(100) NULL;
+IF COL_LENGTH(N'dbo.Samples',N'LockedDate') IS NULL
+ ALTER TABLE dbo.Samples ADD LockedDate datetime NULL;
 IF COL_LENGTH(N'dbo.Samples',N'ModifiedBy') IS NULL
  ALTER TABLE dbo.Samples ADD ModifiedBy nvarchar(100) NULL;
+IF COL_LENGTH(N'dbo.Samples',N'SubmittedBy') IS NULL
+ ALTER TABLE dbo.Samples ADD SubmittedBy nvarchar(150) NULL;
+IF COL_LENGTH(N'dbo.Samples',N'SubmittedDate') IS NULL
+ ALTER TABLE dbo.Samples ADD SubmittedDate datetime NULL;
+IF COL_LENGTH(N'dbo.Samples',N'ReviewedDate') IS NULL
+ ALTER TABLE dbo.Samples ADD ReviewedDate datetime NULL;
+IF COL_LENGTH(N'dbo.Samples',N'ApprovedDate') IS NULL
+ ALTER TABLE dbo.Samples ADD ApprovedDate datetime NULL;
+IF COL_LENGTH(N'dbo.Samples',N'RejectedBy') IS NULL
+ ALTER TABLE dbo.Samples ADD RejectedBy nvarchar(150) NULL;
+IF COL_LENGTH(N'dbo.Samples',N'RejectedDate') IS NULL
+ ALTER TABLE dbo.Samples ADD RejectedDate datetime NULL;
+IF COL_LENGTH(N'dbo.Samples',N'Remarks') IS NULL
+ ALTER TABLE dbo.Samples ADD Remarks nvarchar(max) NULL;
 IF COL_LENGTH(N'dbo.WaterResultResourceEvidence',N'ExecutionDate') IS NULL
  ALTER TABLE dbo.WaterResultResourceEvidence ADD ExecutionDate date NULL;
 IF COL_LENGTH(N'dbo.ElectronicSignatures',N'CreatedUtc') IS NULL
