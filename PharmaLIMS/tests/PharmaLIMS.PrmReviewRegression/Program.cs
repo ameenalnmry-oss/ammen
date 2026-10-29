@@ -25,6 +25,7 @@ INSERT dbo.QualityEvents VALUES(1,N'PRM',1,N'Closed',N'qa',SYSDATETIME(),N'Labor
 INSERT dbo.PRM_SampleTests VALUES(1,1,1,N'Required',N'20',N'NMT 10',10,N'CFU',N'Does Not Conform'),(2,1,0,N'Optional',N'30',N'NMT 10',10,N'CFU',N'Does Not Conform');
 INSERT dbo.QualityEventAffectedResults SELECT 1,N'PRM',SampleTestID,1,TestName,ResultValue,SpecificationText,SpecificationLimit,Unit,Interpretation FROM dbo.PRM_SampleTests WHERE SampleTestID=1;
 """);
+ await SitePrmCoverageCases.RunFrozen(connection.ConnectionString,project);
  string source=File.ReadAllText(Path.Combine(project,"ProductionRawMaterialResults.xaml.cs"));
  string gate=Regex.Match(source,"private const string PrmQualityEventStateSql = @\"(.*?)\";",RegexOptions.Singleline).Groups[1].Value.Replace("\"\"","\"");
  async Task<int> State() => Convert.ToInt32(await Exec(connection.ConnectionString,"DECLARE @SampleID int=1;"+gate));
