@@ -13,9 +13,20 @@ try {
         @{Name='corrected';Source=$corrected;ExpectedFailure=$false}
     )
     foreach ($run in $runs) {
-        $output = @(& dotnet run --project $testProject --configuration Release `
+        $runArtifacts = Join-Path $artifacts $run.Name
+        $binaryDirectory = Join-Path $runArtifacts 'executable'
+        $buildOutput = @(& dotnet build $testProject --configuration Release `
             "-p:CertificateSource=$($run.Source)" '-p:SitePrecisionOnly=true' `
-            "-p:ArtifactsPath=$(Join-Path $artifacts $run.Name)" 2>&1)
+            "-p:ArtifactsPath=$runArtifacts" --output $binaryDirectory 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            $buildOutput | Write-Host
+            throw "Site certificate $($run.Name) did not build. A build failure is not the expected scientific defect."
+        }
+        # dotnet run on some .NET 8 SDKs resolves its executable from the default
+        # bin path even when ArtifactsPath redirects the build. Run this exact DLL.
+        $assembly = Join-Path $binaryDirectory 'PharmaLIMS.WaterCertificateRegression.dll'
+        if (-not (Test-Path -LiteralPath $assembly -PathType Leaf)) { throw "Expected test assembly missing: $assembly" }
+        $output = @(& dotnet $assembly 2>&1)
         $code = $LASTEXITCODE
         $log = $output -join "`n"
         $summary = [regex]::Match($log, 'Site certificate precision: (\d+)/(\d+) checks passed; (\d+) failed\.')
