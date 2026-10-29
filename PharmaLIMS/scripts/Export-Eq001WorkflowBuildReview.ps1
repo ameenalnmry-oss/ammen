@@ -4,9 +4,24 @@ $ErrorActionPreference='Stop'
 $project='E:\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\PharmaLIMS'
 function Read-Source([string]$Path,[string]$Revision=$SourceCommit) {
     if($Revision -notmatch '^[a-fA-F0-9]{40}$' -or $Path -notmatch '^PharmaLIMS/[A-Za-z0-9_./-]+$' -or $Path.Contains('..')) { throw 'Invalid source reference.' }
-    $lines=@(git -C $project show "${Revision}:$Path")
-    if($LASTEXITCODE -ne 0) { throw "Cannot read reviewed source: $Path" }
-    return ($lines -join "`n")+"`n"
+    $info=[Diagnostics.ProcessStartInfo]::new()
+    $info.FileName=(Get-Command git -ErrorAction Stop).Source
+    $info.WorkingDirectory=$project
+    $info.Arguments='show "{0}:{1}"' -f $Revision,$Path
+    $info.UseShellExecute=$false
+    $info.RedirectStandardOutput=$true
+    $info.RedirectStandardError=$true
+    $process=[Diagnostics.Process]::new(); $process.StartInfo=$info
+    $buffer=[IO.MemoryStream]::new()
+    try {
+        [void]$process.Start()
+        $errorOutput=$process.StandardError.ReadToEndAsync()
+        $process.StandardOutput.BaseStream.CopyTo($buffer)
+        $process.WaitForExit()
+        if($process.ExitCode -ne 0) { throw "Cannot read reviewed source: $Path. $($errorOutput.GetAwaiter().GetResult())" }
+        return [Text.Encoding]::UTF8.GetString($buffer.ToArray())
+    }
+    finally { $buffer.Dispose(); $process.Dispose() }
 }
 function Source-Hash([string]$Value) {
     $value=$Value.TrimStart([char]0xFEFF).Replace("`r`n","`n").TrimEnd([char[]]"`r`n")+"`n"

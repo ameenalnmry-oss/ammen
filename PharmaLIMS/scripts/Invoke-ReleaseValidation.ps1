@@ -64,6 +64,7 @@ try {
     Write-Host "::notice title=Release validation checkpoint::Source manifest verification"
     ./scripts/Test-SourceManifest.ps1
     ./tests/Test-Eq001WaterDeploymentSettings.ps1
+    ./tests/Test-Eq001SourceReviewEncoding.ps1
     Write-Host "::notice title=Release validation checkpoint::Code-signing release guard"
     ./tests/Test-CodeSigningReleaseGuard.ps1
 
@@ -113,6 +114,8 @@ try {
 
     dotnet run --project tests/PharmaLIMS.WaterCertificateRegression/PharmaLIMS.WaterCertificateRegression.csproj --configuration Release
     Assert-NativeExit 'Water certificate precision and frozen-range regression execution'
+    ./scripts/Invoke-Eq001SiteCertificateRegression.ps1
+    if (-not $?) { throw 'Site certificate precision regression failed.' }
 
 
     if ($RunDatabaseIntegration) {

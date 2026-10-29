@@ -31,7 +31,7 @@ output = Path(sys.argv[2])
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text(
     "#nullable disable\nusing System.Globalization;\nusing System.Text.RegularExpressions;\n"
-    "namespace PharmaLIMS;\ninternal partial class CertificateMethods\n{\n"
+    "using PharmaLIMS.Services;\nnamespace PharmaLIMS;\ninternal partial class CertificateMethods\n{\n"
     # Only UI state used by an unrelated pre-existing hardness branch.
     'private string currentPointCodeForSpec = "";\n' + "\n".join(methods) + "\n}\n",
     encoding="utf-8",
