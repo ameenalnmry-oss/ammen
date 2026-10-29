@@ -36,6 +36,7 @@ namespace PharmaLIMS
         private bool isLoadingEvent;
         private DataTable originalInvestigationHeader, originalRawChecklist, originalVisibleChecklist;
         private string loadedChecklistCategoryText = "";
+        private string? loadedInvestigationVersion;
 
         public PRMQualityEventInvestigation()
         {
@@ -94,6 +95,7 @@ namespace PharmaLIMS
             try
             {
                 isLoadingEvent = true;
+                loadedInvestigationVersion = null;
                 IsEnabled = false;
                 Mouse.OverrideCursor = Cursors.Wait;
 
@@ -109,6 +111,7 @@ namespace PharmaLIMS
 
                 PRMEventLoadData loaded = await Task.Run(() =>
                 {
+                    string versionBeforeLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, true);
                     PRMEventLoadData data = null;
                     DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                     {
@@ -119,7 +122,15 @@ namespace PharmaLIMS
                         data = new PRMEventLoadData { RawHeader = raw, Header = header, CategoryText = category,
                             Checklist = PRMQualityEventInvestigationService.LoadChecklist(conn, tx, qualityEventId, category) };
                     });
-                    if (data != null) { data.AffectedResults = SafeLoadAffectedResults(); data.Actions = SafeLoadActions(); }
+                    if (data != null)
+                    {
+                        data.AffectedResults = SafeLoadAffectedResults();
+                        data.Actions = SafeLoadActions();
+                        string versionAfterLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, true);
+                        if (!string.Equals(versionBeforeLoad, versionAfterLoad, StringComparison.Ordinal))
+                            throw new DBConcurrencyException("The PRM investigation changed while loading. Reload before continuing.");
+                        data.EvidenceVersion = versionAfterLoad;
+                    }
                     return data;
                 });
 
@@ -202,6 +213,9 @@ namespace PharmaLIMS
                 UpdateButtons();
 
                 lblStatus.Text = "Loaded " + eventNumber + " / " + prmType + ".";
+                if (string.IsNullOrEmpty(loaded.EvidenceVersion))
+                    throw new DBConcurrencyException("The PRM investigation evidence version was not loaded.");
+                loadedInvestigationVersion = loaded.EvidenceVersion;
             }
             catch (Exception ex)
             {
@@ -467,11 +481,13 @@ namespace PharmaLIMS
                 }
 
                 string actionType = isCapaAction ? "PRM CAPA Action" : "PRM Investigation Note";
+                string? savedVersion = null;
 
                 DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
                 {
                     DatabaseHelper.EnsureQualityEventManagementAuthorizationInTransaction(
                         connection, transaction, currentUser, "add a PRM Quality Event action");
+                    QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection, transaction, qualityEventId, true, loadedInvestigationVersion);
                     object lockedStatus = ExecuteScalarInTransaction(connection, transaction, @"
 SELECT CurrentStatus FROM dbo.QualityEvents WITH(UPDLOCK,HOLDLOCK)
 WHERE QualityEventID=@QualityEventID;",
@@ -494,7 +510,9 @@ VALUES(@QualityEventID,@ActionType,@Note,@User,SYSDATETIME());",
                         connection, transaction, "QualityEvents", qualityEventId,
                         "Add PRM Investigation Action", persistedStatus, persistedStatus,
                         note, currentUser, "CurrentStatus", null, sampleNumber, "PRM Quality Event");
+                    savedVersion = QualityEventInvestigationConcurrencyGuard.Capture(connection, transaction, qualityEventId, true);
                 });
+                loadedInvestigationVersion = savedVersion;
 
                 txtActionNote.Clear();
 
@@ -634,6 +652,7 @@ VALUES(@QualityEventID,@ActionType,@Note,@User,SYSDATETIME());",
                 {
                     string authorizedRole = DatabaseHelper.EnsureQaClosureAuthorizationInTransaction(
                         conn, tx, signature.SignedBy, "close a PRM Quality Event");
+                    QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, true, loadedInvestigationVersion);
                     var before = CaptureInvestigationEvidence(conn, tx);
 
                     string lockedStatus = Convert.ToString(ExecuteScalarInTransaction(conn, tx, @"
@@ -1049,6 +1068,7 @@ THEN 1 ELSE 0 END;", connection, transaction);
             {
                 DatabaseHelper.EnsureQualityEventManagementAuthorizationInTransaction(
                     connection, transaction, currentUser, "save a PRM Quality Event investigation");
+                QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection, transaction, qualityEventId, true, loadedInvestigationVersion);
                     var before = CaptureInvestigationEvidence(connection, transaction);
                 string lockedStatus = Convert.ToString(ExecuteScalarInTransaction(connection, transaction, @"
 SELECT CurrentStatus FROM dbo.QualityEvents WITH(UPDLOCK,HOLDLOCK)
@@ -1116,6 +1136,7 @@ WHERE QualityEventID=@QualityEventID;",
             {
                 string authorizedRole = DatabaseHelper.EnsureQualityEventManagementAuthorizationInTransaction(
                     connection, transaction, signature.SignedBy, "submit a PRM Quality Event to QA review");
+                QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection, transaction, qualityEventId, true, loadedInvestigationVersion);
                     var before = CaptureInvestigationEvidence(connection, transaction);
 
                 string lockedStatus = Convert.ToString(ExecuteScalarInTransaction(connection, transaction, @"
@@ -2277,6 +2298,7 @@ SELECT COUNT(1) FROM @Inserted;",
             public DataTable Checklist { get; init; } = new DataTable();
             public DataTable AffectedResults { get; set; } = new DataTable();
             public DataTable Actions { get; set; } = new DataTable();
+            public string EvidenceVersion { get; set; } = string.Empty;
         }
     }
 }

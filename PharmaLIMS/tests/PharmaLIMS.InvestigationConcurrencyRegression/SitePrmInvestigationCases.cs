@@ -38,6 +38,127 @@ internal static class SitePrmInvestigationCases
         Console.WriteLine("PASS SITE PRM CAS FROZEN: 48 child-change acceptance failures reproduced; four unchanged first-write probes accepted. This is not execution of the complete WPF callbacks.");
     }
 
+    internal static void RunCorrected(string connectionString, string project)
+    {
+        RequireDisposable(connectionString);
+        string source = File.ReadAllText(Path.Combine(project,
+            "scripts/site-overlays/AMEEN-PRMQualityEventInvestigation.xaml.cs.txt"));
+        byte[] siteGuard = File.ReadAllBytes(Path.Combine(project,
+            "scripts/site-overlays/AMEEN-QualityEventInvestigationConcurrencyGuard.cs.txt"));
+        byte[] linkedGuard = File.ReadAllBytes(Path.Combine(project,
+            "Infrastructure/QualityEventInvestigationConcurrencyGuard.cs"));
+        if (!siteGuard.SequenceEqual(linkedGuard))
+            throw new Exception("The tested full guard differs from the supplied site helper.");
+        using var fixture = JsonDocument.Parse(File.ReadAllText(Path.Combine(project,
+            "tests/fixtures/AMEEN-PRM-investigation-concurrency-20261030.json")));
+        var probes = fixture.RootElement.GetProperty("Probes").EnumerateArray().Select(p => new Probe(
+            p.GetProperty("Name").GetString()!, ExtractMethod(source,p.GetProperty("Signature").GetString()!),
+            p.GetProperty("WriteSql").GetString()!, p.GetProperty("Status").GetString()!,
+            p.GetProperty("HeaderChecklist").GetBoolean())).ToArray();
+        foreach (var probe in probes)
+        {
+            if (!HasFullGuard(probe.Source))
+                throw new Exception("The complete guard is not unconditionally before the first write: " + probe.Name);
+            bool partial = Code(probe.Source).Contains("CaptureInvestigationEvidence(", StringComparison.Ordinal);
+            if (partial != probe.HeaderChecklist)
+                throw new Exception("The existing site header/checklist comparison was not preserved: " + probe.Name);
+        }
+        VerifyLoadAndOwnActionToken(source, probes.Single(p=>p.Name=="AddAction").Source);
+        var result = Evaluate(connectionString, probes, "corrected");
+        if (result.Checks != 52 || result.Failures != 0)
+            throw new Exception($"Corrected site concurrency probes failed: {result.Failures}/{result.Checks}");
+        VerifyRetainedLocks(connectionString);
+        VerifyOwnActionContinuation(connectionString, probes.Single(p=>p.Name=="AddAction"));
+        Console.WriteLine("PASS SITE PRM CAS CORRECTED: 52/52 comparison/first-write probes; two child phantom-lock checks; own-action old-token rejection and committed-token continuation. Full WPF/authentication and site deployment remain unqualified.");
+    }
+
+    private static string ExtractMethod(string source, string signature)
+    {
+        string code=Code(source);
+        var matches=Regex.Matches(code,Regex.Escape(signature));
+        if(matches.Count!=1) throw new Exception("Expected one source method: "+signature);
+        int start=matches[0].Index,begin=code.IndexOf('{',start),depth=1,end=begin+1;
+        if(begin<0) throw new Exception("Method body missing.");
+        while(end<code.Length && depth!=0) { depth+=code[end]=='{'?1:code[end]=='}'?-1:0; end++; }
+        if(depth!=0) throw new Exception("Unbalanced source method.");
+        return source[start..end];
+    }
+
+    private static void VerifyLoadAndOwnActionToken(string source, string addAction)
+    {
+        string load=Code(ExtractMethod(source,"private async Task LoadEventAsync()"));
+        int clear=load.IndexOf("loadedInvestigationVersion = null",StringComparison.Ordinal);
+        int before=load.IndexOf("string versionBeforeLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion",StringComparison.Ordinal);
+        int after=load.IndexOf("string versionAfterLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion",StringComparison.Ordinal);
+        int compare=load.IndexOf("string.Equals(versionBeforeLoad, versionAfterLoad, StringComparison.Ordinal)",StringComparison.Ordinal);
+        int reject=load.IndexOf("throw new DBConcurrencyException",compare<0?0:compare,StringComparison.Ordinal);
+        int saved=load.IndexOf("data.EvidenceVersion = versionAfterLoad",StringComparison.Ordinal);
+        int actionsBound=load.IndexOf("dgActions.ItemsSource = actionsTable.DefaultView",StringComparison.Ordinal);
+        int publish=load.IndexOf("loadedInvestigationVersion = loaded.EvidenceVersion",StringComparison.Ordinal);
+        if(!(clear>=0 && clear<before && before<after && after<compare && compare<reject && reject<saved && saved<actionsBound && actionsBound<publish))
+            throw new Exception("Load must clear the token, compare before/after data, and publish only after all UI data are bound.");
+        if(Regex.Matches(load,@"QualityEventInvestigationConcurrencyGuard\.CaptureLoadedVersion\s*\(").Count!=2 ||
+            Regex.Matches(load,@"loadedInvestigationVersion\s*=").Count!=2 ||
+            !load.Contains("string.IsNullOrEmpty(loaded.EvidenceVersion)",StringComparison.Ordinal))
+            throw new Exception("Unexpected load token publication.");
+        string action=Code(addAction);
+        int capture=action.IndexOf("savedVersion = QualityEventInvestigationConcurrencyGuard.Capture",StringComparison.Ordinal);
+        int callback=action.IndexOf("DatabaseHelper.ExecuteInTransaction",StringComparison.Ordinal);
+        int begin=action.IndexOf('{',callback),depth=1,end=begin+1;
+        while(depth!=0) {depth+=action[end]=='{'?1:action[end]=='}'?-1:0;end++;}
+        int publishAction=action.IndexOf("loadedInvestigationVersion = savedVersion",StringComparison.Ordinal);
+        var writes=Regex.Matches(action[..end],@"DatabaseHelper\.(?:ExecuteNonQueryWithTransaction|AddAuditTrailAdvanced)\s*\(");
+        if(writes.Count!=2 || capture<writes[^1].Index || capture>=end || publishAction<=end ||
+            Regex.Matches(action,@"loadedInvestigationVersion\s*=").Count!=1)
+            throw new Exception("Own-action token must describe post-write content and publish after transaction success.");
+        Console.WriteLine("PASS SITE PRM CAS wiring: four pre-write guards, preserved partial/history calls, load publication, and post-commit own-action token.");
+    }
+
+    private static void VerifyRetainedLocks(string cs)
+    {
+        using var owner=new SqlConnection(cs);owner.Open();using var transaction=owner.BeginTransaction();
+        string loaded=QualityEventInvestigationConcurrencyGuard.Capture(owner,transaction,1,true);
+        QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(owner,transaction,1,true,loaded);
+        foreach(string mutation in new[]{
+            "INSERT dbo.QualityEventCAPAItems VALUES(1,N'competing phantom')",
+            "INSERT dbo.PRM_ElectronicSignatures VALUES(7,N'Historical',N'competing phantom')"})
+        {
+            bool blocked=false;
+            try
+            {
+                using var competitor=new SqlConnection(cs);competitor.Open();
+                using var write=new SqlCommand("SET LOCK_TIMEOUT 500; "+mutation,competitor);write.ExecuteNonQuery();
+            }
+            catch(SqlException exception) when(exception.Number==1222){blocked=true;}
+            if(!blocked) throw new Exception("The complete guard did not retain child phantom protection.");
+        }
+        transaction.Rollback();
+    }
+
+    private static void VerifyOwnActionContinuation(string cs,Probe addAction)
+    {
+        using var connection=new SqlConnection(cs);connection.Open();
+        string oldVersion,savedVersion;
+        using(var transaction=connection.BeginTransaction())
+        {
+            oldVersion=QualityEventInvestigationConcurrencyGuard.Capture(connection,transaction,1,true);
+            QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection,transaction,1,true,oldVersion);
+            using var write=new SqlCommand(addAction.WriteSql,connection,transaction);
+            foreach(string parameter in Regex.Matches(addAction.WriteSql,"@[A-Za-z0-9_]+").Select(m=>m.Value).Distinct(StringComparer.OrdinalIgnoreCase))
+                write.Parameters.AddWithValue(parameter,parameter.Equals("@QualityEventID",StringComparison.OrdinalIgnoreCase)?1:"owned continuation probe");
+            if(write.ExecuteNonQuery()!=1)throw new Exception("The owned fixture action did not execute.");
+            savedVersion=QualityEventInvestigationConcurrencyGuard.Capture(connection,transaction,1,true);
+            transaction.Commit(); // Deliberate owned-fixture control; the surrounding fixture is dropped.
+        }
+        using var verify=connection.BeginTransaction();
+        bool stale=false;
+        try{QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection,verify,1,true,oldVersion);}
+        catch(DBConcurrencyException){stale=true;}
+        if(!stale)throw new Exception("The previous action token remained valid after the committed action.");
+        QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection,verify,1,true,savedVersion);
+        verify.Rollback();
+    }
+
     private static void RequireDisposable(string cs)
     {
         if (!Regex.IsMatch(new SqlConnectionStringBuilder(cs).InitialCatalog, @"^EQ001_UAT_Investigation_[0-9a-f]{12}$"))
