@@ -34,8 +34,29 @@ internal static class SitePrmCoverageCases
         Console.WriteLine("PASS SITE PRM FROZEN: five acceptance failures reproduced in actual uploaded SQL; controls for blank, conforming, required and legacy evidence retained.");
     }
 
+    internal static async Task RunCorrected(string connectionString, string project)
+    {
+        string ReadQuery(string file, string pattern)
+        {
+            string source = File.ReadAllText(Path.Combine(project, "scripts/site-overlays", file));
+            var matches = Regex.Matches(source, pattern, RegexOptions.Singleline);
+            if (matches.Count != 1 || string.IsNullOrWhiteSpace(matches[0].Groups[1].Value))
+                throw new Exception("Expected one actual site coverage query in " + file);
+            return matches[0].Groups[1].Value.Replace("\"\"", "\"");
+        }
+        var corrected = new Queries(
+            ReadQuery("AMEEN-ProductionRawMaterialResults.xaml.cs.txt", "private const string PrmQualityEventStateSql = @\"((?:\"\"|[^\"])*)\";"),
+            ReadQuery("AMEEN-PRMQualityEventInvestigation.xaml.cs.txt", "object missingCoverage = ExecuteScalarInTransaction\\(connection, transaction, @\"((?:\"\"|[^\"])*)\","));
+        var failures = await Evaluate(connectionString, corrected, "corrected");
+        if (failures.Count != 0)
+            throw new Exception("Corrected site PRM investigation coverage failed: " + string.Join(", ", failures));
+        Console.WriteLine("PASS SITE PRM CORRECTED: 22/22 actual site SQL checks passed; complete local source artifacts remain uninstalled.");
+    }
+
     private static async Task<List<string>> Evaluate(string connectionString, Queries queries, string variant)
     {
+        if (!Regex.IsMatch(new SqlConnectionStringBuilder(connectionString).InitialCatalog, @"^EQ001_UAT_PrmReview_[0-9a-f]{10}$"))
+            throw new Exception("Site SQL cases require the uniquely named disposable PRM review fixture.");
         var cases = new[] {
             new Case("optional OOS", "", 3, 1),
             new Case("optional Check Required", "UPDATE dbo.PRM_SampleTests SET Interpretation=N'Check Required' WHERE SampleTestID=2;", 3, 1),
