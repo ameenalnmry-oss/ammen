@@ -210,6 +210,10 @@ internal sealed partial class UatRun
         if (!_db.StartsWith("EQ001_UAT_WaterNative_", StringComparison.Ordinal))
             throw new InvalidOperationException("Native Water fixture target guard failed.");
         await Exec(_admin, """
+IF COL_LENGTH(N'dbo.Samples',N'IsLocked') IS NULL
+ ALTER TABLE dbo.Samples ADD IsLocked bit NULL;
+IF COL_LENGTH(N'dbo.Samples',N'ModifiedBy') IS NULL
+ ALTER TABLE dbo.Samples ADD ModifiedBy nvarchar(100) NULL;
 IF COL_LENGTH(N'dbo.WaterResultResourceEvidence',N'ExecutionDate') IS NULL
  ALTER TABLE dbo.WaterResultResourceEvidence ADD ExecutionDate date NULL;
 IF COL_LENGTH(N'dbo.ElectronicSignatures',N'CreatedUtc') IS NULL
