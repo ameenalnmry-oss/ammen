@@ -122,7 +122,7 @@ internal sealed partial class UatRun
             await NativeUiOperation(author, "StartAnalysis", "In Analysis");
             var duplicateInput = await NativeRequest("SaveResults");
             // The visible complete test set comes from the same production formatter.
-            duplicateInput = duplicateInput with { Results = duplicateInput.Results.Select(r => r with { ResultValue = "Clear/Colorless" }).ToArray() };
+            duplicateInput = duplicateInput with { Results = duplicateInput.Results.Select(r => r with { ResultValue = "Clear and Colorless" }).ToArray() };
             var rollback = await NativeEnvelope(pipe, duplicateInput, author);
             long signaturesBefore = Convert.ToInt64(await Scalar("SELECT COUNT(*) FROM dbo.ElectronicSignatures WHERE SampleID=1"));
             await Exec(_admin, "CREATE TRIGGER dbo.NativeWaterAuditFailure ON dbo.AuditTrail AFTER INSERT AS BEGIN IF EXISTS(SELECT 1 FROM inserted WHERE TableName=N'Samples' AND SampleNumber=N'WATER-NATIVE-1') THROW 57999,'Synthetic native audit failure',1; END;");
@@ -289,7 +289,7 @@ UPDATE dbo.Water_Plans SET Status=N'Analysis In Progress' WHERE WaterPlanID=@pla
         if (operation == "SaveResults")
         {
             var items = (System.Collections.IEnumerable)typeof(ResultsEntry).GetField("resultItems", NativePrivate)!.GetValue(window)!;
-            foreach (object item in items) item.GetType().GetProperty("ResultValue")!.SetValue(item, "Clear/Colorless");
+            foreach (object item in items) item.GetType().GetProperty("ResultValue")!.SetValue(item, "Clear and Colorless");
         }
         if (operation == "SubmitReview")
             _nativeSubmittedPayload = (WaterWorkflowRequest)typeof(ResultsEntry).GetMethod("CaptureTrustedWaterRequest", NativePrivate)!.Invoke(window, new object?[] { operation, null, null })!;
