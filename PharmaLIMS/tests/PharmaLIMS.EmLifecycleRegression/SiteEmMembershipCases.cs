@@ -115,7 +115,7 @@ INSERT dbo.EM_PlanSamples(PlanSampleID,PlanID,EventID,AreaID,Method,IsNegativeCo
 
     private static string Fingerprint(SqlConnection c,SqlTransaction tx)
     {
-        using var q=new SqlCommand(@"SELECT (SELECT * FROM dbo.EM_Events ORDER BY Id FOR JSON PATH,INCLUDE_NULL_VALUES)+N'|'+(SELECT * FROM dbo.EM_EventPlates ORDER BY Id FOR JSON PATH,INCLUDE_NULL_VALUES)+N'|'+(SELECT * FROM dbo.EM_PlanSamples ORDER BY PlanSampleID FOR JSON PATH,INCLUDE_NULL_VALUES)",c,tx);
+        using var q=new SqlCommand(@"SELECT COALESCE((SELECT * FROM dbo.EM_Events ORDER BY Id FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')+N'|'+COALESCE((SELECT * FROM dbo.EM_EventPlates ORDER BY Id FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')+N'|'+COALESCE((SELECT * FROM dbo.EM_PlanSamples ORDER BY PlanSampleID FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')",c,tx);
         return (string)q.ExecuteScalar()!;
     }
 
