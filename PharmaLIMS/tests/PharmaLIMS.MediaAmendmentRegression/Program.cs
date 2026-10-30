@@ -120,5 +120,6 @@ INSERT dbo.CultureMediaSignatures VALUES(N'MediaPreparation',1,N'Prepare Culture
  Check(amendment.Contains("originalPowderQuantityG, powderQuantityG"),"delta stock path lost");
  Check(amendment.Contains("if (originalLotId != mediaLotId)"),"immutable source lot lost");
  Console.WriteLine("PASS handler wires guard and full audits while preserving stock delta/source lot");
+ SiteCultureEvidenceCases.Run(c,root);
 }
 finally { Execute(master,$"ALTER DATABASE [{db}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{db}];"); }
