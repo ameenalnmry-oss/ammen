@@ -39,3 +39,23 @@ SQL-backed load/control adapters, seven retained release gates and own visual
 continuation. Its controls do not establish actual local WPF authentication.
 Even a successful full-cohort compile leaves independent review, original source
 rollback provenance, authenticated site WPF and module/printing/QA acceptance open.
+
+
+First exact-cohort CI41092443803 completed source buffering and both locked
+restores, but its strict graph comparison stopped before compilation: the shared
+project explicitly links Services/ControlledNumericValue.cs and
+Services/WaterNumericResultEvaluator.cs. Both already belong to the reviewed site
+inputs. BuildGraphs now records those exact includes from the pinned project;
+all other unexpected sources remain rejected. This is a verifier correction,
+not an application-dependency addition or a successful compile result.
+
+Exact uploaded SystemPreflight.xaml.cs also retains current-calendar timestamp
+interpolation. Its complete uninstalled artifact changes only the display and
+copied-report timestamp expressions to invariant formatting. Actual report method
+and label expression tests use original DTOs, four date boundaries, explicit
+UmAlQura/ThaiBuddhist/Gregorian calendars and unchanged target/count/evidence
+checks. Frozen source is wrong16/24; corrected source wrong0/24. The label control
+is an adapter, not WPF. Explicit calendars are required because this Linux ICU
+defaults ar-SA to Gregorian while AMEEN's supplied report uses the Hijri calendar.
+No timestamp instant, machine clock, database row or earlier report is changed.
+Native execution and full-cohort compilation remain required subsequent gates.

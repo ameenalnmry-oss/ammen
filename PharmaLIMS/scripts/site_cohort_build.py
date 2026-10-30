@@ -169,8 +169,9 @@ def verify_graph(project, plan):
                 if not path.is_relative_to(project.resolve()):
                     raise RuntimeError('MSBuild included a source outside the cohort.')
                 actual.add(path.relative_to(project.resolve()).as_posix())
-        expected = {p for p in inputs if p.endswith(('.cs', '.xaml')) and
-                    (p.startswith(prefix) if prefix else not p.startswith('tools/'))}
+        expected = set(plan['BuildGraphs'][prefix + filename])
+        if not expected.issubset(inputs) or any(not p.endswith(('.cs', '.xaml')) for p in expected):
+            raise RuntimeError('The reviewed build graph contains an unqualified input.')
         if actual != expected:
             raise RuntimeError('Evaluated MSBuild source graph differs: missing=' + str(sorted(expected-actual)) + ' extra=' + str(sorted(actual-expected)))
         graph[prefix + filename] = sorted(actual)
