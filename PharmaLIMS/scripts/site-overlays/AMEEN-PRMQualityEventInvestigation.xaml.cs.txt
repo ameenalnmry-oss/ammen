@@ -124,8 +124,10 @@ namespace PharmaLIMS
                     });
                     if (data != null)
                     {
-                        data.AffectedResults = SafeLoadAffectedResults();
-                        data.Actions = SafeLoadActions();
+                        data.AffectedResults = PRMQualityEventInvestigationService.GetPRMAffectedResults(qualityEventId)
+                            ?? throw new InvalidOperationException("Affected PRM results were not loaded. Reload before continuing.");
+                        data.Actions = PRMQualityEventInvestigationService.GetPRMActions(qualityEventId)
+                            ?? throw new InvalidOperationException("PRM actions were not loaded. Reload before continuing.");
                         string versionAfterLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, true);
                         if (!string.Equals(versionBeforeLoad, versionAfterLoad, StringComparison.Ordinal))
                             throw new DBConcurrencyException("The PRM investigation changed while loading. Reload before continuing.");
@@ -512,12 +514,14 @@ VALUES(@QualityEventID,@ActionType,@Note,@User,SYSDATETIME());",
                         note, currentUser, "CurrentStatus", null, sampleNumber, "PRM Quality Event");
                     savedVersion = QualityEventInvestigationConcurrencyGuard.Capture(connection, transaction, qualityEventId, true);
                 });
-                loadedInvestigationVersion = savedVersion;
+                loadedInvestigationVersion = null;
 
                 txtActionNote.Clear();
 
-                actionsTable = SafeLoadActions();
+                actionsTable = PRMQualityEventInvestigationService.GetPRMActions(qualityEventId)
+                    ?? throw new InvalidOperationException("PRM actions were not loaded after saving. Reload before continuing.");
                 dgActions.ItemsSource = actionsTable.DefaultView;
+                loadedInvestigationVersion = savedVersion;
 
                 lblStatus.Text = "Action note added.";
             }

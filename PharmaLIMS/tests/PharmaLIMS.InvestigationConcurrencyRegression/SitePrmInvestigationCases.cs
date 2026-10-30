@@ -101,15 +101,26 @@ internal static class SitePrmInvestigationCases
             Regex.Matches(load,@"loadedInvestigationVersion\s*=").Count!=2 ||
             !load.Contains("string.IsNullOrEmpty(loaded.EvidenceVersion)",StringComparison.Ordinal))
             throw new Exception("Unexpected load token publication.");
+        if(load.Contains("SafeLoadAffectedResults(",StringComparison.Ordinal) || load.Contains("SafeLoadActions(",StringComparison.Ordinal) ||
+            !load.Contains("PRMQualityEventInvestigationService.GetPRMAffectedResults(qualityEventId)",StringComparison.Ordinal) ||
+            !load.Contains("PRMQualityEventInvestigationService.GetPRMActions(qualityEventId)",StringComparison.Ordinal) ||
+            Regex.Matches(load,@"\?\?\s*throw new InvalidOperationException").Count!=2)
+            throw new Exception("The qualified load must propagate failed/null child reads.");
         string action=Code(addAction);
         int capture=action.IndexOf("savedVersion = QualityEventInvestigationConcurrencyGuard.Capture",StringComparison.Ordinal);
         int callback=action.IndexOf("DatabaseHelper.ExecuteInTransaction",StringComparison.Ordinal);
         int begin=action.IndexOf('{',callback),depth=1,end=begin+1;
         while(depth!=0) {depth+=action[end]=='{'?1:action[end]=='}'?-1:0;end++;}
         int publishAction=action.IndexOf("loadedInvestigationVersion = savedVersion",StringComparison.Ordinal);
+        int clearAction=action.IndexOf("loadedInvestigationVersion = null",StringComparison.Ordinal);
+        int actionRead=action.IndexOf("actionsTable = PRMQualityEventInvestigationService.GetPRMActions",StringComparison.Ordinal);
+        int actionBound=action.IndexOf("dgActions.ItemsSource = actionsTable.DefaultView",StringComparison.Ordinal);
         var writes=Regex.Matches(action[..end],@"DatabaseHelper\.(?:ExecuteNonQueryWithTransaction|AddAuditTrailAdvanced)\s*\(");
         if(writes.Count!=2 || capture<writes[^1].Index || capture>=end || publishAction<=end ||
-            Regex.Matches(action,@"loadedInvestigationVersion\s*=").Count!=1)
+            !(end<clearAction && clearAction<actionRead && actionRead<actionBound && actionBound<publishAction) ||
+            action.Contains("SafeLoadActions(",StringComparison.Ordinal) ||
+            !action.Contains("?? throw new InvalidOperationException",StringComparison.Ordinal) ||
+            Regex.Matches(action,@"loadedInvestigationVersion\s*=").Count!=2)
             throw new Exception("Own-action token must describe post-write content and publish after transaction success.");
         Console.WriteLine("PASS SITE PRM CAS wiring: four pre-write guards, preserved partial/history calls, load publication, and post-commit own-action token.");
     }
@@ -277,6 +288,7 @@ INSERT dbo.QualityEventInvestigationEvidenceHistory VALUES(1,N'loaded');
             Expect(line.Length != 0, "The reference guard line was missing.");
             Expect(!HasFullGuard(source.Replace(line, "/*"+line+"*/")), "A comment was accepted as a guard.");
             Expect(!HasFullGuard(source.Replace(line, "if(false){"+line+"}")), "A conditional was accepted as an unconditional guard.");
+            Expect(!HasFullGuard(source.Replace(line, "if(false) "+line)), "An unbraced conditional was accepted as an unconditional guard.");
             Expect(!HasFullGuard(source.Replace(line, "loadedInvestigationVersion=\"unreviewed token\";"+line)), "A rebased token was accepted.");
             string removed = source.Replace(line, ""), code = Code(removed);
             int begin = code.IndexOf('{', code.IndexOf("DatabaseHelper.ExecuteInTransaction", StringComparison.Ordinal));
@@ -284,8 +296,8 @@ INSERT dbo.QualityEventInvestigationEvidenceHistory VALUES(1,N'loaded');
             while (depth != 0) { depth += code[end]=='{' ? 1 : code[end]=='}' ? -1 : 0; end++; }
             Expect(!HasFullGuard(removed.Insert(end-1, line)), "A guard after controlled writes was accepted.");
         }
-        if (checks != 24) throw new Exception("Incomplete source guard detector controls.");
-        Console.WriteLine("PASS SITE PRM CAS detector: 24 actual/reference and comment, nested, rebased, late-source controls.");
+        if (checks != 28) throw new Exception("Incomplete source guard detector controls.");
+        Console.WriteLine("PASS SITE PRM CAS detector: 28 actual/reference and comment, nested, unbraced conditional, rebased, late-source controls.");
     }
 
     // Ignore comments, SQL/string literals and nested conditionals. A token merely
@@ -308,6 +320,8 @@ INSERT dbo.QualityEventInvestigationEvidenceHistory VALUES(1,N'loaded');
         if (!guard.Success) return false;
         string before = body[..guard.Index];
         if (before.Count(c => c=='{') != before.Count(c => c=='}')) return false;
+        string prefix = before.TrimEnd();
+        if (prefix.Length != 0 && prefix[^1] != ';' && prefix[^1] != '}') return false;
         if (Regex.IsMatch(before, @"loadedInvestigationVersion\s*=")) return false;
         var write = Regex.Match(body, @"(?:DatabaseHelper\.(?:SaveQualityEventInvestigation|ExecuteNonQueryWithTransaction|AddAuditTrailAdvanced)|PRMQualityEventInvestigationService\.SavePRMQualityEventChecklistAnswers)\s*\(");
         return write.Success && guard.Index < write.Index;

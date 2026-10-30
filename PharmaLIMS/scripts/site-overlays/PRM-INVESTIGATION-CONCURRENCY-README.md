@@ -17,6 +17,10 @@ cohort is later qualified; no installer or deployment allowlist is changed here.
 
 Loading clears the old token, captures versions before/after loading the persisted
 view, rejects observed changes, and publishes the token after UI data binding.
+Affected-result and action reads now propagate exceptions and reject null results;
+a partial display cannot publish an evidence version. After own-action commit,
+the old version is cleared and the saved version publishes only after a strict
+action refresh and binding succeed. Failed refresh requires reloading.
 AddAction captures its new version under retained locks and publishes it after
 transaction success, preserving unsaved header/checklist edits.
 
@@ -42,6 +46,26 @@ or prove complete approval/closure behavior. Exact whole-cohort Windows build an
 local UAT remain separate. No AMEEN source/runtime, database schema/permissions,
 Production, version, rollback receipt or merge is changed.
 
-Complete window source SHA256 before this batch: `41ad393bfdf414842d7abe600948d52798d3d667f01661234cd0865f2e47e94a`; corrected: `e6d0375100cbad8557eabc32d4764196a66b1adcb010c7dc74e6773a47ac2319`.
+Complete window source SHA256 before this batch: `41ad393bfdf414842d7abe600948d52798d3d667f01661234cd0865f2e47e94a`; corrected: `42f172e3c53cb99c45554c2371217d6abc0cf9522a0792589e74c60854e0b004`.
 
 Exact helper SHA256: `8ed302f1fdee7f51cf317e3753950d0401e311380d76a75ec5fb5c202053e181`.
+
+Review follow-up: b87c3a797b94090af42997cf91aed9b3f3e4db06 passed both
+Windows CI jobs in run 40966296070, including corrected 52/52 SQL probes, two
+child phantom-lock checks and committed own-action continuation. Those tests did
+not cover the child-read failure or unbraced conditional found in the subsequent
+review. New RED tests reproduced both; corrected source passes the portable
+fault-injection probes and 36 guard-wiring controls. Native CI on this final
+follow-up remains the authoritative gate.
+
+The load regression compiles the exact extracted child-loading/publication
+segment, checks its bytes against the supplied full artifact at runtime, and
+injects throwing/null affected-result and action readers under stable version
+capture. The frozen b87c segment accepts all four incomplete reads; corrected
+segment rejects all four without publishing a version and accepts successful
+reads. These read adapters test propagation, not SQL loading, WPF binding or
+authentication. The four-actor guard detector additionally rejects an unbraced
+conditional and requires a statement boundary before the guard (28 controls).
+
+The independent reviewer supplied two findings, addressed here; its session then
+ended before a complete final review. This is not a clean full-cohort review signoff.
