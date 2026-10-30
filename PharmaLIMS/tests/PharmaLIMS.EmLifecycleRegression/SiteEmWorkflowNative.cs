@@ -109,10 +109,14 @@ DELETE dbo.EM_EventSignatures;DELETE dbo.SiteEmTestAudit;");
     private static void VerifySources(string root)
     {
         string Site(string name)=>File.ReadAllText(Path.Combine(root,"scripts/site-overlays/AMEEN-"+name+".txt")).Replace("\r\n","\n");
+        string compiledSource=File.ReadAllText(Path.Combine(root,"tests/PharmaLIMS.EmLifecycleRegression/SiteEmWorkflowMethods.cs")).Replace("\r\n","\n");
+        string correctedBody=Method(compiledSource,"private sealed class Corrected"),frozenBody=Method(compiledSource,"private sealed class Frozen");
         string backend=Site("DatabaseHelper.EnvironmentalMonitoring.cs"),window=Site("EMResultsEntry.xaml.cs"),part=Site("EMResultsEntry.xaml.Part3.cs");
         foreach(var action in new[]{("ReviewEMEvent",Corrected.ReviewEMEventSource,Frozen.ReviewEMEventSource,"BtnReview_Click"),("ApproveEMEvent",Corrected.ApproveEMEventSource,Frozen.ApproveEMEventSource,"BtnApprove_Click")})
         {
-            if(Method(backend,"public static void "+action.Item1+"(")!=action.Item2)throw new Exception("Compiled method differs from corrected site artifact.");
+            string signature="public static void "+action.Item1+"(";
+            if(Method(backend,signature)!=action.Item2 || Method(correctedBody,signature)!=action.Item2 || Method(frozenBody,signature)!=action.Item3)
+                throw new Exception("Actual compiled method body differs from the site artifact/frozen source.");
             using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tests/fixtures/AMEEN-EM-workflow-freshness-20261030.json")));
             if(fixture.RootElement.GetProperty("Methods").GetProperty(action.Item1).GetString()!=action.Item3)throw new Exception("Frozen method drift.");
             string ui=Method(window,"private async void "+action.Item4+"(");
@@ -122,10 +126,15 @@ DELETE dbo.EM_EventSignatures;DELETE dbo.SiteEmTestAudit;");
                 throw new Exception("Site WPF handler does not pass its pre-signature snapshot and captured identity.");
         }
         string compiled=UiCaptureSource;
-        if(Method(part,"private DataTable CaptureEmWorkflowEvidence(")!=compiled)throw new Exception("Compiled UI capture differs from corrected artifact.");
+        if(Method(part,"private DataTable CaptureEmWorkflowEvidence(")!=compiled ||
+            Method(Method(compiledSource,"private sealed class UiCaptureAdapter"),"private DataTable CaptureEmWorkflowEvidence(")!=compiled)
+            throw new Exception("Actual compiled UI capture body differs from corrected artifact.");
         using var frozen=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tests/fixtures/AMEEN-EM-workflow-freshness-20261030.json")));
         string snapshot=Site("DatabaseHelper.EmSourcePlan.cs");
         string methods=Method(snapshot,"internal static string GetEmPlateSnapshotSql(")+"\n"+Method(snapshot,"internal static DataTable ReadEmPlateSnapshotInTransaction(");
         if(methods!=frozen.RootElement.GetProperty("SnapshotMethods").GetString())throw new Exception("Tested site snapshot SQL differs.");
+        string snapshotBody=Method(compiledSource,"private static class SiteSnapshot");
+        if(Method(snapshotBody,"internal static string GetEmPlateSnapshotSql(")+"\n"+Method(snapshotBody,"internal static DataTable ReadEmPlateSnapshotInTransaction(")!=methods)
+            throw new Exception("Actual compiled snapshot SQL/reader body differs from the tested source.");
     }
 }
