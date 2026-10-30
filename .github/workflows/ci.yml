@@ -237,6 +237,64 @@ jobs:
           Write-Host "GITHUB_SHA=$env:GITHUB_SHA"
           Write-Host "GITHUB_EVENT_NAME=$env:GITHUB_EVENT_NAME"
 
+
+      - name: Prepare exact AMEEN site cohort in existing hosted CI checkout
+        if: github.event_name == 'pull_request'
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Prior general restore changed only these two generated lock graphs.
+          # Restore their reviewed Git bytes before checking the complete source.
+          git restore --source=HEAD -- packages.lock.json tools/PharmaLIMS.TrustedSigning/packages.lock.json
+          if ($LASTEXITCODE -ne 0) { throw "CI lock graph reset failed." }
+          & ./scripts/Test-SourceManifest.ps1
+          if (-not $?) { throw "Source drift before exact-cohort preparation." }
+          # Clear only build output in this hosted checkout; never AMEEN files.
+          foreach ($folder in @('bin','obj','tools/PharmaLIMS.TrustedSigning/bin','tools/PharmaLIMS.TrustedSigning/obj','tools/PharmaLIMS.TrustedSigning.Host/bin','tools/PharmaLIMS.TrustedSigning.Host/obj')) {
+              if (Test-Path -LiteralPath $folder) { Remove-Item -LiteralPath $folder -Recurse -Force }
+          }
+          python -B scripts/site_cohort_build.py prepare
+          if ($LASTEXITCODE -ne 0) { throw "Exact-cohort source preparation failed." }
+
+      - name: Locked restore and exact site-cohort WPF and signer-host Release builds
+        if: github.event_name == 'pull_request'
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet restore PharmaLIMS.csproj --locked-mode
+          if ($LASTEXITCODE -ne 0) { throw "Exact site WPF locked restore failed." }
+          dotnet restore tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj --locked-mode
+          if ($LASTEXITCODE -ne 0) { throw "Exact site signer-host locked restore failed." }
+          python -B scripts/site_cohort_build.py graph
+          if ($LASTEXITCODE -ne 0) { throw "Evaluated exact-cohort build graph differs." }
+          dotnet build PharmaLIMS.csproj --configuration Release --no-restore -p:DeploymentEnvironment=Development
+          if ($LASTEXITCODE -ne 0) { throw "Exact site WPF Release build failed." }
+          dotnet build tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj --configuration Release --no-restore
+          if ($LASTEXITCODE -ne 0) { throw "Exact site signer-host Release build failed." }
+          $binary = Join-Path $PWD 'bin/Release/net8.0-windows7.0/PharmaLIMS.dll'
+          if ([Diagnostics.FileVersionInfo]::GetVersionInfo($binary).FileVersion -ne '2026.10.19.306') {
+              throw "The actual site WPF file version306 was not preserved."
+          }
+          foreach ($project in @('PharmaLIMS.csproj','tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj')) {
+              $audit = & dotnet list $project package --vulnerable --include-transitive 2>&1
+              if ($LASTEXITCODE -ne 0) { throw "Exact site dependency inspection failed." }
+              $audit | ForEach-Object { Write-Host $_ }
+              if (($audit -join [Environment]::NewLine) -match 'has the following vulnerable packages|Critical|High') {
+                  throw "Vulnerable packages in the exact site cohort."
+              }
+          }
+          python -B scripts/site_cohort_build.py finish
+          if ($LASTEXITCODE -ne 0) { throw "Exact-cohort compilation evidence incomplete." }
+
+      - name: Preserve exact site-cohort source graph and compile evidence
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: eq001-site-cohort-build-evidence
+          path: PharmaLIMS/artifacts/site-cohort/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
   # Require external runner-group workflow/ref restrictions and Production
   # environment deployment-branch rules. Branch-controlled YAML cannot protect
   # a self-hosted runner from an attacker who can rewrite that YAML.
