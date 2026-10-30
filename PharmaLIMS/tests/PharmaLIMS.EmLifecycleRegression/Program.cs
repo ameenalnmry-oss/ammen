@@ -103,5 +103,6 @@ INSERT dbo.LabEquipmentUsageHistory(Module,ParentRecordID,ResultRecordID,Previou
 Check("instrument revert cannot revive historical closed decision",()=>{if(InstrumentCurrent())throw new Exception("instrument revert revived closure");});
 Call("InvalidateEMInvestigationEvidenceInTransaction",1,"EM-1","editor");
 Check("original instrument traceability and decision retained",()=>{using var c=new SqlConnection(cs);c.Open();using var q=new SqlCommand("SELECT COUNT(*) FROM dbo.LabEquipmentUsageHistory WHERE EquipmentCodeSnapshot=N'INC-1' AND ChangeType=N'ASSIGN' AND EXISTS(SELECT 1 FROM dbo.QualityEvents WHERE QualityEventID=3 AND CurrentStatus=N'Closed')",c);if((int)q.ExecuteScalar()! != 1)throw new Exception("original equipment evidence missing");});
+SiteEmWorkflowCases.RunNative(cs,root);
 }finally{Sql(master.ConnectionString,$"ALTER DATABASE [{db}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{db}]");}
 Console.WriteLine($"{checks-failures}/{checks} passed");return failures==0?0:1;

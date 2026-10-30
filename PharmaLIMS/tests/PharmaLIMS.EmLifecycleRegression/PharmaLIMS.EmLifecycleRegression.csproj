@@ -3,4 +3,10 @@
   <ItemGroup><PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" /></ItemGroup>
   <ItemGroup Condition="Exists('$(SourceRoot)/Services/EmControlledLifecycleGuard.cs')"><Compile Include="$(SourceRoot)/Services/EmControlledLifecycleGuard.cs" Link="EmControlledLifecycleGuard.cs" /><Compile Include="$(SourceRoot)/DatabaseHelper.EnvironmentalMonitoring.Evidence.cs" Link="Evidence.cs" /></ItemGroup>
   <ItemGroup><Compile Include="$(SourceRoot)/Services/EmLimitEvidenceSql.cs" Link="EmLimitEvidenceSql.cs" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../Services/ResultSnapshotGuard.cs" Link="ResultSnapshotGuard.cs" />
+    <Compile Include="../../scripts/site-overlays/AMEEN-EmResultCalculator.cs.txt" Link="SiteEmResultCalculator.cs" />
+    <Compile Include="../../scripts/site-overlays/AMEEN-EmReportEvidenceGuard.cs.txt" Link="SiteEmReportEvidenceGuard.cs" />
+    <Compile Include="../../scripts/site-overlays/AMEEN-EmQualityEventEvidenceGuard.cs.txt" Link="SiteEmQualityEventEvidenceGuard.cs" />
+  </ItemGroup>
 </Project>
