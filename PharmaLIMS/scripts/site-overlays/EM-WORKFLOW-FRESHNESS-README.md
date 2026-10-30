@@ -14,12 +14,14 @@ Existing permissions, actor separation, source-plan handling, Quality Event gate
 current-result consistency, transaction signatures/audits, equipment histories,
 grouped personnel labels and post-commit refresh remain.
 
-Three corrected complete site files: DatabaseHelper.EnvironmentalMonitoring.cs,
-EMResultsEntry.xaml.cs and EMResultsEntry.xaml.Part3.cs. The four other artifacts
-(DatabaseHelper.EmSourcePlan.cs, EmReportEvidenceGuard.cs and
-EmQualityEventEvidenceGuard.cs and EmResultCalculator.cs) are unchanged site dependencies supplied so the
-tested source and later exact cohort remain inspectable; do not replace unrelated
-current GitHub files with these separately. No deployment allowlist is expanded.
+The freshness correction supplies three complete site files:
+DatabaseHelper.EnvironmentalMonitoring.cs, EMResultsEntry.xaml.cs and
+EMResultsEntry.xaml.Part3.cs. DatabaseHelper.EmSourcePlan.cs now additionally
+contains the separate correction described in EM-MEMBERSHIP-README.md; its snapshot
+SELECT/reader remains unchanged. EmReportEvidenceGuard.cs,
+EmQualityEventEvidenceGuard.cs and EmResultCalculator.cs remain unchanged site
+dependencies. These form a preserved cohort for later qualification; do not replace
+unrelated current GitHub files with them. No deployment allowlist is expanded.
 
 Tests compile exact frozen/corrected Review and Approval methods and the exact site
 snapshot SELECT/reader. Runtime comparisons reject drift between compiled excerpts

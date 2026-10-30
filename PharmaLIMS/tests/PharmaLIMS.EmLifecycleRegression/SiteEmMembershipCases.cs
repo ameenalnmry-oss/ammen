@@ -49,7 +49,9 @@ INSERT dbo.EM_PlanSamples(PlanSampleID,PlanID,EventID,AreaID,Method,IsNegativeCo
             new Case("unknown control status","UPDATE dbo.EM_PlanSamples SET IsNegativeControl=NULL WHERE PlanSampleID=1"),
             new Case("ordinal employee-ID distinction","UPDATE dbo.EM_Events SET EmployeeId=N'I' WHERE Id=1;UPDATE dbo.EM_PlanSamples SET EmployeeID=N'ı' WHERE PlanSampleID=1"),
             new Case("changed employee name case","UPDATE dbo.EM_PlanSamples SET EmployeeName=N'ALICE' WHERE PlanSampleID=1"),
-            new Case("whitespace-only employee ID","UPDATE dbo.EM_PlanSamples SET EmployeeID=NCHAR(9) WHERE PlanSampleID=1")
+            new Case("whitespace-only employee ID","UPDATE dbo.EM_PlanSamples SET EmployeeID=NCHAR(9) WHERE PlanSampleID=1"),
+            new Case("assigned sample missing its plate","UPDATE dbo.EM_PlanSamples SET PlanID=1,EventID=1,EmployeeID=N'E1',EmployeeName=N'Alice' WHERE PlanSampleID=20"),
+            new Case("all result plates missing","DELETE dbo.EM_EventPlates WHERE EventId=1")
         };
         var valid=new[]{
             new Case("individual with multiple plates per sample",""),
@@ -83,11 +85,11 @@ INSERT dbo.EM_PlanSamples(PlanSampleID,PlanID,EventID,AreaID,Method,IsNegativeCo
             }
             foreach(var test in valid)if(Probe(cs,test,fix))throw new Exception("Valid case rejected: "+test.Name);
             foreach(var test in existingGates)if(!Probe(cs,test,fix))throw new Exception("Existing gate regressed: "+test.Name);
-            Console.WriteLine($"SITE EM MEMBERSHIP {(fix?"corrected":"frozen")}: {rejected}/23 invalid links rejected; 9 valid identity/history controls and 6 existing gates preserved. Exact readonly SQL guard; probes rolled back.");
+            Console.WriteLine($"SITE EM MEMBERSHIP {(fix?"corrected":"frozen")}: {rejected}/{invalid.Length} invalid links rejected; 9 valid identity/history controls and 6 existing gates preserved. Exact readonly SQL guard; probes rolled back.");
         }
-        if(frozenUnsafe!=23)throw new Exception("Incomplete frozen membership reproduction.");
+        if(frozenUnsafe!=invalid.Length)throw new Exception("Incomplete frozen membership reproduction.");
         if(corrected)VerifyLocks(cs);
-        Console.WriteLine(corrected?"PASS SITE EM MEMBERSHIP: 23/23 corrected rejections, 9 valid histories, 6 existing gates, retained membership locks; original records untouched.":"PASS SITE EM MEMBERSHIP RED: 23 unsafe membership acceptances reproduced; 9 valid histories and 6 existing gates retained. No corrected acceptance claimed.");
+        Console.WriteLine(corrected?$"PASS SITE EM MEMBERSHIP: {invalid.Length}/{invalid.Length} corrected rejections, 9 valid histories, 6 existing gates, four retained membership locks; original records untouched.":$"PASS SITE EM MEMBERSHIP RED: {invalid.Length} unsafe membership acceptances reproduced; 9 valid histories and 6 existing gates retained. No corrected acceptance claimed.");
     }
 
     private static bool Probe(string cs,Case test,bool corrected)
@@ -121,13 +123,13 @@ INSERT dbo.EM_PlanSamples(PlanSampleID,PlanID,EventID,AreaID,Method,IsNegativeCo
     {
         using var c=new SqlConnection(cs);c.Open();using var tx=c.BeginTransaction();
         Corrected.EnsureEmSourcePlanInTransaction(c,tx,1,true);int rejected=0;
-        foreach(string sql in new[]{"UPDATE dbo.EM_PlanSamples SET EmployeeName=N'changed' WHERE PlanSampleID=1","UPDATE dbo.EM_EventPlates SET PlanSampleID=20 WHERE Id=1","INSERT dbo.EM_EventPlates(Id,EventId,Method,PlanSampleID) VALUES(30,1,N'Personnel Monitoring',1)"})
+        foreach(string sql in new[]{"UPDATE dbo.EM_PlanSamples SET EmployeeName=N'changed' WHERE PlanSampleID=1","UPDATE dbo.EM_EventPlates SET PlanSampleID=20 WHERE Id=1","INSERT dbo.EM_EventPlates(Id,EventId,Method,PlanSampleID) VALUES(30,1,N'Personnel Monitoring',1)","INSERT dbo.EM_PlanSamples(PlanSampleID,PlanID,EventID,AreaID,Method,IsNegativeControl,Status,EmployeeID,EmployeeName) VALUES(30,1,1,1,N'Personnel Monitoring',0,N'Ready for Results',N'E1',N'Alice')"})
         {
             using var other=new SqlConnection(cs);other.Open();using var change=new SqlCommand("SET LOCK_TIMEOUT 300; "+sql,other){CommandTimeout=5};
             try{change.ExecuteNonQuery();throw new Exception("Concurrent membership writer escaped locks.");}
             catch(SqlException ex) when(ex.Number==1222){rejected++;}
         }
-        tx.Rollback();if(rejected!=3)throw new Exception("Incomplete membership lock controls.");
+        tx.Rollback();if(rejected!=4)throw new Exception("Incomplete membership lock controls.");
     }
 
     private static string Method(string source,string signature)

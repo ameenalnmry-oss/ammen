@@ -32,6 +32,62 @@ IF @r<0 THROW 55514,'The EM source plan is busy. Reload and retry.',1;",connecti
         verify.Parameters.Add("@ID",SqlDbType.Int).Value=eventId;using var reader=verify.ExecuteReader();
         if(!reader.Read() || reader.GetInt32(0)!=planId || string.Equals(Convert.ToString(reader.GetValue(1),CultureInfo.InvariantCulture),"Cancelled",StringComparison.OrdinalIgnoreCase) || string.Equals(Convert.ToString(reader.GetValue(2),CultureInfo.InvariantCulture),"Cancelled",StringComparison.OrdinalIgnoreCase))
             throw new DBConcurrencyException("The EM event/source plan changed or was cancelled. No operation was committed.");
+        reader.Close();
+        if(planId>0)
+        {
+            // Retain parent -> plate -> source-sample locks through the caller's
+            // transaction. Never accept a plausible employee label from a wrong link.
+            using var membership=new SqlCommand(@"
+SELECT P.Method,S.PlanSampleID,S.PlanID,S.EventID,S.AreaID,S.Method,
+       S.IsNegativeControl,S.Status,S.EmployeeID,S.EmployeeName,
+       E.EmployeeId,E.EmployeeName,E.AreaId
+FROM dbo.EM_EventPlates P WITH(UPDLOCK,HOLDLOCK)
+JOIN dbo.EM_Events E WITH(UPDLOCK,HOLDLOCK) ON E.Id=P.EventId
+LEFT JOIN dbo.EM_PlanSamples S WITH(UPDLOCK,HOLDLOCK) ON S.PlanSampleID=P.PlanSampleID
+WHERE P.EventId=@ID ORDER BY P.Id;",connection,transaction){CommandTimeout=AppConfig.CommandTimeoutSeconds};
+            membership.Parameters.Add("@ID",SqlDbType.Int).Value=eventId;
+            using var membershipReader=membership.ExecuteReader();
+            bool anyPlate=false;
+            while(membershipReader.Read())
+            {
+                anyPlate=true;
+                string Text(int index)=>Convert.ToString(membershipReader.GetValue(index),CultureInfo.InvariantCulture) ?? string.Empty;
+                string plateMethod=Text(0).Trim(),sampleMethod=Text(5).Trim(),sampleStatus=Text(7).Trim();
+                if(membershipReader.IsDBNull(1) || membershipReader.IsDBNull(2) || membershipReader.GetInt32(2)!=planId ||
+                    membershipReader.IsDBNull(3) || membershipReader.GetInt32(3)!=eventId ||
+                    membershipReader.IsDBNull(4) || membershipReader.IsDBNull(12) || membershipReader.GetInt32(4)!=membershipReader.GetInt32(12) ||
+                    string.IsNullOrWhiteSpace(plateMethod) || !string.Equals(plateMethod,sampleMethod,StringComparison.OrdinalIgnoreCase) ||
+                    membershipReader.IsDBNull(6) || membershipReader.GetBoolean(6) ||
+                    (!sampleStatus.Equals("Ready for Results",StringComparison.OrdinalIgnoreCase) && !sampleStatus.Equals("Completed",StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidOperationException("EM plate membership differs from the released source plan. Reload and obtain controlled QA correction before continuing.");
+
+                string sampleEmployeeId=Text(8),sampleEmployeeName=Text(9),eventEmployeeId=Text(10),eventEmployeeName=Text(11);
+                // Match the existing SQL label fallback: both event identity
+                // fields may be null/ASCII-blank for historical aggregate events.
+                bool eventIdAbsent=eventEmployeeId.Trim(' ').Length==0;
+                bool eventNameAbsent=eventEmployeeName.Trim(' ').Length==0;
+                bool personnel=plateMethod.IndexOf("personnel",StringComparison.OrdinalIgnoreCase)>=0 ||
+                    plateMethod.IndexOf("glove",StringComparison.OrdinalIgnoreCase)>=0 || !eventIdAbsent || !eventNameAbsent;
+                if(personnel && (string.IsNullOrWhiteSpace(sampleEmployeeId) || string.IsNullOrWhiteSpace(sampleEmployeeName) ||
+                    eventIdAbsent!=eventNameAbsent || (!eventIdAbsent &&
+                    (!string.Equals(eventEmployeeId.Trim(),sampleEmployeeId.Trim(),StringComparison.OrdinalIgnoreCase) ||
+                     !string.Equals(eventEmployeeName.Trim(),sampleEmployeeName.Trim(),StringComparison.Ordinal)))))
+                    throw new InvalidOperationException("Personnel identity is missing or contradicts the released plan sample. Reload and obtain controlled QA correction before continuing.");
+            }
+            membershipReader.Close();
+            if(!anyPlate)
+                throw new InvalidOperationException("The planned EM event has no result plates. Controlled QA correction is required before processing.");
+            // Validate coverage in the reverse direction too. Multiple plates
+            // per sample remain allowed; every assigned result sample needs one.
+            using var orphan=new SqlCommand(@"
+SELECT TOP(1) 1 FROM dbo.EM_PlanSamples S WITH(UPDLOCK,HOLDLOCK)
+WHERE S.EventID=@ID AND ISNULL(S.IsNegativeControl,0)=0
+  AND NOT EXISTS(SELECT 1 FROM dbo.EM_EventPlates P WITH(UPDLOCK,HOLDLOCK)
+                 WHERE P.EventId=@ID AND P.PlanSampleID=S.PlanSampleID);",connection,transaction){CommandTimeout=AppConfig.CommandTimeoutSeconds};
+            orphan.Parameters.Add("@ID",SqlDbType.Int).Value=eventId;
+            if(orphan.ExecuteScalar()!=null)
+                throw new InvalidOperationException("A plan sample assigned to this EM event has no result plate. Controlled QA correction is required before processing.");
+        }
         return planId;
     }
     internal static string GetEmPlateSnapshotSql(bool forUpdate)
