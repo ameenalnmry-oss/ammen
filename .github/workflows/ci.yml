@@ -90,6 +90,20 @@ jobs:
           python -m pip install PyYAML==6.0.3
           if ($LASTEXITCODE -ne 0) { throw "Workflow policy parser installation failed." }
 
+      - name: Qualified source transition preview regressions on PowerShell 7
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./tests/Test-Eq001SourceTransitionPreview.ps1
+          if (-not $?) { throw "Read-only source transition preview regressions failed." }
+
+      - name: Qualified source transition preview regressions on Windows PowerShell 5.1
+        working-directory: PharmaLIMS
+        shell: powershell
+        run: |
+          & ./tests/Test-Eq001SourceTransitionPreview.ps1
+          if (-not $?) { throw "Windows PowerShell source transition preview regressions failed." }
+
       - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS
         run: |
@@ -689,3 +703,4 @@ jobs:
           path: PharmaLIMS/artifacts/eq001-windows-uat/
           if-no-files-found: warn
           retention-days: 30
+
