@@ -17,6 +17,7 @@ internal static class SiteGenericInvestigationCases
         int oldUnsafe=Evaluate(cs,frozen,oldHelper,false),fixedUnsafe=Evaluate(cs,site,helper,true);
         if(oldUnsafe!=39||fixedUnsafe!=0)throw new Exception($"Generic actual first-write matrix: frozen unsafe{oldUnsafe}/39; corrected unsafe{fixedUnsafe}/39.");
         SiteGenericReloadProbe.Run(root);
+        SignedRecordRemainsFrozen(cs);
         RetainedLocks(cs);
         Console.WriteLine("PASS SITE GENERIC QE SQL: actual frozen Save/Submit/Close allowed39 changed/missing evidence cases; corrected rejected39/39 and accepted3 unchanged controls; all probe writes rolled back. Callbacks/authentication/WPF not executed.");
     }
@@ -46,6 +47,9 @@ internal static class SiteGenericInvestigationCases
         {
             using var c=new SqlConnection(cs);c.Open();using var tx=c.BeginTransaction();
             Sql(c,tx,"UPDATE dbo.QualityEvents SET CurrentStatus=N'"+path.Item4+"',ClosedBy=NULL,ClosedDate=NULL,SourceModule=N'WATER' WHERE QualityEventID=1");
+            // Earlier cases deliberately retain closure signatures. Canonicalize only
+            // this owned transaction's unsigned baseline; rollback restores all rows.
+            Sql(c,tx,"DELETE dbo.QualityEventSignatures WHERE QualityEventID=1");
             string? loaded=change=="MISSING"?null:QualityEventInvestigationConcurrencyGuard.Capture(c,tx,1,false);
             if(change!="MISSING"&&change!="UNCHANGED")Sql(c,tx,change);
             bool rejected=false;
@@ -69,6 +73,7 @@ internal static class SiteGenericInvestigationCases
     private static void RetainedLocks(string cs)
     {
         using var owner=new SqlConnection(cs);owner.Open();using var tx=owner.BeginTransaction();
+        Sql(owner,tx,"UPDATE dbo.QualityEvents SET CurrentStatus=N'Open',ClosedBy=NULL,ClosedDate=NULL,SourceModule=N'WATER' WHERE QualityEventID=1; DELETE dbo.QualityEventSignatures WHERE QualityEventID=1");
         string version=QualityEventInvestigationConcurrencyGuard.Capture(owner,tx,1,false);
         QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(owner,tx,1,false,version);
         foreach(string sql in new[]{"UPDATE dbo.QualityEventActions SET ActionDescription=N'race' WHERE QualityEventID=1","INSERT dbo.QualityEventRootCauseWhys VALUES(1,N'phantom')"})
@@ -78,6 +83,18 @@ internal static class SiteGenericInvestigationCases
             catch(SqlException ex)when(ex.Number==1222){}
         }
         tx.Rollback();Console.WriteLine("PASS SITE GENERIC QE retained child/update and phantom locks.");
+    }
+    private static void SignedRecordRemainsFrozen(string cs)
+    {
+        using var c=new SqlConnection(cs);c.Open();using var tx=c.BeginTransaction();
+        Sql(c,tx,"UPDATE dbo.QualityEvents SET CurrentStatus=N'QA Review',ClosedBy=NULL,ClosedDate=NULL,SourceModule=N'WATER' WHERE QualityEventID=1; INSERT dbo.QualityEventSignatures VALUES(1,303,N'signed unchanged fixture')");
+        string version=QualityEventInvestigationConcurrencyGuard.Capture(c,tx,1,false);
+        bool blocked=false;
+        try{QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(c,tx,1,false,version);}
+        catch(InvalidOperationException ex)when(ex.Message=="The investigation carries a closure signature and cannot be modified."){blocked=true;}
+        finally{tx.Rollback();}
+        if(!blocked)throw new Exception("A freshly captured signed generic investigation became editable.");
+        Console.WriteLine("PASS SITE GENERIC QE: unchanged signed record remains frozen; owned fixture changes rolled back.");
     }
     private static void Sql(SqlConnection c,SqlTransaction? tx,string sql){using var cmd=new SqlCommand(sql,c,tx){CommandTimeout=15};cmd.ExecuteNonQuery();}
     private static string Code(string source)=>Regex.Replace(source,"@\"(?:\"\"|[^\"])*\"|\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|//[^\\r\\n]*|/\\*[\\s\\S]*?\\*/",m=>new string(' ',m.Length));

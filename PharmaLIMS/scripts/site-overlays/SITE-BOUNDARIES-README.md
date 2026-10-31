@@ -56,3 +56,11 @@ subsequent gates. No AMEEN install, new checkout/project copy, source installer
 allowlist expansion, rollback receipt relabel, SQL schema/execution/permissions,
 Production activation or PR merge. Independent review and actual site WPF/module,
 printing, source rollback provenance and QA acceptance remain open.
+
+Native CI41170269628: general validation/exact357-input build passed, but the
+generic unchanged SQL control inherited a closure signature from earlier cases.
+The real guard correctly refused that signed record. Normalize the unsigned
+positive/lock baselines only inside each owned fixture transaction and rollback;
+retain a separate unchanged signed-record rejection control. Keep all39 changed/
+missing cases and3 unsigned unchanged controls; do not broaden exception catching
+or alter application/AMEEN history. Corrected native execution is still required.
