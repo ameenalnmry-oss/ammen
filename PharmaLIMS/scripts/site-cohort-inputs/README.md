@@ -7,7 +7,7 @@ The immutable source archive SHA256 is
 `b9244b38b1d4cb72dbd0bacf913fb7e92e07802626057e5169a5c58d71b6309a`.
 The plan preserves its 220 declared build inputs and11 additional compile files,
 applies the separately tested complete site artifacts, and adds the two necessary
-complete evidence helpers. Version `2026.10.19.306` remains. Database definitions,
+complete evidence helpers plus the tested bounded transport pool. Version `2026.10.19.306` remains. Database definitions,
 the site migration manifest and all102 controlled SQL checksums remain exact.
 Nine unmatched database inputs are inert base64 .txt files so BOM/newlines can
 round-trip without changing migration checksums. No SQL is executed by this gate.
@@ -59,3 +59,5 @@ is an adapter, not WPF. Explicit calendars are required because this Linux ICU
 defaults ar-SA to Gregorian while AMEEN's supplied report uses the Hijri calendar.
 No timestamp instant, machine clock, database row or earlier report is changed.
 Native execution and full-cohort compilation remain required subsequent gates.
+
+Current transport/generic-QE boundary follow-up: see ../site-overlays/SITE-BOUNDARIES-README.md. The exact plan now contains357 inputs with200/22/7 evaluated project graphs; native SQL and compile gates are required again for these changes.

@@ -1,7 +1,7 @@
 {
   "ArchiveSha256": "b9244b38b1d4cb72dbd0bacf913fb7e92e07802626057e5169a5c58d71b6309a",
   "Version": "2026.10.19.306",
-  "InputCount": 356,
+  "InputCount": 357,
   "OriginalBuildInputCount": 231,
   "MigrationCount": 102,
   "Inputs": [
@@ -140,9 +140,10 @@
       "OriginalRawSha256": "d986a315d936c6a0c12e828107d5e4d8b359841b588ece5ccfdc46747ff80d58",
       "OriginalNormalizedSha256": "49c75f6c8eb8a621afd981a8a07c109b7c4badfc73815a8aa8488cd7fd7ee8be",
       "OriginalStatus": "MATCH_PINNED_GIT_BLOB",
-      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
-      "SourcePath": "PharmaLIMS/DatabaseHelper.QualityEvents.cs",
-      "Sha256": "49c75f6c8eb8a621afd981a8a07c109b7c4badfc73815a8aa8488cd7fd7ee8be"
+      "Sha256": "7c33071270bc80612a8094911c8b57443d24f42e9f29010b3e82bc0a1d636b2c",
+      "OriginalSourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
+      "OriginalSourcePath": "PharmaLIMS/DatabaseHelper.QualityEvents.cs",
+      "Artifact": "scripts/site-overlays/AMEEN-DatabaseHelper.QualityEvents.cs.txt"
     },
     {
       "Path": "DatabaseHelper.SecurityAudit.cs",
@@ -809,18 +810,20 @@
       "OriginalRawSha256": "f7359b86d981a01d3c4d7428c40bcb925d47b516fe2c49151aecf3a42827c291",
       "OriginalNormalizedSha256": "a9ad6ed610eb87ca774ebb55cef2cfe9b0850302deec09346f7777e3cadf9afc",
       "OriginalStatus": "MATCH_PINNED_GIT_BLOB",
-      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
-      "SourcePath": "PharmaLIMS/QualityEventInvestigation.xaml.Part2.cs",
-      "Sha256": "a9ad6ed610eb87ca774ebb55cef2cfe9b0850302deec09346f7777e3cadf9afc"
+      "Sha256": "93fe2e6acdcd828824b0e2fc6fa52f4fe29a28d6649797d484de219d94ccca26",
+      "OriginalSourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
+      "OriginalSourcePath": "PharmaLIMS/QualityEventInvestigation.xaml.Part2.cs",
+      "Artifact": "scripts/site-overlays/AMEEN-QualityEventInvestigation.xaml.Part2.cs.txt"
     },
     {
       "Path": "QualityEventInvestigation.xaml.cs",
       "OriginalRawSha256": "81de588b068d952030b3b2ff5ab2b68c95903224e8e82b26546d6fc6892f98f7",
       "OriginalNormalizedSha256": "cc82e1367a62c9826817252cdafc4e9e1b70682b7ff731d2d74d0c365b5b16c6",
       "OriginalStatus": "MATCH_PINNED_GIT_BLOB",
-      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
-      "SourcePath": "PharmaLIMS/QualityEventInvestigation.xaml.cs",
-      "Sha256": "cc82e1367a62c9826817252cdafc4e9e1b70682b7ff731d2d74d0c365b5b16c6"
+      "Sha256": "0b5b25d63519eb5aaf3deda47fdf0ffd59a227b487e00b03215cb976f4c217f0",
+      "OriginalSourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
+      "OriginalSourcePath": "PharmaLIMS/QualityEventInvestigation.xaml.cs",
+      "Artifact": "scripts/site-overlays/AMEEN-QualityEventInvestigation.xaml.cs.txt"
     },
     {
       "Path": "ReportCertificate.xaml",
@@ -1849,9 +1852,10 @@
       "OriginalRawSha256": "236e5f742267f6c8581cb9f25443d61d76dbb8f8255e9ed320c9bd9c81a496db",
       "OriginalNormalizedSha256": "236e5f742267f6c8581cb9f25443d61d76dbb8f8255e9ed320c9bd9c81a496db",
       "OriginalStatus": "MATCH_PINNED_GIT_BLOB",
-      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
-      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
-      "Sha256": "236e5f742267f6c8581cb9f25443d61d76dbb8f8255e9ed320c9bd9c81a496db"
+      "Sha256": "0dd2c76097b8ebf8aeb3f91a4754419c709fd9c4e52e8a0d88eab6a339c7700d",
+      "OriginalSourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
+      "OriginalSourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
+      "Artifact": "scripts/site-overlays/AMEEN-TrustedCallerMap.cs.txt"
     },
     {
       "Path": "tools/PharmaLIMS.TrustedSigning/TrustedCredentialVerifier.cs",
@@ -1939,9 +1943,10 @@
       "OriginalRawSha256": "6b17d19dc3766cb565507b86aab362a893eb82c6a7cf242f8d8280de509334cc",
       "OriginalNormalizedSha256": "6b17d19dc3766cb565507b86aab362a893eb82c6a7cf242f8d8280de509334cc",
       "OriginalStatus": "MATCH_PINNED_GIT_BLOB",
-      "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
-      "SourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
-      "Sha256": "6b17d19dc3766cb565507b86aab362a893eb82c6a7cf242f8d8280de509334cc"
+      "Sha256": "bd1429c8edea942a6c924c8d676261a3c47fb27e58b85be59fea337ba3b2e091",
+      "OriginalSourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
+      "OriginalSourcePath": "PharmaLIMS/tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs",
+      "Artifact": "scripts/site-overlays/AMEEN-WindowsTrustedPipeServer.cs.txt"
     },
     {
       "Path": "tools/PharmaLIMS.TrustedSigning/packages.lock.json",
@@ -3035,6 +3040,13 @@
       "OriginalStatus": "IMMUTABLE_SITE_DATABASE_CONTENT",
       "SourceCommit": "b4b3b0c3638628cac53d0af5a7f4455984dca724",
       "SourcePath": "PharmaLIMS/Database/Verification/Verify_Applied_Migrations.sql"
+    },
+    {
+      "Path": "tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs",
+      "Artifact": "scripts/site-overlays/AMEEN-TrustedPipeConnectionPool.cs.txt",
+      "Sha256": "1f69adb62a6a0f23aec1b99295c781a584362639e1bb0ebca2f4a0909a89800b",
+      "OriginalStatus": "REQUIRED_TESTED_TRANSPORT_HELPER",
+      "ReviewedRootCommit": "86642dd2fa9b66a112223ec135b6857f8023bf54"
     }
   ],
   "DeploymentAccepted": false,
@@ -3257,6 +3269,7 @@
       "tools/PharmaLIMS.TrustedSigning/TrustedCredentialVerifier.cs",
       "tools/PharmaLIMS.TrustedSigning/TrustedHostAuthenticator.cs",
       "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs",
+      "tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs",
       "tools/PharmaLIMS.TrustedSigning/TrustedPipeProtocol.cs",
       "tools/PharmaLIMS.TrustedSigning/TrustedSigningCoordinator.cs",
       "tools/PharmaLIMS.TrustedSigning/WaterRegistrationRequest.cs",

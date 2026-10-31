@@ -117,6 +117,7 @@ INSERT dbo.PRM_Samples VALUES(7,N'S-7'); INSERT dbo.PRM_SampleTests VALUES(7,10,
  SitePrmInvestigationCases.RunFrozen(cs,project);
  SitePrmInvestigationCases.RunCorrected(cs,project);
  SitePrmLoadFailureCases.Run(project);
+ SiteGenericInvestigationCases.Run(cs,project);
  Console.WriteLine($"{checks-failures.Count}/{checks} checks passed");
  if(failures.Count>0) Environment.ExitCode=1;
 } finally { Sql(master.ConnectionString,$"IF DB_ID(N'{db}') IS NOT NULL BEGIN ALTER DATABASE [{db}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{db}]; END"); }

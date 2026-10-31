@@ -141,6 +141,7 @@ await Test("Completed replies survive delayed consumption before pipe reuse", as
         foreach(var pipe in pipes) pipe.Dispose();
     }
 });
+SiteSigningTransportSourceCases.Run(Directory.GetCurrentDirectory());
 SitePreflightTimestampCases.Run(Directory.GetCurrentDirectory());
 if(failures.Count != 0) throw new Exception($"{failures.Count} infrastructure regressions failed: {string.Join(", ",failures)}");
 
