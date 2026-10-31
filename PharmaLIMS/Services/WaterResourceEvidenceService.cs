@@ -99,12 +99,21 @@ WHERE b.rn=1 ORDER BY e.EvidenceID;",
 
         public static void Validate(string name, string result, int? primaryId,
             string extraCodes, string kitCode, string kitLot, DateTime? expiry,
-            IReadOnlyCollection<LabEquipmentChoice> available)
+            IReadOnlyCollection<LabEquipmentChoice> available, DateTime? authoritativeDate = null)
         {
             if (string.IsNullOrWhiteSpace(result)) return;
             var extras = ParseCodes(extraCodes);
             if (WaterTestResourcePolicy.IsNoInstrumentRequired(name))
             {
+                if (name.Trim().Equals("Turbidity", StringComparison.OrdinalIgnoreCase))
+                {
+                    string observation = result.Trim();
+                    if (observation.Contains(',') && observation.Any(char.IsDigit))
+                        throw new InvalidOperationException("Use a decimal point for Turbidity, for example 1 or 1.5 NTU; commas are not accepted.");
+                    if (!decimal.TryParse(observation, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                        CultureInfo.InvariantCulture, out decimal visualNtu) || visualNtu < 1m || visualNtu > 25m)
+                        throw new InvalidOperationException("AQUASOL AE300 visual chart requires a numerical reading from 1 to 25 NTU. Do not record estimates outside the chart range.");
+                }
                 if (primaryId.HasValue || extras.Count > 0 || !string.IsNullOrWhiteSpace(kitCode))
                     throw new InvalidOperationException("Visual examination must not have physical instrument or test kit.");
                 return;
@@ -115,7 +124,7 @@ WHERE b.rn=1 ORDER BY e.EvidenceID;",
                     throw new InvalidOperationException("Chlorine kit method cannot be assigned unrelated instruments.");
                 if (string.IsNullOrWhiteSpace(kitCode) || string.IsNullOrWhiteSpace(kitLot) || !expiry.HasValue)
                     throw new InvalidOperationException("Chlorine test kit identification, lot and expiry date are required.");
-                if (expiry.Value.Date < DateTime.Today)
+                if ((authoritativeDate.HasValue && expiry.Value.Date < authoritativeDate.Value.Date))
                     throw new InvalidOperationException("Expired chlorine test kit cannot be used.");
                 return;
             }
@@ -126,7 +135,7 @@ WHERE b.rn=1 ORDER BY e.EvidenceID;",
                     throw new InvalidOperationException("This test is not configured for test-kit execution.");
                 if (primaryId.HasValue)
                     throw new InvalidOperationException("Choose either kit execution or a primary instrument, not both.");
-                if (string.IsNullOrWhiteSpace(kitLot) || !expiry.HasValue || expiry.Value.Date < DateTime.Today)
+                if (string.IsNullOrWhiteSpace(kitLot) || !expiry.HasValue || (authoritativeDate.HasValue && expiry.Value.Date < authoritativeDate.Value.Date))
                     throw new InvalidOperationException("Enter a valid test kit lot and an unexpired expiry date.");
             }
             else
@@ -161,7 +170,9 @@ WHERE b.rn=1 ORDER BY e.EvidenceID;",
             string signer, IReadOnlyCollection<LabEquipmentChoice> equipment)
         {
             if (string.IsNullOrWhiteSpace(result)) return;
-            Validate(testName, result, primaryId, extras, kitCode, kitLot, expiry, equipment);
+            using var clock = new SqlCommand("SELECT CAST(SYSDATETIME() AS date);", connection, transaction) { CommandTimeout = AppConfig.CommandTimeoutSeconds };
+            DateTime databaseDate = Convert.ToDateTime(clock.ExecuteScalar(), CultureInfo.InvariantCulture);
+            Validate(testName, result, primaryId, extras, kitCode, kitLot, expiry, equipment, databaseDate);
             Guid batch = Guid.NewGuid();
             void Insert(string kind, LabEquipmentChoice? item, string? code, string? lot, DateTime? date)
             {
@@ -183,9 +194,10 @@ WHERE EquipmentID=@EquipmentID;", connection, transaction);
                 }
                 using var cmd = new SqlCommand(@"INSERT dbo.WaterResultResourceEvidence
 (BatchID,SampleID,SampleTestID,TestID,ResourceKind,EquipmentID,EquipmentCodeSnapshot,EquipmentNameSnapshot,
-KitCode,KitLot,KitExpiry,ResultSnapshot,SignedBy)
+KitCode,KitLot,KitExpiry,ResultSnapshot,SignedBy,ExecutionDate)
 VALUES(@Batch,@Sample,@SampleTest,@Test,@Kind,@Equipment,@EquipmentCode,@EquipmentName,
-@KitCode,@KitLot,@Expiry,@Result,@Signer);", connection, transaction);
+@KitCode,@KitLot,@Expiry,@Result,@Signer,@ExecutionDate);", connection, transaction);
+                cmd.Parameters.Add("@ExecutionDate", SqlDbType.Date).Value = databaseDate.Date;
                 cmd.Parameters.Add("@Batch", SqlDbType.UniqueIdentifier).Value = batch;
                 cmd.Parameters.Add("@Sample", SqlDbType.Int).Value = sampleId;
                 cmd.Parameters.Add("@SampleTest", SqlDbType.Int).Value = sampleTestId;

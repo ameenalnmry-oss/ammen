@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Services;
 using Microsoft.Data.SqlClient;
@@ -22,6 +22,7 @@ namespace PharmaLIMS
         {
             InitializeComponent();
             ResetCurrentUserContext();
+            lblWindowsAccount.Text = "Windows account: " + System.Security.Principal.WindowsIdentity.GetCurrent().Name;
             Loaded += async (_, _) =>
             {
                 if (txtUsername.IsEnabled)
@@ -56,7 +57,7 @@ namespace PharmaLIMS
 
         private async void BtnLogin_Click(object sender, RoutedEventArgs e)
         {
-            if (_isSigningIn)
+            if (_isSigningIn || _isSwitchingWindowsUser)
                 return;
 
             string username = txtUsername.Text.Trim();
@@ -71,6 +72,7 @@ namespace PharmaLIMS
             _isSigningIn = true;
             BtnLogin.IsEnabled = false;
             BtnLogin.Content = "Signing in...";
+            BtnSwitchWindowsUser.IsEnabled = false;
             lblError.Visibility = Visibility.Collapsed;
             bool authenticationCompleted = false;
 
@@ -197,6 +199,7 @@ namespace PharmaLIMS
                 {
                     BtnLogin.IsEnabled = true;
                     BtnLogin.Content = "Sign In";
+                    BtnSwitchWindowsUser.IsEnabled = true;
                 }
             }
         }
@@ -243,9 +246,11 @@ namespace PharmaLIMS
 
         internal void SetStartupBusy(bool isBusy, string message = "")
         {
+            Title = SessionTransitionCoordinator.LoginTitle(isBusy);
             txtUsername.IsEnabled = !isBusy;
             txtPassword.IsEnabled = !isBusy;
             BtnLogin.IsEnabled = !isBusy;
+            BtnSwitchWindowsUser.IsEnabled = !isBusy;
             BtnLogin.Content = isBusy ? "Preparing database..." : "Sign In";
 
             if (isBusy)
@@ -262,6 +267,67 @@ namespace PharmaLIMS
                 lblError.Text = string.Empty;
                 lblError.Visibility = Visibility.Collapsed;
                 txtUsername.Focus();
+            }
+        }
+
+        private bool _isSwitchingWindowsUser;
+
+        private async void BtnSwitchWindowsUser_Click(object sender, RoutedEventArgs e) =>
+            await SwitchWindowsUserAsync();
+
+        internal async Task SwitchWindowsUserAsync()
+        {
+            if (_isSigningIn || _isSwitchingWindowsUser || !BtnSwitchWindowsUser.IsEnabled) return;
+            _isSwitchingWindowsUser = true;
+            lblError.Text = string.Empty;
+            lblError.Visibility = Visibility.Collapsed;
+            txtPassword.Clear();
+            _authService?.ClearCurrentUser();
+            ClearCurrentUserContext();
+            BtnLogin.IsEnabled = false;
+            BtnSwitchWindowsUser.IsEnabled = false;
+            txtUsername.IsEnabled = false;
+            txtPassword.IsEnabled = false;
+            try
+            {
+                bool? ready = await WindowsUserSwitchService.SwitchAsync(
+                    new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle());
+                if (ready == true)
+                {
+                    Application.Current.Shutdown();
+                    return;
+                }
+                if (ready is null)
+                    ApplicationLogger.Information("Windows user switch cancelled or no complete credentials supplied. Session remains signed out.");
+                if (ready == false)
+                    ShowError("The new application has started but is not ready yet. This session remains signed out. Check the new window before trying again.");
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                ApplicationLogger.Warning($"Windows user switch rejected by the operating system. NativeErrorCode={ex.NativeErrorCode}.");
+                ShowError(ex.NativeErrorCode switch
+                {
+                    1326 => "Windows rejected the account or Windows password. This is separate from your PharmaLIMS password. The application remains signed out.",
+                    1909 => "The selected Windows account is locked. The application remains signed out.",
+                    1331 => "The selected Windows account is disabled. The application remains signed out.",
+                    1385 => "The selected Windows account is not allowed to sign in interactively on this computer.",
+                    5 or 1314 => "Windows did not permit starting the application under the selected account. Contact the workstation administrator; this session remains signed out.",
+                    _ => "Windows could not switch users (error " + ex.NativeErrorCode + "). This session remains signed out."
+                });
+            }
+            catch (Exception ex)
+            {
+                // Windows passwords are held only in cleared native buffers and a disposed SecureString.
+                ShowError(UserFacingError.SafeMessage(ex, "Switch Windows user"));
+            }
+            finally
+            {
+                _isSwitchingWindowsUser = false;
+                BtnLogin.IsEnabled = true;
+                BtnSwitchWindowsUser.IsEnabled = true;
+                txtUsername.IsEnabled = true;
+                txtPassword.IsEnabled = true;
+                txtPassword.Clear();
             }
         }
 

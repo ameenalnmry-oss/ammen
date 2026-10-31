@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Repositories;
 using PharmaLIMS.Services;
@@ -214,7 +214,7 @@ SELECT CASE
               SELECT 1
               FROM dbo.PRM_SampleTests st WITH (UPDLOCK, HOLDLOCK)
               WHERE st.SampleID = @SampleID
-                AND ISNULL(st.RequiredTest, 1) = 1
+                AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue, N''))), N'') IS NOT NULL
                 AND st.Interpretation IN (N'Does Not Conform', N'Check Required')
                 AND NOT EXISTS
                 (

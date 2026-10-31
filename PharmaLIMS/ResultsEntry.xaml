@@ -1,4 +1,4 @@
-﻿<Window x:Class="PharmaLIMS.ResultsEntry"
+<Window x:Class="PharmaLIMS.ResultsEntry"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
@@ -346,6 +346,14 @@
                                 Background="#DC2626"
                                 Style="{StaticResource PrimaryButtonStyle}"/>
                     </UniformGrid>
+
+                    <Button x:Name="BtnRecoverWaterWorkflow"
+                            Content="Recover Saved Operation"
+                            Click="BtnRecoverWaterWorkflow_Click"
+                            Visibility="Collapsed"
+                            Background="#475569"
+                            ToolTip="Recover or permanently cancel the original saved Water request, including after its status changed"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
 
                     <Border Background="#F8FAFC"
                             BorderBrush="#E2E8F0"

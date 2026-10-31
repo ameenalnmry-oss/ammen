@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -39,6 +40,8 @@ def source_family(path: Path) -> str:
     """Read a C# source file plus any controlled partial continuation files."""
     parts = [path]
     parts.extend(sorted(path.parent.glob(path.stem + ".Part*.cs")))
+    # Named trusted adapters are partial continuations of the same window.
+    parts.extend(sorted(path.parent.glob(path.stem.removesuffix(".xaml") + ".Trusted*.cs")))
     return "\n".join(text(part) for part in parts if part.is_file())
 
 
@@ -956,6 +959,10 @@ for path in required:
 
 if ERRORS:
     print("\n".join("ERROR: " + item for item in ERRORS))
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        for item in ERRORS:
+            escaped = item.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print("::error title=Controlled source validation::" + escaped)
     sys.exit(1)
 
 print("PASS: XAML/JSON/project XML, event handlers, source delimiters, release controls, and required artifacts.")

@@ -2,6 +2,7 @@
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Models;
 using PharmaLIMS.Services;
+using PharmaLIMS.TrustedSigning;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -29,6 +30,7 @@ namespace PharmaLIMS
         private string _currentTestFilter = "PHYSICAL";
         private bool _isInitializing = false;
         private bool _isDirty = false;
+        private bool _waterOperationInProgress;
         private bool _isPlanRegistration;
         private int? _waterPlanSampleId;
         private readonly HashSet<int> _plannedWaterTestIds = new HashSet<int>();
@@ -42,6 +44,7 @@ namespace PharmaLIMS
         {
             InitializeComponent();
             _authService = authService;
+            Closing += (_, args) => { if (_waterOperationInProgress) args.Cancel = true; };
 
             _isInitializing = true;
 
@@ -1559,6 +1562,11 @@ ORDER BY planTest.TestID;", new SqlParameter("@ID", waterPlanSampleId.Value));
 
         private async Task SaveWaterSample()
         {
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await SaveTrustedWaterSampleAsync();
+                return;
+            }
             if (cboPointCode == null || cboPointCode.SelectedItem == null)
             {
                 MessageBox.Show("Please select a water sampling point.",

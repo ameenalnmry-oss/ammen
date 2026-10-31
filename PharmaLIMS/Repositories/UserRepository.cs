@@ -192,23 +192,8 @@ namespace PharmaLIMS.Repositories
 
             try
             {
-                using SqlCommand command = new SqlCommand(@"
-UPDATE dbo.Users
-SET PasswordHash = N'[MIGRATED]',
-    PasswordHashNew = @PasswordHashNew,
-    PasswordSalt = @PasswordSalt,
-    MustChangePassword = 0,
-    PasswordChangedAt = SYSUTCDATETIME(),
-    FailedLoginAttempts = 0,
-    IsLocked = 0,
-    LockedUntil = NULL,
-    UpdatedAt = SYSUTCDATETIME()
-OUTPUT inserted.AuthenticationRowVersion, inserted.PasswordChangedAt
-WHERE UserID = @UserID
-  AND Username = @Username
-  AND AuthenticationRowVersion = @ExpectedVersion
-  AND ISNULL(IsActive,1)=1
-  AND NOT (ISNULL(IsLocked,0)=1 AND (LockedUntil IS NULL OR LockedUntil>SYSDATETIME()));", connection, transaction);
+                using SqlCommand command = new SqlCommand(
+                    AuthenticationCommitContract.PasswordChangeSql, connection, transaction);
                 command.Parameters.Add("@UserID", SqlDbType.Int).Value = verifiedUser.UserId;
                 command.Parameters.Add("@Username", SqlDbType.NVarChar, 100).Value = verifiedUser.Username.Trim();
                 command.Parameters.Add("@ExpectedVersion", SqlDbType.Binary, 8).Value = verifiedUser.AuthenticationRowVersion;
@@ -234,17 +219,17 @@ WHERE UserID = @UserID
                     return false;
                 }
 
-                DatabaseHelper.AddAuditTrailAdvanced(
-                    connection,
-                    transaction,
-                    "Users",
-                    verifiedUser.UserId,
-                    "Password Changed",
-                    "Credential retained securely; value not exposed",
-                    "Personal credential replaced securely; value not exposed",
-                    "Authenticated self-service password change",
-                    verifiedUser.Username.Trim(),
-                    moduleName: "Authentication");
+                // The temporary credential was verified by AuthService, but Login has
+                // intentionally not published a workspace identity yet. Bind this one
+                // audit event to the row just updated, without granting workspace or
+                // electronic-signature access before the transaction commits.
+                using SqlCommand audit = new SqlCommand(
+                    AuthenticationCommitContract.PasswordChangeAuditSql, connection, transaction);
+                audit.Parameters.Add("@UserID", SqlDbType.Int).Value = verifiedUser.UserId;
+                audit.Parameters.Add("@Username", SqlDbType.NVarChar, 100).Value = verifiedUser.Username.Trim();
+                audit.Parameters.Add("@CommittedVersion", SqlDbType.Binary, 8).Value = committedVersion;
+                audit.Parameters.Add("@Workstation", SqlDbType.NVarChar, 200).Value = Environment.MachineName;
+                await audit.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                 verifiedUser.AuthenticationRowVersion = committedVersion;

@@ -20,6 +20,7 @@ namespace PharmaLIMS
         private DispatcherTimer? _sessionTimeoutTimer;
         private long _lastUserActivityTimestamp = Stopwatch.GetTimestamp();
         private bool _sessionTimeoutInProgress;
+        private readonly SessionTransitionCoordinator _sessionTransitions = new();
 
         public static IServiceProvider? ServiceProvider => (Application.Current as App)?._serviceProvider;
 
@@ -30,7 +31,14 @@ namespace PharmaLIMS
 
             try
             {
+                var switchedTarget = WindowsUserSwitchService.PrepareSwitchedProcess(e.Args);
                 string connectionString = AppConfig.ConnectionString;
+                if (switchedTarget is { } target)
+                {
+                    var actualTarget = SwitchedProcessEnvironment.ReadTarget(connectionString);
+                    SwitchedProcessEnvironment.EnsureTarget(target.Server, target.Database,
+                        actualTarget.Server, actualTarget.Database);
+                }
                 ApplicationLogger.Information(
                     $"Starting PharmaLIMS. Server='{AppConfig.SqlServerName}', Database='{AppConfig.DatabaseName}', Environment='{AppConfig.EnvironmentName}'.");
 
@@ -114,8 +122,6 @@ namespace PharmaLIMS
                         StartupDatabaseMigrator.UserAdministrationSignatureEvidenceMigrationKey);
                 }
 
-                loginWindow.SetStartupBusy(false);
-                SignalRuntimeSmokeLoginReady();
                 ApplicationLogger.Information(
                     "Authentication and user-administration security schema verified without uncontrolled startup DDL. " +
                     "Production startup is verify-only; broader migrations remain controlled deployment/maintenance actions. Development auto-reconciles authentication prerequisites only.");
@@ -123,6 +129,8 @@ namespace PharmaLIMS
                 StartSessionTimeoutMonitor();
 
                 ApplicationLogger.Information("PharmaLIMS startup completed and the login window was displayed.");
+                loginWindow.SetStartupBusy(false);
+                SignalRuntimeSmokeLoginReady();
             }
             catch (Exception ex)
             {
@@ -253,22 +261,7 @@ namespace PharmaLIMS
                 ApplicationLogger.Information(
                     $"User session timed out after {AppConfig.SessionTimeoutMinutes} minutes of inactivity. User='{username}'.");
 
-                authService.ClearCurrentUser();
-                Login.ClearCurrentUserContext();
-
-                Login loginWindow = _serviceProvider.GetRequiredService<Login>();
-                MainWindow = loginWindow;
-                loginWindow.Show();
-                loginWindow.Activate();
-
-                foreach (Window window in Windows.Cast<Window>().ToArray())
-                {
-                    if (ReferenceEquals(window, loginWindow))
-                        continue;
-
-                    window.Hide();
-                    window.Close();
-                }
+                ReturnToSignIn(manual: false);
 
                 MessageBox.Show(
                     "Your session ended after a period of inactivity. Sign in again to continue.",
@@ -285,6 +278,50 @@ namespace PharmaLIMS
             {
                 _lastUserActivityTimestamp = Stopwatch.GetTimestamp();
                 _sessionTimeoutInProgress = false;
+            }
+        }
+
+        internal Login? ReturnToSignIn(bool manual)
+        {
+            if (_serviceProvider == null) return null;
+            bool pending = manual && (MainWindow is not PharmaLIMS.MainWindow workspace ||
+                !workspace.CanEndInteractiveSession());
+            Login? loginWindow = null;
+            try
+            {
+                _sessionTransitions.TryTransition(pending,
+                    () =>
+                    {
+                        IAuthService authService = _serviceProvider.GetRequiredService<IAuthService>();
+                        string username = authService.GetCurrentUser()?.Username ?? Login.CurrentUser;
+                        authService.ClearCurrentUser();
+                        Login.ClearCurrentUserContext();
+                        ApplicationLogger.Information($"Application session ended. User='{username}', Reason='{(manual ? "Manual lock or user switch" : "Inactivity")}'.");
+                    },
+                    () =>
+                    {
+                        loginWindow = _serviceProvider.GetRequiredService<Login>();
+                        MainWindow = loginWindow;
+                        loginWindow.Show();
+                        foreach (Window window in Windows.Cast<Window>().ToArray())
+                        {
+                            if (ReferenceEquals(window, loginWindow)) continue;
+                            window.IsEnabled = false;
+                            window.Hide();
+                            window.Close();
+                            if (Windows.Cast<Window>().Contains(window))
+                                throw new InvalidOperationException("A previous session window could not be closed.");
+                        }
+                        loginWindow.Activate();
+                        _lastUserActivityTimestamp = Stopwatch.GetTimestamp();
+                    });
+                return loginWindow;
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.Error("Session teardown failed; shutting down without restoring the old session.", ex);
+                Shutdown(1);
+                return null;
             }
         }
 

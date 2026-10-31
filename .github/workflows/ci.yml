@@ -20,9 +20,303 @@ permissions:
   attestations: write
 
 jobs:
+  reject-untrusted-dispatch:
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - name: Reject dispatch outside main
+        shell: pwsh
+        run: throw "Production workflow_dispatch is permitted only from refs/heads/main."
+
   validate-build-publish:
+    if: github.event_name != 'workflow_dispatch'
     name: validate-build-publish
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && 'self-hosted' || 'windows-latest' }}
+    runs-on: windows-latest
+    timeout-minutes: 50
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          clean: true
+
+      - name: Diagnose checked-out source hashes
+        run: |
+          $ErrorActionPreference = "Stop"
+          git --version
+          git config --get core.autocrlf
+
+          if (Test-Path ".gitattributes") {
+              Get-Content ".gitattributes"
+          }
+          else {
+              Write-Host "No root .gitattributes file found."
+          }
+
+          git ls-files --eol PharmaLIMS/.gitignore
+
+          $actual = (Get-FileHash -LiteralPath "PharmaLIMS/.gitignore" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifestLine = Select-String -Path "PharmaLIMS/SOURCE_MANIFEST_SHA256.txt" -Pattern "\s\.gitignore$"
+
+          if (-not $manifestLine) {
+              throw ".gitignore is missing from SOURCE_MANIFEST_SHA256.txt."
+          }
+
+          $expected = (($manifestLine.Line -split '\s+')[0]).ToLowerInvariant()
+
+          Write-Host "CHECKOUT_HASH=$actual"
+          Write-Host "EXPECTED_HASH=$expected"
+
+          if ($actual -ne $expected) {
+              throw "CHECKOUT BYTE INTEGRITY FAILURE: .gitignore does not match SOURCE_MANIFEST_SHA256.txt immediately after checkout."
+          }
+
+          Write-Host "CHECKOUT BYTE INTEGRITY PASS"
+
+      - name: Install .NET 8 SDK
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install pinned workflow-policy test parser
+        shell: pwsh
+        run: |
+          python -m pip install PyYAML==6.0.3
+          if ($LASTEXITCODE -ne 0) { throw "Workflow policy parser installation failed." }
+
+      - name: Qualified source transition preview regressions on PowerShell 7
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./tests/Test-Eq001SourceTransitionPreview.ps1
+          if (-not $?) { throw "Read-only source transition preview regressions failed." }
+
+      - name: Qualified source transition preview regressions on Windows PowerShell 5.1
+        working-directory: PharmaLIMS
+        shell: powershell
+        run: |
+          & ./tests/Test-Eq001SourceTransitionPreview.ps1
+          if (-not $?) { throw "Windows PowerShell source transition preview regressions failed." }
+
+      - name: Validate controlled source manifest before build
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          & ./scripts/Test-SourceManifest.ps1
+          if (-not $?) {
+              throw "Controlled source manifest verification did not complete successfully."
+          }
+
+      - name: Infrastructure caller transport and Gregorian report regressions
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          $artifacts = Join-Path $env:RUNNER_TEMP 'pr62-infrastructure-artifacts'
+          dotnet build tests/PharmaLIMS.InfrastructureReviewRegression/PharmaLIMS.InfrastructureReviewRegression.csproj --configuration Release "-p:ArtifactsPath=$artifacts"
+          if ($LASTEXITCODE -ne 0) { throw "Infrastructure regression build failed." }
+          dotnet (Join-Path $artifacts 'bin/PharmaLIMS.InfrastructureReviewRegression/release/PharmaLIMS.InfrastructureReviewRegression.dll')
+          if ($LASTEXITCODE -ne 0) { throw "Infrastructure review regressions failed." }
+
+      - name: Restricted Water analysis and PRM registration boundary regressions
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./scripts/Invoke-WaterAnalysisRegressions.ps1
+          if (-not $?) { throw "Water analysis / PRM registration boundary regressions failed." }
+
+      - name: Build and test independent EQ-001 trusted-signing service
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          try {
+              dotnet run --project tools/PharmaLIMS.TrustedSigning.SecurityChecks/PharmaLIMS.TrustedSigning.SecurityChecks.csproj --configuration Release
+              if ($LASTEXITCODE -ne 0) { throw "EQ-001 trusted-signing security checks failed." }
+          }
+          finally {
+              # Never allow build outputs into the controlled source delivery.
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning.SecurityChecks/bin -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning.SecurityChecks/obj -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/bin -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/obj -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Verify validator content in runner
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          git rev-parse HEAD
+
+          Select-String -Path "scripts/validate_project.py" -Pattern "excluded_generated_files|packages.lock.json"
+
+          $validatorHash = (Get-FileHash -LiteralPath "scripts/validate_project.py" -Algorithm SHA256).Hash
+          Write-Host "VALIDATOR_SHA256=$validatorHash"
+
+          if (-not (Select-String -Path "scripts/validate_project.py" -Pattern '"packages\.lock\.json"' -Quiet)) {
+              throw "CI runner is not using the expected validate_project.py packages.lock.json exclusion."
+          }
+
+      - name: Unified source build SQL WPF runtime validation
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+
+
+          try {
+              & ./scripts/Invoke-ReleaseValidation.ps1 -RunDatabaseIntegration -RunRuntimeSmoke
+              if (-not $?) {
+                  throw "PharmaLIMS release validation did not complete successfully."
+              }
+          }
+          finally {
+              Remove-Item Env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING -ErrorAction SilentlyContinue
+          }
+
+      - name: Trend report WPF and complete PDF fixture smoke
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet run --project tests/PharmaLIMS.TrendReportSmoke/PharmaLIMS.TrendReportSmoke.csproj --configuration Release -- artifacts/trend-report-preview
+          if ($LASTEXITCODE -ne 0) { throw "Trend WPF/PDF fixture smoke failed." }
+
+      - name: Save synthetic trend report previews for visual review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trend-report-fixture-preview
+          path: PharmaLIMS/artifacts/trend-report-preview/*.pdf
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Reject vulnerable NuGet packages
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $output = & dotnet list package --vulnerable --include-transitive 2>&1
+          $output | ForEach-Object { Write-Host $_ }
+
+          if (-not $?) {
+              throw "NuGet vulnerability inspection failed."
+          }
+
+          $joined = $output -join "\n"
+
+          if ($joined -match "has the following vulnerable packages" -or $joined -match "Critical" -or $joined -match "High") {
+              throw "Vulnerable NuGet package(s) detected."
+          }
+
+      - name: Reject tracked build artifacts
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $tracked = git ls-files
+          $prohibited = $tracked | Where-Object {
+              $_ -match '(^|/)(bin|obj|\.vs|__pycache__)(/|$)' -or $_ -match '\.pyc$'
+          }
+
+          if ($prohibited) {
+              $prohibited | ForEach-Object { Write-Host " - $_" }
+              throw "Repository contains prohibited tracked local/build artifacts."
+          }
+
+      - name: Verify migration manifest presence
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $manifest = "Database/MigrationManifest.json"
+
+          if (-not (Test-Path $manifest)) {
+              throw "Database/MigrationManifest.json is missing."
+          }
+
+          $migrationCount = (Get-Content $manifest -Raw | ConvertFrom-Json).migrations.Count
+          Write-Host "Controlled migration entries: $migrationCount"
+
+          if ($migrationCount -lt 1) {
+              throw "Migration manifest contains no migrations."
+          }
+
+      - name: Show final repository status
+        if: always()
+        run: |
+          git log -1 --oneline --decorate
+          git status --short
+          Write-Host "GITHUB_REF=$env:GITHUB_REF"
+          Write-Host "GITHUB_SHA=$env:GITHUB_SHA"
+          Write-Host "GITHUB_EVENT_NAME=$env:GITHUB_EVENT_NAME"
+
+
+      - name: Prepare exact AMEEN site cohort in existing hosted CI checkout
+        if: github.event_name == 'pull_request'
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Prior general restore changed only these two generated lock graphs.
+          # Restore their reviewed Git bytes before checking the complete source.
+          git restore --source=HEAD -- packages.lock.json tools/PharmaLIMS.TrustedSigning/packages.lock.json
+          if ($LASTEXITCODE -ne 0) { throw "CI lock graph reset failed." }
+          & ./scripts/Test-SourceManifest.ps1
+          if (-not $?) { throw "Source drift before exact-cohort preparation." }
+          # Clear only build output in this hosted checkout; never AMEEN files.
+          foreach ($folder in @('bin','obj','tools/PharmaLIMS.TrustedSigning/bin','tools/PharmaLIMS.TrustedSigning/obj','tools/PharmaLIMS.TrustedSigning.Host/bin','tools/PharmaLIMS.TrustedSigning.Host/obj')) {
+              if (Test-Path -LiteralPath $folder) { Remove-Item -LiteralPath $folder -Recurse -Force }
+          }
+          python -B scripts/site_cohort_build.py prepare
+          if ($LASTEXITCODE -ne 0) { throw "Exact-cohort source preparation failed." }
+
+      - name: Locked restore and exact site-cohort WPF and signer-host Release builds
+        if: github.event_name == 'pull_request'
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet restore PharmaLIMS.csproj --locked-mode
+          if ($LASTEXITCODE -ne 0) { throw "Exact site WPF locked restore failed." }
+          dotnet restore tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj --locked-mode
+          if ($LASTEXITCODE -ne 0) { throw "Exact site signer-host locked restore failed." }
+          python -B scripts/site_cohort_build.py graph
+          if ($LASTEXITCODE -ne 0) { throw "Evaluated exact-cohort build graph differs." }
+          dotnet build PharmaLIMS.csproj --configuration Release --no-restore -p:DeploymentEnvironment=Development
+          if ($LASTEXITCODE -ne 0) { throw "Exact site WPF Release build failed." }
+          dotnet build tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj --configuration Release --no-restore
+          if ($LASTEXITCODE -ne 0) { throw "Exact site signer-host Release build failed." }
+          $binary = Join-Path $PWD 'bin/Release/net8.0-windows7.0/PharmaLIMS.dll'
+          if ([Diagnostics.FileVersionInfo]::GetVersionInfo($binary).FileVersion -ne '2026.10.19.306') {
+              throw "The actual site WPF file version306 was not preserved."
+          }
+          foreach ($project in @('PharmaLIMS.csproj','tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj')) {
+              $audit = & dotnet list $project package --vulnerable --include-transitive 2>&1
+              if ($LASTEXITCODE -ne 0) { throw "Exact site dependency inspection failed." }
+              $audit | ForEach-Object { Write-Host $_ }
+              if (($audit -join [Environment]::NewLine) -match 'has the following vulnerable packages|Critical|High') {
+                  throw "Vulnerable packages in the exact site cohort."
+              }
+          }
+          python -B scripts/site_cohort_build.py finish
+          if ($LASTEXITCODE -ne 0) { throw "Exact-cohort compilation evidence incomplete." }
+
+      - name: Preserve exact site-cohort source graph and compile evidence
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: eq001-site-cohort-build-evidence
+          path: PharmaLIMS/artifacts/site-cohort/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  # Require external runner-group workflow/ref restrictions and Production
+  # environment deployment-branch rules. Branch-controlled YAML cannot protect
+  # a self-hosted runner from an attacker who can rewrite that YAML.
+  publish-production:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    environment: Production
+    name: publish-production
+    runs-on: self-hosted
     timeout-minutes: 50
 
     defaults:
@@ -85,6 +379,12 @@ jobs:
               throw ".NET 8 SDK is required on the controlled self-hosted Production runner."
           }
 
+      - name: Install pinned workflow-policy test parser
+        shell: pwsh
+        run: |
+          python -m pip install PyYAML==6.0.3
+          if ($LASTEXITCODE -ne 0) { throw "Workflow policy parser installation failed." }
+
       - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS
         run: |
@@ -92,6 +392,29 @@ jobs:
           & ./scripts/Test-SourceManifest.ps1
           if (-not $?) {
               throw "Controlled source manifest verification did not complete successfully."
+          }
+
+      - name: Restricted Water analysis and PRM registration boundary regressions
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./scripts/Invoke-WaterAnalysisRegressions.ps1
+          if (-not $?) { throw "Water analysis / PRM registration boundary regressions failed." }
+
+      - name: Build and test independent EQ-001 trusted-signing service
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference = "Stop"
+          try {
+              dotnet run --project tools/PharmaLIMS.TrustedSigning.SecurityChecks/PharmaLIMS.TrustedSigning.SecurityChecks.csproj --configuration Release
+              if ($LASTEXITCODE -ne 0) { throw "EQ-001 trusted-signing security checks failed." }
+          }
+          finally {
+              # Never allow build outputs into the controlled source delivery.
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning.SecurityChecks/bin -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning.SecurityChecks/obj -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/bin -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item -LiteralPath tools/PharmaLIMS.TrustedSigning/obj -Recurse -Force -ErrorAction SilentlyContinue
           }
 
       - name: Verify validator content in runner
@@ -317,7 +640,7 @@ jobs:
 
   attest-and-upload-production:
     name: attest-and-upload-production
-    needs: validate-build-publish
+    needs: publish-production
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: windows-latest
     timeout-minutes: 15
@@ -353,3 +676,31 @@ jobs:
           name: PharmaLIMS-Production-${{ github.sha }}
           path: PharmaLIMS/artifacts/publish/**
           if-no-files-found: error
+
+  eq001-windows-uat:
+    name: EQ001 Windows WPF SQL UAT
+    # This job publishes its own host and builds the real WPF fixture; it can run
+    # independently. Both validations must pass for EQ001 acceptance.
+    if: github.event_name == 'pull_request'
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.x'
+      - name: Actual separate-account Windows service WPF SQL UAT
+        working-directory: PharmaLIMS
+        run: ./scripts/Invoke-Eq001WindowsUat.ps1 -IsolatedGithubUat
+      - name: Preserve EQ001 UAT execution evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: eq001-windows-wpf-sql-uat
+          path: PharmaLIMS/artifacts/eq001-windows-uat/
+          if-no-files-found: warn
+          retention-days: 30
+

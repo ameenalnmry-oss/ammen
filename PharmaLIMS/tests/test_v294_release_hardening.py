@@ -184,7 +184,7 @@ class V294ReleaseHardeningTests(unittest.TestCase):
 
         water = source("ResultsEntry.xaml.cs")
         self.assertIn("DatabaseHelper.CanQaApproveResults(currentUser)", water)
-        water_approve = water[water.index("private void BtnApprove_Click"):water.index("private void BtnPrintReport_Click")]
+        water_approve = water[water.index("private async void BtnApprove_Click"):water.index("private void BtnPrintReport_Click")]
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", water_approve)
         self.assertNotIn('"CanApproveResults", "approve water results"', water_approve)
 

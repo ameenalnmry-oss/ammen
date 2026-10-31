@@ -1,0 +1,54 @@
+{
+  "Evidence": "User-supplied original App.xaml.cs (2026-10-24) and MainWindow pair (2026-10-27); reviewed full site overlays preserve verify-only startup and controlled Development COA cancellation. Login files remain guarded against qualified803 source. Unknown local drift is refused. Cancellation correction upgrades the three affected files from installed exact 4098038; unrelated installed files already match and are skipped.",
+  "OriginalProject": "E:\\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\\PharmaLIMS",
+  "Files": [
+    {
+      "Path": "App.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-App.xaml.cs.txt",
+      "ExpectedNormalizedSha256": "41a305d827b54545c1396a3a975088ad992cbffe6cf4d56fe706f44ddedbb762",
+      "Remove": false
+    },
+    {
+      "Path": "Login.xaml",
+      "SourcePath": "PharmaLIMS/Login.xaml",
+      "ExpectedNormalizedSha256": "9bb19228d8f41e5cabd29079aa552a5c015ef08b27450f5508f780a85f101743",
+      "Remove": false
+    },
+    {
+      "Path": "Login.xaml.cs",
+      "SourcePath": "PharmaLIMS/Login.xaml.cs",
+      "ExpectedNormalizedSha256": "0687512352d03db458b0dfb65869cc2dc0389c3121d8dfa854d719232755f755",
+      "Remove": false
+    },
+    {
+      "Path": "MainWindow.xaml",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-MainWindow.xaml.txt",
+      "ExpectedNormalizedSha256": "0231685ad0f2c59cb383a046d1f0dcdccb668b45d79acd02fecffdf6d55341cc",
+      "Remove": false
+    },
+    {
+      "Path": "MainWindow.xaml.cs",
+      "SourcePath": "PharmaLIMS/scripts/site-overlays/AMEEN-MainWindow.xaml.cs.txt",
+      "ExpectedNormalizedSha256": "7d22999e758248706d9bf38305b4f442bba356e97ff4cc589fcae290cc4cfac0",
+      "Remove": false
+    },
+    {
+      "Path": "Services/SessionTransitionCoordinator.cs",
+      "SourcePath": "PharmaLIMS/Services/SessionTransitionCoordinator.cs",
+      "ExpectedNormalizedSha256": "93f6ca97356db820930cbad795c86d3c1cccd23ecbecdedf9dd8d29042d8c729",
+      "Remove": false
+    },
+    {
+      "Path": "Services/SwitchedProcessEnvironment.cs",
+      "SourcePath": "PharmaLIMS/Services/SwitchedProcessEnvironment.cs",
+      "ExpectedNormalizedSha256": null,
+      "Remove": false
+    },
+    {
+      "Path": "Services/WindowsUserSwitchService.cs",
+      "SourcePath": "PharmaLIMS/Services/WindowsUserSwitchService.cs",
+      "ExpectedNormalizedSha256": "65cda40f466a6ae906a4927167144caa84b88f77e54b21076e53d7ad2dbe463e",
+      "Remove": false
+    }
+  ]
+}

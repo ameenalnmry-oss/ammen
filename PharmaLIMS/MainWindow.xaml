@@ -205,6 +205,14 @@
                     <StackPanel>
                         <TextBlock x:Name="lblUser" Foreground="White" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                         <TextBlock x:Name="lblRole" Foreground="#9FC0D2" FontSize="10.5" Margin="0,2,0,0"/>
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button x:Name="BtnLockSession" Content="Lock Session" Click="BtnSessionAction_Click"
+                                    Padding="9,6" Margin="0,0,6,4" Background="#334155" Foreground="White"
+                                    BorderThickness="0" Cursor="Hand" ToolTip="End this session and return to Sign In."/>
+                            <Button x:Name="BtnSwitchUser" Content="Switch User" Click="BtnSessionAction_Click"
+                                    Padding="9,6" Margin="0,0,0,4" Background="#176B87" Foreground="White"
+                                    BorderThickness="0" Cursor="Hand" ToolTip="End this session and open PharmaLIMS as another Windows user."/>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
             </Grid>

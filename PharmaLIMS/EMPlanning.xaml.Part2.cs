@@ -550,6 +550,8 @@ VALUES(@Plan,@Area,@Method,@Location,@Code,@Negative,@EmployeeID,@EmployeeName,@
                 AreaName = r["AreaName"].ToString() ?? "";
                 Grade = r.Table.Columns.Contains("Grade") ? r["Grade"].ToString() ?? "" : "";
                 Method = r["Method"].ToString() ?? "";
+                EmployeeID = r["EmployeeID"].ToString() ?? "";
+                EmployeeName = r["EmployeeName"].ToString() ?? "";
                 SamplingLocation = r["SamplingLocation"].ToString() ?? "";
                 SampleCode = r["SampleCode"].ToString() ?? "";
                 IsNegativeControl = Convert.ToBoolean(r["IsNegativeControl"], CultureInfo.InvariantCulture);
@@ -603,6 +605,8 @@ VALUES(@Plan,@Area,@Method,@Location,@Code,@Negative,@EmployeeID,@EmployeeName,@
             public string AreaName { get; }
             public string Grade { get; }
             public string Method { get; }
+            public string EmployeeID { get; }
+            public string EmployeeName { get; }
             public string SamplingLocation { get; }
             public string SampleCode { get; }
             public bool IsNegativeControl { get; }

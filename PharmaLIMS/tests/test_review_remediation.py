@@ -118,7 +118,12 @@ class ReviewRemediationContracts(unittest.TestCase):
         self.assertIn(': "Remarks=@remarks"',text)
         self.assertIn("object resultValue = source[\"ResultValue\"]",text)
         self.assertIn("if (inputEdited)",text)
-        self.assertNotIn("EnteredDate=",text)
+        # Notes-only saves retain every scientific attribution field. Measurement
+        # changes intentionally stamp ResultEnteredDate in the separate branch.
+        self.assertIn('ResultEnteredDate=SYSDATETIME()',text)
+        notes_branch=text.split(': "Remarks=@remarks"',1)[0].rsplit('string setClause =',1)[-1]
+        self.assertIn('resultChanged',notes_branch)
+        self.assertIn('EnteredBy=@enteredBy',notes_branch)
 
     def test_f04_water_compare_and_swap_and_atomic_audit(self):
         text=source("ResultsEntry.xaml.Part3.cs")
