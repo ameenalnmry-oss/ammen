@@ -4,10 +4,14 @@ param(
     [switch]$Apply,
     [switch]$DesktopSessionOnly,
     [switch]$WaterRegistrationOnly,
-    [switch]$WaterAnalysisOnly
+    [switch]$WaterAnalysisOnly,
+    [switch]$CurrentSiteOnly
 )
 
 $ErrorActionPreference = 'Stop'
+if ($CurrentSiteOnly -and [Environment]::MachineName -ine 'AMEEN') { throw 'Current-site updates run only on AMEEN.' }
+$currentSitePlanHash='da7ee6ca2f2a145284306aafaf7d73e063a601be47ef0918304f10d250d04830'
+$parentReceiptHash='E71C9820185DACF70A988FD30D2F2AF6814ECBBAE9F945D6576F84FF450F81A2'
 $project = 'E:\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\PharmaLIMS'
 $privateDirectory = 'C:\ProgramData\PharmaLIMS\EQ001-UAT-20261024'
 if (-not (Test-Path -LiteralPath $project -PathType Container)) { throw 'Original project not found.' }
@@ -54,7 +58,156 @@ function Get-SourceHash([byte[]]$Bytes) {
     return Get-ByteHash ([Text.Encoding]::UTF8.GetBytes($text))
 }
 
+function Get-CurrentSitePath([string]$ProjectPath,[string]$RelativePath) {
+    if ($RelativePath -notmatch '^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$' -or
+        $RelativePath -match '(^|/)\.{1,2}(/|$)') { throw 'Unsafe current-site path.' }
+    $root=[IO.Path]::GetFullPath($ProjectPath).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+    $target=[IO.Path]::GetFullPath((Join-Path $ProjectPath $RelativePath))
+    if (-not $target.StartsWith($root,[StringComparison]::OrdinalIgnoreCase)) { throw 'Path escapes current project.' }
+    $ancestor=$target
+    while ($ancestor) {
+        if (Test-Path -LiteralPath $ancestor) {
+            if (((Get-Item -LiteralPath $ancestor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Current-site paths cannot contain reparse points.' }
+        }
+        $ancestor=[IO.Path]::GetDirectoryName($ancestor)
+    }
+    return $target
+}
+
+function Test-CurrentSitePreservedInputs($Inputs,[string]$ProjectPath) {
+    foreach ($entry in $Inputs) {
+        $target=Get-CurrentSitePath $ProjectPath $entry.Path
+        if (-not (Test-Path -LiteralPath $target -PathType Leaf) -or
+            (Get-ByteHash ([IO.File]::ReadAllBytes($target))) -cne $entry.ExpectedRawSha256) {
+            throw "Current site bytes differ or are missing: $($entry.Path). No unreviewed source is accepted."
+        }
+    }
+}
+
+function Get-CurrentSiteSourceManifest($Plan,[string]$ProjectPath,[scriptblock]$ReadCandidate) {
+    if ($Plan.InputCount -ne 370 -or @($Plan.Inputs).Count -ne 370 -or
+        $Plan.OriginalBuildInputCount -ne 231 -or $Plan.CurrentSiteBuildInputCount -ne 243 -or
+        $Plan.MigrationCount -ne 103 -or $Plan.Version -cne '2026.10.19.306' -or
+        $Plan.ArchiveSha256 -cne 'b9244b38b1d4cb72dbd0bacf913fb7e92e07802626057e5169a5c58d71b6309a' -or
+        @($Plan.AdditionalReviewInputs).Count -ne 10) { throw 'Unexpected current-site qualification identity.' }
+    $updates=@('CultureMediaPreparation.xaml.Part2.cs','CultureMediaPreparation.xaml.Part3.cs','CultureMediaPreparation.xaml.cs',
+        'DatabaseHelper.EnvironmentalMonitoring.cs','DatabaseHelper.QualityEvents.cs','EMResultsEntry.xaml.Part3.cs','EMResultsEntry.xaml.cs',
+        'PRMQualityEventInvestigation.xaml.cs','ProductionRawMaterialResults.xaml.cs','QualityEventInvestigation.xaml.Part2.cs',
+        'QualityEventInvestigation.xaml.cs','ReportCertificate.xaml.cs','SystemPreflight.xaml.cs','DatabaseHelper.EmSourcePlan.cs',
+        'tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs','tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs')
+    $adds=@('Services/MediaPreparationAmendmentSnapshot.cs','Infrastructure/QualityEventInvestigationConcurrencyGuard.cs',
+        'tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs')
+    $allowed=@($updates+$adds)
+    if (@($Plan.SourceUpdateScope).Count -ne 19 -or @(Compare-Object $allowed @($Plan.SourceUpdateScope.Path)).Count) { throw 'Current-site scope must match the nineteen reviewed source paths.' }
+    $known=@{};$source=@{};$scope=@{};$retained=New-Object 'System.Collections.Generic.List[object]';$files=New-Object 'System.Collections.Generic.List[object]'
+    foreach ($entry in $Plan.SourceUpdateScope) {
+        if ($scope.ContainsKey([string]$entry.Path)) { throw 'Duplicate current-site update path.' }
+        $scope[[string]$entry.Path]=$entry
+    }
+    foreach ($entry in $Plan.Inputs) {
+        $path=[string]$entry.Path
+        if ($known.ContainsKey($path)) { throw 'Duplicate current-site input path.' }
+        $target=Get-CurrentSitePath $ProjectPath $path;$known[$path]=$true;$source[$path]=$entry
+        $absent=[bool]$entry.CurrentSiteExpectedAbsent
+        if ($absent -ne ($path -in $adds)) { throw 'Only the three new helpers can be absent.' }
+        if ($absent) {
+            if ((Test-Path -LiteralPath $target) -or $entry.CurrentSiteRawSha256) { throw "New helper already exists: $path" }
+        } else {
+            if ([string]$entry.CurrentSiteRawSha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Missing current raw-byte witness.' }
+            $witness=[pscustomobject]@{Path=$path;ExpectedRawSha256=$entry.CurrentSiteRawSha256}
+            Test-CurrentSitePreservedInputs @($witness) $ProjectPath
+            if (-not $scope.ContainsKey($path)) { $retained.Add($witness) }
+        }
+    }
+    foreach ($entry in $Plan.AdditionalReviewInputs) {
+        $path=[string]$entry.Path
+        if ($known.ContainsKey($path) -or $path -notmatch '^scripts/[A-Za-z0-9_.-]+\.sql$' -or
+            $entry.Execute -ne $false -or [string]$entry.ExactSha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Invalid read-only SQL sidecar.' }
+        $null=Get-CurrentSitePath $ProjectPath $path;$known[$path]=$true
+        $witness=[pscustomobject]@{Path=$path;ExpectedRawSha256=$entry.ExactSha256}
+        Test-CurrentSitePreservedInputs @($witness) $ProjectPath;$retained.Add($witness)
+    }
+    # Walk one level at a time; reject links before recursion can follow them.
+    $pending=New-Object 'System.Collections.Generic.Queue[string]';$pending.Enqueue([IO.Path]::GetFullPath($ProjectPath))
+    $root=[IO.Path]::GetFullPath($ProjectPath).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+    while ($pending.Count) {
+        foreach ($item in Get-ChildItem -LiteralPath ($pending.Dequeue()) -Force) {
+            $relative=$item.FullName.Substring($root.Length).Replace('\','/')
+            if ($relative -match '(^|/)(bin|obj|\.git|\.vs)(/|$)' -or $relative -match '^tests(/|$)' -or
+                ($relative -match '^tools/' -and $relative -notmatch '^tools/PharmaLIMS\.TrustedSigning(?:\.Host)?(/|$)')) { continue }
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "Unreviewed reparse path: $relative" }
+            if ($item.PSIsContainer) { $pending.Enqueue($item.FullName);continue }
+            if (($item.Extension -in @('.cs','.xaml','.csproj','.props','.targets','.sql') -or
+                $item.Name -in @('global.json','NuGet.Config','nuget.config','MigrationManifest.json')) -and -not $known.ContainsKey($relative)) { throw "Unlisted source/database input: $relative" }
+        }
+    }
+    foreach ($path in $allowed) {
+        if (-not $source.ContainsKey($path)) { throw 'Reviewed update is absent from input graph.' }
+        $entry=$scope[$path];$inputEntry=$source[$path];$add=$path -in $adds
+        if ($entry.Operation -cne $(if ($add) {'add'} else {'update'}) -or
+            [string]$entry.ExpectedCurrentRawSha256 -cne [string]$inputEntry.CurrentSiteRawSha256 -or
+            $entry.CandidateNormalizedSha256 -cne $inputEntry.Sha256 -or
+            $entry.Artifact -notmatch '^scripts/site-overlays/[A-Za-z0-9_.-]+\.txt$') { throw 'Current-site candidate contract mismatch.' }
+        [byte[]]$candidate=& $ReadCandidate $entry.Artifact
+        if ((Get-ByteHash $candidate) -cne $entry.CandidateRawSha256 -or
+            (Get-SourceHash $candidate) -cne $entry.CandidateNormalizedSha256) { throw 'Reviewed candidate bytes differ.' }
+        $files.Add([pscustomobject]@{Path=$path;SourcePath=('PharmaLIMS/'+$entry.Artifact);Remove=$false;
+            ExpectedRawSha256=$inputEntry.CurrentSiteRawSha256;ExpectedNormalizedSha256=$inputEntry.CurrentSiteNormalizedSha256})
+    }
+    return [pscustomobject]@{OriginalProject=$ProjectPath;Files=$files.ToArray();PreservedInputs=$retained.ToArray()}
+}
+
+function Invoke-GuardedSourceChanges($Changes,[string]$BackupDirectory,[string]$Commit,
+    [switch]$WaterAnalysisRecord,[switch]$CurrentSiteRecord,[scriptblock]$ValidatePreserved={}) {
+    $backupPath=$null;$applied=New-Object 'System.Collections.Generic.List[object]'
+    try {
+        foreach ($change in $Changes) {
+            if ($change.WasPresent) {
+                $change.Handle=if($CurrentSiteRecord){[Eq001SiteSourceFile]::OpenQualified($change.Target,$false)}else{[Eq001SiteSourceFile]::Open($change.Target,$false)}
+                if ((Get-ByteHash ($change.Handle.ReadAll())) -cne $change.BeforeSha256) { throw "Source changed during preparation: $($change.Path)" }
+            } elseif (Test-Path -LiteralPath $change.Target) { throw "New source target appeared: $($change.Path)" }
+        }
+        & $ValidatePreserved
+        $prefix=if($CurrentSiteRecord){'source-current-site-rollback-'}elseif($WaterAnalysisRecord){'source-water-analysis-rollback-'}else{'source-rollback-'}
+        $backupPath=Join-Path $BackupDirectory ($prefix+[guid]::NewGuid().ToString()+'.json')
+        $rollback=@($Changes|ForEach-Object{[pscustomobject]@{Path=$_.Path;WasPresent=$_.WasPresent;Remove=$_.Remove;
+            BeforeSha256=$_.BeforeSha256;InstalledSha256=$_.AfterSha256;OriginalBase64=[Convert]::ToBase64String($_.BeforeBytes)}})
+        $record=if($CurrentSiteRecord){[pscustomobject]@{Schema=2;SourceCommit=$Commit;SourcePlanSha256='da7ee6ca2f2a145284306aafaf7d73e063a601be47ef0918304f10d250d04830';
+            ParentSourceReceiptCommit='97b347290360d8f8f90f6d29c56029af59298b24';
+            ParentSourceReceiptSha256='E71C9820185DACF70A988FD30D2F2AF6814ECBBAE9F945D6576F84FF450F81A2';Files=$rollback}}
+        elseif($WaterAnalysisRecord){[pscustomobject]@{Schema=1;SourceCommit=$Commit;Files=$rollback}}else{$rollback}
+        $bytes=[Text.Encoding]::UTF8.GetBytes(($record|ConvertTo-Json -Depth 6))
+        $backup=[IO.FileStream]::new($backupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+        try{$backup.Write($bytes,0,$bytes.Length);$backup.Flush($true)}finally{$backup.Dispose()}
+        Write-Host "Durable rollback source bytes saved before mutation: $backupPath"
+        foreach($change in $Changes){
+            if(-not $change.WasPresent){
+                [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($change.Target))
+                $change.Handle=if($CurrentSiteRecord){[Eq001SiteSourceFile]::OpenQualified($change.Target,$true)}else{[Eq001SiteSourceFile]::Open($change.Target,$true)}
+            }
+            $applied.Add($change)
+            if($change.Remove){$change.Handle.DeleteOnClose($true)}else{
+                $change.Handle.WriteAll($change.AfterBytes)
+                if((Get-ByteHash ($change.Handle.ReadAll())) -cne $change.AfterSha256){throw "Source readback failed: $($change.Path)"}
+            }
+        }
+        & $ValidatePreserved
+    }catch{
+        $failure=$_
+        for($index=$applied.Count-1;$index -ge 0;$index--){
+            $change=$applied[$index]
+            try{
+                if($change.WasPresent){$change.Handle.DeleteOnClose($false);$change.Handle.WriteAll($change.BeforeBytes)}
+                else{$change.Handle.DeleteOnClose($true)}
+            }catch{Write-Warning "Recovery failed for $($change.Path). Original bytes are in $backupPath"}
+        }
+        throw $failure
+    }finally{foreach($change in $Changes){if($change.Handle){$change.Handle.Dispose()}}}
+    return $backupPath
+}
+
 function Get-TargetPath([string]$RelativePath) {
+    if ($CurrentSiteOnly) { return Get-CurrentSitePath $project $RelativePath }
     if ($RelativePath -notmatch '^[A-Za-z0-9_./-]+$' -or $RelativePath -match '(^|/)\.\.(/|$)') {
         throw 'Unsafe target path.'
     }
@@ -74,10 +227,17 @@ function Get-TargetPath([string]$RelativePath) {
     return $fullPath
 }
 
-if (@($DesktopSessionOnly,$WaterRegistrationOnly,$WaterAnalysisOnly | Where-Object { $_ }).Count -gt 1) { throw 'Choose one source installation mode.' }
+if (@($DesktopSessionOnly,$WaterRegistrationOnly,$WaterAnalysisOnly,$CurrentSiteOnly | Where-Object { $_ }).Count -gt 1) { throw 'Choose one source installation mode.' }
+if ($CurrentSiteOnly) {
+    $planBytes=Get-RepositoryBytes 'PharmaLIMS/scripts/site-cohort-inputs/AMEEN-cohort.json'
+    if ((Get-ByteHash $planBytes) -cne $currentSitePlanHash) { throw 'Current-site source qualification hash differs.' }
+    $plan=[Text.Encoding]::UTF8.GetString($planBytes) | ConvertFrom-Json
+    $manifest=Get-CurrentSiteSourceManifest -Plan $plan -ProjectPath $project -ReadCandidate { param($path) Get-RepositoryBytes ('PharmaLIMS/'+$path) }
+} else {
 $manifestPath = if ($WaterAnalysisOnly) { 'PharmaLIMS/scripts/Eq001-WaterAnalysisSourcePrerequisites.json' } elseif ($WaterRegistrationOnly) { 'PharmaLIMS/scripts/Eq001-WaterSourcePrerequisites.json' } elseif ($DesktopSessionOnly) { 'PharmaLIMS/scripts/Eq001-SessionSourcePrerequisites.json' } else { 'PharmaLIMS/scripts/Eq001-AmeenSourcePrerequisites.json' }
 $manifestBytes = Get-RepositoryBytes $manifestPath
 $manifest = [Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
+}
 if ($manifest.OriginalProject -ne $project) { throw 'Source manifest targets a different project.' }
 if ($DesktopSessionOnly) {
     $desktopPaths = @('App.xaml.cs','Login.xaml','Login.xaml.cs','MainWindow.xaml','MainWindow.xaml.cs',
@@ -169,6 +329,10 @@ foreach ($entry in $manifest.Files) {
     [byte[]]$before = @()
     [byte[]]$after = @()
     if ($exists) { $before = [IO.File]::ReadAllBytes($target) }
+    if ($CurrentSiteOnly -and (([bool]$entry.ExpectedRawSha256 -ne $exists) -or
+        ($exists -and (Get-ByteHash $before) -cne $entry.ExpectedRawSha256))) {
+        throw "Current source bytes changed during preparation: $($entry.Path)"
+    }
     if (-not $entry.Remove) { $after = Get-RepositoryBytes $entry.SourcePath }
     if ($entry.Remove -and -not $exists) { continue }
     if (-not $entry.Remove -and $exists -and (Get-SourceHash $before) -eq (Get-SourceHash $after)) { continue }
@@ -209,66 +373,26 @@ foreach ($process in @(Get-Process -Name PharmaLIMS -ErrorAction SilentlyContinu
 $service = Get-Service -Name 'PharmaLIMS.TrustedSigning' -ErrorAction SilentlyContinue
 if (-not $DesktopSessionOnly -and $service -and $service.Status -ne 'Stopped') { throw 'Do not change source while the signing service is running.' }
 
+$parentReceiptPath=Join-Path $privateDirectory 'source-water-analysis-rollback-a636fc38-f923-4a7f-ad17-c7a905596c16.json'
+if ($CurrentSiteOnly) {
+    $null=Get-CurrentSitePath $privateDirectory ([IO.Path]::GetFileName($parentReceiptPath))
+    if ((Get-ByteHash ([IO.File]::ReadAllBytes($parentReceiptPath))) -ine $parentReceiptHash) { throw 'Original source receipt changed; no source update allowed.' }
+}
+$nativeSource=Get-RepositoryBytes 'PharmaLIMS/scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt'
+if ($CurrentSiteOnly -and (Get-ByteHash $nativeSource) -cne 'cee748672ba3ed7079290ccf3b40bf9ee9990e8961c5c2798575f7a639cd3a5c') { throw 'Qualified file helper hash differs.' }
 if (-not ('Eq001SiteSourceFile' -as [type])) {
-    $nativeSource = Get-RepositoryBytes 'PharmaLIMS/scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt'
     Add-Type -TypeDefinition ([Text.Encoding]::UTF8.GetString($nativeSource)) -ErrorAction Stop
 }
-$backupPath = $null
-$applied = New-Object 'System.Collections.Generic.List[object]'
-try {
-    # Hold every existing target exclusively through commit or rollback.
-    foreach ($change in $changes) {
-        if ($change.WasPresent) {
-            $change.Handle = [Eq001SiteSourceFile]::Open($change.Target,$false)
-            if ((Get-ByteHash ($change.Handle.ReadAll())) -ne $change.BeforeSha256) {
-                throw "Source changed during preparation: $($change.Path)"
-            }
-        } elseif (Test-Path -LiteralPath $change.Target) {
-            throw "A new source target appeared during preparation: $($change.Path)"
-        }
+if ($CurrentSiteOnly -and -not [Eq001SiteSourceFile].GetMethod('OpenQualified')) { throw 'Open a fresh PowerShell session to load the qualified source helper.' }
+$preservedCheck={}
+if ($CurrentSiteOnly) {
+    $preservedCheck={
+        Test-CurrentSitePreservedInputs $manifest.PreservedInputs $project
+        if ((Get-ByteHash ([IO.File]::ReadAllBytes($parentReceiptPath))) -ine $parentReceiptHash) { throw 'Parent receipt changed during source update.' }
     }
-
-    # Save only touched source bytes, not another project or database copy.
-    $backupPath = Join-Path $privateDirectory ($(if ($WaterAnalysisOnly) { 'source-water-analysis-rollback-{0}.json' } else { 'source-rollback-{0}.json' }) -f [guid]::NewGuid())
-    $rollback = @($changes | ForEach-Object {
-        [pscustomobject]@{ Path=$_.Path; WasPresent=$_.WasPresent; Remove=$_.Remove
-            BeforeSha256=$_.BeforeSha256; InstalledSha256=$_.AfterSha256
-            OriginalBase64=[Convert]::ToBase64String($_.BeforeBytes) }
-    })
-    $record = if ($WaterAnalysisOnly) { [pscustomobject]@{ Schema=1; SourceCommit=$SourceCommit; Files=$rollback } } else { $rollback }
-    $backupBytes = [Text.Encoding]::UTF8.GetBytes(($record | ConvertTo-Json -Depth 6))
-    $backupStream = [IO.FileStream]::new($backupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
-    try { $backupStream.Write($backupBytes,0,$backupBytes.Length); $backupStream.Flush($true) }
-    finally { $backupStream.Dispose() }
-    Write-Host "Durable rollback source bytes saved before mutation: $backupPath"
-
-    foreach ($change in $changes) {
-        if (-not $change.WasPresent) {
-            [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($change.Target))
-            $change.Handle = [Eq001SiteSourceFile]::Open($change.Target,$true)
-        }
-        # Track before the first live mutation, including a write that fails partway.
-        $applied.Add($change)
-        if ($change.Remove) { $change.Handle.DeleteOnClose($true) }
-        else {
-            $change.Handle.WriteAll($change.AfterBytes)
-        }
-    }
-} catch {
-    $failure = $_
-    for ($index=$applied.Count-1; $index -ge 0; $index--) {
-        $change=$applied[$index]
-        try {
-            if ($change.WasPresent) {
-                $change.Handle.DeleteOnClose($false)
-                $change.Handle.WriteAll($change.BeforeBytes)
-            } else { $change.Handle.DeleteOnClose($true) }
-        } catch { Write-Warning "Recovery failed for $($change.Path). Original bytes are in $backupPath" }
-    }
-    throw $failure
-} finally {
-    foreach ($change in $changes) { if ($change.Handle) { $change.Handle.Dispose() } }
 }
+$backupPath=Invoke-GuardedSourceChanges -Changes $changes -BackupDirectory $privateDirectory -Commit $SourceCommit `
+    -WaterAnalysisRecord:$WaterAnalysisOnly -CurrentSiteRecord:$CurrentSiteOnly -ValidatePreserved $preservedCheck
 Write-Host "Applied $($changes.Count) guarded source changes in the original project."
 Write-Host "Rollback source bytes: $backupPath"
 Write-Host 'No branch switch, service installation, database operation, certificate trust change or Production activation was performed.'

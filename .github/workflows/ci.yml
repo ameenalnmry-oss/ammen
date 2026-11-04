@@ -104,6 +104,24 @@ jobs:
           & ./tests/Test-Eq001SourceTransitionPreview.ps1
           if (-not $?) { throw "Windows PowerShell source transition preview regressions failed." }
 
+      - name: Current-site source guards and real rollback on PowerShell 7
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          & ./tests/Test-Eq001CurrentSiteSource.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1
+          if (-not $?) { throw "Current-site source precondition tests failed." }
+          & ./tests/Test-Eq001SourceTransaction.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1 -NativeSourcePath ./scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt
+          if (-not $?) { throw "Current-site native source rollback tests failed." }
+
+      - name: Current-site source guards and real rollback on Windows PowerShell 5.1
+        working-directory: PharmaLIMS
+        shell: powershell
+        run: |
+          & ./tests/Test-Eq001CurrentSiteSource.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1
+          if (-not $?) { throw "Current-site source precondition tests failed on Windows PowerShell." }
+          & ./tests/Test-Eq001SourceTransaction.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1 -NativeSourcePath ./scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt
+          if (-not $?) { throw "Current-site native source rollback tests failed on Windows PowerShell." }
+
       - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS
         run: |

@@ -93,3 +93,33 @@ preflight overlap code and the original migration manifest. They are source
 identity gates, not a substitute for Windows identity, WPF or QA acceptance.
 This batch does not deploy an executable, restart the service, change any SQL
 permissions, rewrite history, modify Production or merge PR62.
+
+
+## Separate guarded current-site source update
+
+Install-Eq001AmeenSource.ps1 adds CurrentSiteOnly with a closed19-C#-path scope.
+Legacy installer allowlists and the schema1 WaterAnalysis receipt remain separate.
+This mode pins the complete370-input source plan SHA256, validates377 existing raw
+input/SQL-sidecar bytes and three absent helpers before mutation, and buffers exact
+candidate bytes. It rejects unlisted compiler/SQL inputs and aliased/reparse paths.
+Retained361 inputs are rechecked before and after writes. Selected source files
+are held exclusively, verified to be regular single-link files at their expected
+final paths and read back after writing. Failure attempts reverse restoration of
+existing raw bytes and handle-owned deletion of only newly created helpers.
+
+Before the first source write a new schema2 source-current-site rollback record
+is durably saved in the existing private UAT directory. The original97b34729
+receipt is only read/hash-verified, never overwritten or relabeled. Administrator,
+private-directory ACL, original-project app-lock and signing-service-stopped
+preconditions remain. The updater performs no stop/start, SQL, feature activation,
+binary deployment or Production operation. A repeated current-mode attempt after
+application is rejected by the original before-byte/absent-helper witnesses;
+legacy already-matching behavior is unchanged. Durable originals support manual
+recovery after interruption; in-process rollback does not imply crash atomicity.
+
+New Windows tests use owned temporary fake source files, not a PharmaLIMS copy.
+They exercise real exclusive handles/hardlinks/junctions, successful writes,
+separate rollback provenance, raw-byte restoration after retained-input rejection,
+and actual filesystem access denial during new-helper creation. These tests and
+the exact cohort builds must pass before any AMEEN source apply. Authenticated
+site WPF, installed-runtime refresh, all module regressions and QA remain open.
