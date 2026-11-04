@@ -112,6 +112,10 @@ jobs:
           if (-not $?) { throw "Current-site source precondition tests failed." }
           & ./tests/Test-Eq001SourceTransaction.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1 -NativeSourcePath ./scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt
           if (-not $?) { throw "Current-site native source rollback tests failed." }
+          & ./tests/Test-Eq001SourceRollbackAcl.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1 -NativeFiles -NativeSourcePath ./scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt
+          if (-not $?) { throw "Rollback ACL/native file-privacy tests failed." }
+          & ./tests/Test-Eq001MaintenanceTarget.ps1 -BootstrapPath ./scripts/site-overlays/Eq001CurrentSiteMaintenance.ps1.txt
+          if (-not $?) { throw "Maintenance target validation tests failed." }
 
       - name: Current-site source guards and real rollback on Windows PowerShell 5.1
         working-directory: PharmaLIMS
@@ -121,6 +125,10 @@ jobs:
           if (-not $?) { throw "Current-site source precondition tests failed on Windows PowerShell." }
           & ./tests/Test-Eq001SourceTransaction.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1 -NativeSourcePath ./scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt
           if (-not $?) { throw "Current-site native source rollback tests failed on Windows PowerShell." }
+          & ./tests/Test-Eq001SourceRollbackAcl.ps1 -InstallerPath ./scripts/Install-Eq001AmeenSource.ps1 -NativeFiles -NativeSourcePath ./scripts/site-overlays/Eq001ExclusiveSourceFile.cs.txt
+          if (-not $?) { throw "Rollback ACL/native file-privacy tests failed on Windows PowerShell." }
+          & ./tests/Test-Eq001MaintenanceTarget.ps1 -BootstrapPath ./scripts/site-overlays/Eq001CurrentSiteMaintenance.ps1.txt
+          if (-not $?) { throw "Maintenance target validation tests failed on Windows PowerShell." }
 
       - name: Validate controlled source manifest before build
         working-directory: PharmaLIMS

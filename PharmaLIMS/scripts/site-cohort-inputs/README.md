@@ -124,3 +124,18 @@ separate rollback provenance, raw-byte restoration after retained-input rejectio
 and actual filesystem access denial during new-helper creation. These tests and
 the exact cohort builds must pass before any AMEEN source apply. Authenticated
 site WPF, installed-runtime refresh, all module regressions and QA remain open.
+
+
+Current-site root ACL compatibility: the original AMEEN root has three explicit
+non-inheriting ReadAndExecute|Synchronize rules for fixed actors1012/1013/1014.
+CurrentSiteOnly accepts exactly those directory-only rules, not file read access.
+Other principals, inherited/propagating actor rules, any extra rights, untrusted
+owners and null DACLs are rejected. Legacy modes retain their original strict
+root rule. No existing ACL is changed. The current-mode rollback file itself is
+checked for trusted ownership and trusted-only Allow rules while still empty and
+open exclusively; only then can original source bytes be written. Root ACL and
+preserved source are rechecked before/after the transaction. Owned native Windows
+fixtures verify child inheritance and unsafe-leaf rejection before any payload
+or source mutation, on PowerShell5.1/7. The maintenance template and its actual
+connection/target gate are tested too; typed SqlConnectionStringBuilder creation
+avoids PowerShell's dictionary-adapter ConnectionString setter behavior.

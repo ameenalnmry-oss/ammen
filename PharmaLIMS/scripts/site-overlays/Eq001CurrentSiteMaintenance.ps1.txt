@@ -1,0 +1,75 @@
+[CmdletBinding()]
+param([switch]$Apply)
+$ErrorActionPreference='Stop'
+if ([Environment]::MachineName -ine 'AMEEN') { throw 'Run only on original AMEEN.' }
+$project='E:\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\PharmaLIMS'
+$revision='@@UPDATE_TOOL_COMMIT@@'
+$serviceName='PharmaLIMS.TrustedSigning'
+if ($Apply) {
+    $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal=New-Object Security.Principal.WindowsPrincipal($identity)
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw 'Administrator PowerShell is required for the existing protected source rollback directory. No changes made.'
+    }
+}
+if (-not (Test-Path -LiteralPath (Join-Path $project 'PharmaLIMS.csproj') -PathType Leaf)) { throw 'Original project not found.' }
+$env:GIT_OPTIONAL_LOCKS='0'
+& git -C $project cat-file -e ($revision+'^{commit}') 2>$null
+if ($LASTEXITCODE -ne 0) {
+    & git -C $project fetch --no-tags origin $revision
+    if ($LASTEXITCODE -ne 0) { throw 'Exact source fetch failed; no source changed.' }
+}
+$info=New-Object Diagnostics.ProcessStartInfo
+$info.FileName=(Get-Command git -ErrorAction Stop).Source
+$info.WorkingDirectory=$project
+$info.Arguments='show "{0}:PharmaLIMS/scripts/Install-Eq001AmeenSource.ps1"' -f $revision
+$info.UseShellExecute=$false
+$info.RedirectStandardOutput=$true
+$info.RedirectStandardError=$true
+$process=New-Object Diagnostics.Process
+$process.StartInfo=$info
+$buffer=New-Object IO.MemoryStream
+try {
+    [void]$process.Start()
+    $errorRead=$process.StandardError.ReadToEndAsync()
+    $process.StandardOutput.BaseStream.CopyTo($buffer)
+    $process.WaitForExit()
+    $message=$errorRead.GetAwaiter().GetResult()
+    if ($process.ExitCode -ne 0) { throw $message }
+    [byte[]]$bytes=$buffer.ToArray()
+} finally { $buffer.Dispose();$process.Dispose() }
+$sha=[Security.Cryptography.SHA256]::Create()
+try { $hash=[BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-','').ToLowerInvariant() }
+finally { $sha.Dispose() }
+if ($hash -cne '@@UPDATE_TOOL_SHA256@@') { throw 'Updater SHA256 differs. Nothing installed.' }
+$installer=[scriptblock]::Create(([Text.UTF8Encoding]::new($false,$true)).GetString($bytes))
+if (-not $Apply) { & $installer -SourceCommit $revision -CurrentSiteOnly;return }
+
+# Pause only the existing isolated UAT signer; keep its binary/configuration exact.
+$configPath='C:\ProgramData\PharmaLIMS\EQ001-UAT-20261024\service\hostsettings.json'
+$expectedPath='"C:\ProgramData\PharmaLIMS\EQ001-UAT-20261024\service\PharmaLIMS.TrustedSigning.Host.exe" --service --config "'+$configPath+'"'
+$definition=Get-CimInstance Win32_Service -Filter "Name='PharmaLIMS.TrustedSigning'"
+if (-not $definition -or $definition.PathName.Trim() -ine $expectedPath -or
+    $definition.StartName -inotmatch '^(?:\.\\|AMEEN\\)PharmaLIMSSigner$') { throw 'Unexpected service identity/path. Stopped before any service action.' }
+$configBytes=[IO.File]::ReadAllBytes($configPath)
+$settings=[Text.Encoding]::UTF8.GetString($configBytes).TrimStart([char]0xFEFF)|ConvertFrom-Json
+$mode=if($settings.PSObject.Properties['DeploymentMode']){[string]$settings.DeploymentMode}else{'UAT'}
+Add-Type -AssemblyName System.Data
+$connection=[System.Data.SqlClient.SqlConnectionStringBuilder]::new([string]$settings.ConnectionString)
+if ($mode -cne 'UAT' -or $settings.ProductionActivationApproved -or
+    $connection.InitialCatalog -cne 'EQ001_UAT_AMEEN_20261024' -or
+    $connection.DataSource -inotmatch '^(?:AMEEN\\SQLEXPRESS|(?:tcp:)?AMEEN,1433)$') { throw 'Unexpected UAT service target. No service/source changes.' }
+if ($settings.EnableEquipmentDraftUat -or $settings.EnableEquipmentLinkUat -or $settings.EnableEquipmentConfirmUat) { throw 'Held equipment features are enabled. Review configuration before source maintenance; no changes made.' }
+$settings=$null;$connection=$null
+$service=Get-Service -Name $serviceName
+if ($service.Status -notin @('Running','Stopped')) { throw 'Service is transitioning. No changes made.' }
+$restart=$service.Status -eq 'Running'
+try {
+    if ($restart) { Stop-Service -Name $serviceName;$service.WaitForStatus('Stopped',[TimeSpan]::FromSeconds(30)) }
+    & $installer -SourceCommit $revision -CurrentSiteOnly -Apply
+} finally {
+    if ($restart) { Start-Service -Name $serviceName;$service.WaitForStatus('Running',[TimeSpan]::FromSeconds(30)) }
+}
+Get-Service -Name $serviceName|Select-Object Name,Status
+if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($configPath)) -cne [Convert]::ToBase64String($configBytes)) { throw 'Service configuration changed concurrently. Investigate before acceptance.' }
+Write-Host 'Source update only. Original branch/version/configuration/database retained. Release build, runtime refresh and local WPF UAT remain required.'

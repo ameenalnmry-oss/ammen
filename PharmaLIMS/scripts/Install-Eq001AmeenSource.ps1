@@ -167,8 +167,29 @@ function Get-CurrentSiteSourceManifest($Plan,[string]$ProjectPath,[scriptblock]$
     return [pscustomobject]@{OriginalProject=$ProjectPath;Files=$files.ToArray();PreservedInputs=$retained.ToArray();KnownPaths=@($known.Keys)}
 }
 
+function Assert-CurrentSiteRollbackAcl($Acl,[switch]$AllowSiteDirectoryTraversal) {
+    $trusted=@('S-1-5-18','S-1-5-32-544','S-1-5-21-3887410152-3473494482-1737934645-1009')
+    $readers=@('S-1-5-21-3887410152-3473494482-1737934645-1012',
+        'S-1-5-21-3887410152-3473494482-1737934645-1013','S-1-5-21-3887410152-3473494482-1737934645-1014')
+    if($Acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted){throw 'Source rollback ownership is not protected.'}
+    $raw=[Security.AccessControl.RawSecurityDescriptor]::new([byte[]]$Acl.GetSecurityDescriptorBinaryForm(),0)
+    if($null -eq $raw.DiscretionaryAcl){throw 'Source rollback ACL cannot allow unrestricted access.'}
+    if($AllowSiteDirectoryTraversal -and $Acl -isnot [Security.AccessControl.DirectorySecurity]){throw 'Traversal exception requires a directory ACL.'}
+    $read=[int][Security.AccessControl.FileSystemRights]::ReadAndExecute -bor [int][Security.AccessControl.FileSystemRights]::Synchronize
+    foreach($rule in $Acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
+        if($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $rule.IdentityReference.Value -in $trusted){continue}
+        # These exact site actors can list/traverse only this directory. They
+        # cannot write it or pass their read access to any rollback file.
+        if($AllowSiteDirectoryTraversal -and $rule.IdentityReference.Value -in $readers -and
+            [int]$rule.FileSystemRights -eq $read -and -not $rule.IsInherited -and
+            $rule.InheritanceFlags -eq [Security.AccessControl.InheritanceFlags]::None -and
+            $rule.PropagationFlags -eq [Security.AccessControl.PropagationFlags]::None){continue}
+        throw ('Source rollback ACL grants unexpected access: '+$rule.IdentityReference.Value)
+    }
+}
+
 function Invoke-GuardedSourceChanges($Changes,[string]$BackupDirectory,[string]$Commit,
-    [switch]$WaterAnalysisRecord,[switch]$CurrentSiteRecord,[scriptblock]$ValidatePreserved={}) {
+    [switch]$WaterAnalysisRecord,[switch]$CurrentSiteRecord,[scriptblock]$ValidatePreserved={},[scriptblock]$ValidateRollbackAcl={}) {
     $SourceCommit=$Commit
     $backupPath=$null;$applied=New-Object 'System.Collections.Generic.List[object]'
     try {
@@ -189,7 +210,10 @@ function Invoke-GuardedSourceChanges($Changes,[string]$BackupDirectory,[string]$
         elseif($WaterAnalysisRecord){[pscustomobject]@{Schema=1; SourceCommit=$SourceCommit; Files=$rollback}}else{$rollback}
         $bytes=[Text.Encoding]::UTF8.GetBytes(($record|ConvertTo-Json -Depth 6))
         $backup=[IO.FileStream]::new($backupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
-        try{$backup.Write($bytes,0,$bytes.Length);$backup.Flush($true)}finally{$backup.Dispose()}
+        try{
+            & $ValidateRollbackAcl $backupPath
+            $backup.Write($bytes,0,$bytes.Length);$backup.Flush($true)
+        }finally{$backup.Dispose()}
         Write-Host "Durable rollback source bytes saved before mutation: $backupPath"
         foreach($change in $Changes){
             if(-not $change.WasPresent){
@@ -374,9 +398,13 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 if (-not (Test-Path -LiteralPath $privateDirectory -PathType Container)) { throw 'Protected UAT directory not found.' }
 $allowed = @('S-1-5-18','S-1-5-32-544','S-1-5-21-3887410152-3473494482-1737934645-1009')
 $acl = Get-Acl -LiteralPath $privateDirectory
+if ($CurrentSiteOnly) {
+    Assert-CurrentSiteRollbackAcl -Acl $acl -AllowSiteDirectoryTraversal
+} else {
 if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $allowed) { throw 'UAT directory ownership is not protected.' }
 foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
     if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Value -notin $allowed) { throw 'UAT directory permissions are not private.' }
+}
 }
 foreach ($process in @(Get-Process -Name PharmaLIMS -ErrorAction SilentlyContinue)) {
     if ($process.Path -and $process.Path.StartsWith($project + '\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Close the original application before changing its source.' }
@@ -396,14 +424,17 @@ if (-not ('Eq001SiteSourceFile' -as [type])) {
 }
 if ($CurrentSiteOnly -and -not [Eq001SiteSourceFile].GetMethod('OpenQualified')) { throw 'Open a fresh PowerShell session to load the qualified source helper.' }
 $preservedCheck={}
+$rollbackAclCheck={}
 if ($CurrentSiteOnly) {
     $preservedCheck={
+        Assert-CurrentSiteRollbackAcl -Acl (Get-Acl -LiteralPath $privateDirectory) -AllowSiteDirectoryTraversal
         Test-CurrentSitePreservedInputs $manifest.PreservedInputs $project $manifest.KnownPaths
         if ((Get-ByteHash ([IO.File]::ReadAllBytes($parentReceiptPath))) -ine $parentReceiptHash) { throw 'Parent receipt changed during source update.' }
     }
+    $rollbackAclCheck={param($path) Assert-CurrentSiteRollbackAcl -Acl (Get-Acl -LiteralPath $path)}
 }
 $backupPath=Invoke-GuardedSourceChanges -Changes $changes -BackupDirectory $privateDirectory -Commit $SourceCommit `
-    -WaterAnalysisRecord:$WaterAnalysisOnly -CurrentSiteRecord:$CurrentSiteOnly -ValidatePreserved $preservedCheck
+    -WaterAnalysisRecord:$WaterAnalysisOnly -CurrentSiteRecord:$CurrentSiteOnly -ValidatePreserved $preservedCheck -ValidateRollbackAcl $rollbackAclCheck
 Write-Host "Applied $($changes.Count) guarded source changes in the original project."
 Write-Host "Rollback source bytes: $backupPath"
 Write-Host 'No branch switch, service installation, database operation, certificate trust change or Production activation was performed.'
