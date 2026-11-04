@@ -77,6 +77,8 @@ namespace PharmaLIMS
                 BtnPrmSpecifications.IsEnabled = false;
                 BtnWaterProfiles.Visibility = Visibility.Collapsed;
                 BtnWaterProfiles.IsEnabled = false;
+                BtnEquipmentReconcile.Visibility = Visibility.Collapsed;
+                BtnEquipmentReconcile.IsEnabled = false;
                 BtnEmReconcile.Visibility = Visibility.Collapsed;
                 BtnEmReconcile.IsEnabled = false;
                 BtnCertificateReconcile.Visibility = Visibility.Collapsed;
@@ -121,6 +123,17 @@ namespace PharmaLIMS
             BtnWaterProfiles.IsEnabled = hasWaterProfileFinding &&
                 !string.IsNullOrWhiteSpace(Login.CurrentUser) &&
                 DatabaseHelper.CanManageSettings(Login.CurrentUser);
+
+            bool hasEquipmentUsageFinding = _lastReport?.Checks.Any(check =>
+                (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(check.Status, "BLOCKER", StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(check.Area, "Laboratory Resources", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(check.Check, "Equipment usage traceability", StringComparison.OrdinalIgnoreCase)) == true;
+
+            BtnEquipmentReconcile.Visibility = hasEquipmentUsageFinding ? Visibility.Visible : Visibility.Collapsed;
+            BtnEquipmentReconcile.IsEnabled = hasEquipmentUsageFinding &&
+                !string.IsNullOrWhiteSpace(Login.CurrentUser) &&
+                DatabaseHelper.CanApproveResults(Login.CurrentUser);
 
             bool hasHistoricalEmFinding = _lastReport?.Checks.Any(check =>
                 (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
@@ -213,6 +226,53 @@ namespace PharmaLIMS
                 MessageBox.Show(
                     UserFacingError.SafeMessage(ex, "Water Test Profile management"),
                     "Water Test Profiles",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnEquipmentReconcile_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                bool hasFinding = _lastReport?.Checks.Any(check =>
+                    (string.Equals(check.Status, "WARNING", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(check.Status, "BLOCKER", StringComparison.OrdinalIgnoreCase)) &&
+                    string.Equals(check.Area, "Laboratory Resources", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(check.Check, "Equipment usage traceability", StringComparison.OrdinalIgnoreCase)) == true;
+
+                if (!hasFinding)
+                {
+                    MessageBox.Show(
+                        "No unresolved equipment-usage traceability finding is present in the current preflight report.",
+                        "Equipment Usage Reconciliation",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(Login.CurrentUser) ||
+                    !DatabaseHelper.CanApproveResults(Login.CurrentUser))
+                {
+                    throw new UnauthorizedAccessException(
+                        "QA approval permission is required to reconcile historical equipment-use evidence.");
+                }
+
+                var reconciliation = new EquipmentUsageReconciliation
+                {
+                    Owner = this
+                };
+                reconciliation.ShowDialog();
+
+                if (reconciliation.WasSaved)
+                    await RunPreflightAsync();
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.Error("Unable to open controlled equipment-use reconciliation from System Preflight.", ex);
+                MessageBox.Show(
+                    UserFacingError.SafeMessage(ex, "Historical equipment-use reconciliation"),
+                    "Equipment Usage Reconciliation",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

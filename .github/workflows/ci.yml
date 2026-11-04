@@ -252,6 +252,13 @@ jobs:
           Write-Host "GITHUB_EVENT_NAME=$env:GITHUB_EVENT_NAME"
 
 
+      - name: Verify current AMEEN source preservation before cohort preparation
+        working-directory: PharmaLIMS
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_current_site_cohort_preservation.py -v
+          if ($LASTEXITCODE -ne 0) { throw "Current AMEEN source preservation failed." }
+
       - name: Prepare exact AMEEN site cohort in existing hosted CI checkout
         if: github.event_name == 'pull_request'
         working-directory: PharmaLIMS
@@ -703,4 +710,3 @@ jobs:
           path: PharmaLIMS/artifacts/eq001-windows-uat/
           if-no-files-found: warn
           retention-days: 30
-

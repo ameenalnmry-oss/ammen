@@ -61,3 +61,35 @@ No timestamp instant, machine clock, database row or earlier report is changed.
 Native execution and full-cohort compilation remain required subsequent gates.
 
 Current transport/generic-QE boundary follow-up: see ../site-overlays/SITE-BOUNDARIES-README.md. The exact plan now contains357 inputs with200/22/7 evaluated project graphs; native SQL and compile gates are required again for these changes.
+
+
+## Current AMEEN preservation witness — 2026-11-04
+
+Remote access was reverified on original AMEEN and the original E: project.
+The earlier357-input qualification is retained as historical evidence. Current
+source has343 raw original matches,11 changed existing inputs and20 additional
+files absent from the uploaded archive (including12 build inputs and one
+database migration). The exact compile/database cohort is now370 inputs with
+graphs206/25/10 and103 controlled migration checksums including the baseline.
+All prior101 manifest migration entries and their raw SQL bytes are preserved.
+
+The source-only repair remains16 updates and3 required helpers. Only
+SystemPreflight.xaml.cs overlaps the later local work; its current reconciliation
+UI is retained while exactly two timestamp interpolation expressions become
+invariant. Original archive witnesses remain distinct from CurrentSiteRawSha256
+and CurrentSiteNormalizedSha256; current machine hashes alone do not authorize
+replacement or deployment. All31 captured changed/new files remain attributable
+to the remote read-only witness.
+
+AdditionalReviewInputs carries ten SQL source sidecars as inert Base64 artifacts.
+They are not executed or installed by compilation qualification. The three new
+signer-only equipment installers and four earlier equipment prototypes remain
+SECURITY HOLD. Draft/Link/Confirm flags remain default false and the unfinished
+trusted non-use workflow stays blocked. Native positive tests and independent
+SQL/QA review are still required before enabling those paths.
+
+Current-source provenance tests compare frozen current file hashes, complete
+preflight overlap code and the original migration manifest. They are source
+identity gates, not a substitute for Windows identity, WPF or QA acceptance.
+This batch does not deploy an executable, restart the service, change any SQL
+permissions, rewrite history, modify Production or merge PR62.

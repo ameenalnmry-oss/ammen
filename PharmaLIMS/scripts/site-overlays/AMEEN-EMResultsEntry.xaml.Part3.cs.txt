@@ -261,4 +261,3 @@ VALUES(@eventId,@eventNo,N'EM Result Entry',@reason,@signedBy,@userRole,@meaning
         }
     }
 }
-

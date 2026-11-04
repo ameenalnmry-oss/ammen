@@ -138,4 +138,3 @@ FROM dbo.EM_EventPlates P"+hint+@" JOIN dbo.EM_Events E"+hint+@" ON E.Id=P.Event
         foreach(var change in changes) AddAuditTrailAdvanced(c,t,change.Table,change.Id,"Cancel EM Plan",change.Old,"Cancelled",reason,signer,change.Table=="EM_Plans"?"Status":"WorkflowStatus",null,change.No,"Environmental Monitoring");
     }
 }
-
