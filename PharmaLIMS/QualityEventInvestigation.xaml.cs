@@ -48,6 +48,7 @@ namespace PharmaLIMS
         private string loadedClosedBy = string.Empty;
         private DateTime? loadedClosedDate;
         private DateTime? loadedEventCreatedDate;
+        private string loadedInvestigationVersion;
 
         private sealed class QualityEventPaginatorSource : IDocumentPaginatorSource
         {
@@ -691,6 +692,8 @@ namespace PharmaLIMS
 
                 QualityEventLoadData loaded = await Task.Run(() =>
                 {
+                    loadedInvestigationVersion = null;
+                    string versionBeforeLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, false);
                     DataTable header = DatabaseHelper.GetQualityEventHeader(qualityEventId);
                     if (header.Rows.Count == 0)
                         return null;
@@ -698,7 +701,7 @@ namespace PharmaLIMS
                     DataRow headerRow = header.Rows[0];
                     bool isEnvironmentalMonitoring = IsEnvironmentalMonitoringHeader(headerRow);
 
-                    return new QualityEventLoadData
+                    var data = new QualityEventLoadData
                     {
                         Header = header,
                         AffectedResults = DatabaseHelper.GetQualityEventAffectedResults(qualityEventId),
@@ -713,6 +716,11 @@ namespace PharmaLIMS
                             ? LoadEnvironmentalMonitoringContext(headerRow.GetSafeString("SampleNumber"))
                             : new DataTable()
                     };
+                    string versionAfterLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, false);
+                    if (!string.Equals(versionBeforeLoad, versionAfterLoad, StringComparison.Ordinal))
+                        throw new DBConcurrencyException("The investigation changed while loading. Reload before continuing.");
+                    loadedInvestigationVersion = versionAfterLoad;
+                    return data;
                 });
 
                 if (loaded == null)
@@ -890,9 +898,11 @@ namespace PharmaLIMS
 
             CommitChecklistEdits();
             string actionNote = txtActionNote.Text.Trim();
+            string savedVersion = null;
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
+                QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(connection, transaction, qualityEventId, false, loadedInvestigationVersion);
                 SaveInvestigationHeaderInTransaction(connection, transaction, status);
                 SaveChecklistAnswersInTransaction(connection, transaction);
                 SaveV15StructuredTables(connection, transaction, actionNote);
@@ -914,7 +924,9 @@ namespace PharmaLIMS
                     null,
                     sampleNumber,
                     "Quality Event");
+                savedVersion = QualityEventInvestigationConcurrencyGuard.Capture(connection, transaction, qualityEventId, false);
             });
+            loadedInvestigationVersion = savedVersion;
 
             if (!string.IsNullOrWhiteSpace(actionNote))
                 txtActionNote.Clear();
@@ -2179,7 +2191,7 @@ namespace PharmaLIMS
                 if (!ValidateBeforeSubmitToQA())
                     return;
 
-                DatabaseHelper.SubmitQualityEventToQA(qualityEventId, currentUser);
+                DatabaseHelper.SubmitQualityEventToQA(qualityEventId, currentUser, loadedInvestigationVersion);
 
                 await LoadEventAsync();
                 MessageBox.Show("Quality Event submitted to QA review.", "Quality Event", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -2233,7 +2245,8 @@ namespace PharmaLIMS
                     signatureWindow.SignedBy,
                     signatureWindow.Meaning,
                     signatureWindow.Reason,
-                    currentRole);
+                    currentRole,
+                    loadedInvestigationVersion);
 
 
                 await LoadEventAsync();

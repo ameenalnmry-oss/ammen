@@ -42,6 +42,7 @@ namespace PharmaLIMS
             ? Settings.Value.CommandTimeoutSeconds
             : 30;
 
+        public static bool TrustedSigningEnabled => Settings.Value.TrustedSigningEnabled;
         public static bool EnforceAuditTrail => Settings.Value.EnforceAuditTrail;
         public static bool EnforceElectronicSignatureStorage => Settings.Value.EnforceElectronicSignatureStorage;
         public static bool ApplyStartupDatabaseUpdates => Settings.Value.ApplyStartupDatabaseUpdates;
@@ -85,6 +86,9 @@ namespace PharmaLIMS
 
                 JsonElement root = document.RootElement;
                 settings.EnvironmentName = ReadString(root, "Environment", settings.EnvironmentName);
+
+                if (root.TryGetProperty("TrustedSigning", out JsonElement trusted))
+                    settings.TrustedSigningEnabled = ReadBool(trusted, "Enabled", false);
 
                 if (root.TryGetProperty("Application", out JsonElement application))
                 {
@@ -470,6 +474,7 @@ namespace PharmaLIMS
 
         private sealed class AppSettings
         {
+            public bool TrustedSigningEnabled { get; set; }
             public string EnvironmentName { get; set; } = string.Empty;
             public string SiteName { get; set; } = string.Empty;
             public string DepartmentName { get; set; } = string.Empty;

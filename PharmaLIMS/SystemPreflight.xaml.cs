@@ -52,7 +52,7 @@ namespace PharmaLIMS
                 lblBlockers.Text = _lastReport.BlockerCount.ToString();
                 lblWarnings.Text = _lastReport.WarningCount.ToString();
                 lblPassed.Text = _lastReport.PassCount.ToString();
-                lblExecutedAt.Text = $"Executed {_lastReport.ExecutedAt:yyyy-MM-dd HH:mm:ss} | {_lastReport.Server} / {_lastReport.Database}";
+                lblExecutedAt.Text = $"Executed {_lastReport.ExecutedAtDisplay} | {_lastReport.Server} / {_lastReport.Database}";
                 UpdateRemediationActions();
 
                 if (_lastReport.BlockerCount > 0)
@@ -577,7 +577,7 @@ ORDER BY E.EventNo,E.Id;");
         {
             var text = new StringBuilder();
             text.AppendLine("PharmaLIMS Runtime System Preflight");
-            text.AppendLine($"Executed: {report.ExecutedAt:yyyy-MM-dd HH:mm:ss}");
+            text.AppendLine($"Executed: {report.ExecutedAtDisplay}");
             text.AppendLine($"Build: {typeof(SystemPreflight).Assembly.GetName().Version?.ToString() ?? "unknown"}");
             text.AppendLine($"Target: {report.Server} / {report.Database}");
             text.AppendLine($"Blockers: {report.BlockerCount}; Warnings: {report.WarningCount}; Passed: {report.PassCount}");

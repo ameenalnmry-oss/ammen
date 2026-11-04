@@ -581,6 +581,12 @@
       "description": "Append-only controlled Water equipment and test kit resource evidence",
       "file": "Migrations/20261009_002_Water_Resources_Traceability.sql",
       "sha256": "4f246f168f8ce835f7eb83f4d0969049b7540783c65a7c7c3f7ea235cfa7bde8"
+    },
+    {
+      "versionKey": "20261028_001",
+      "description": "Append-only PRM draft content and signing history without rewriting existing specifications",
+      "file": "Migrations/20261028_001_PRM_Specification_Content_History.sql",
+      "sha256": "7a70fa90887105e3c86c6b9353ce4b511330a82badf64164d5bfb92c02105b43"
     }
   ]
 }

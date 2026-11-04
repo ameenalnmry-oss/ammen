@@ -71,6 +71,7 @@ namespace PharmaLIMS
             SqlTransaction transaction,
             int eventId)
         {
+            EnsureEMParentPlanActiveInTransaction(connection, transaction, eventId);
             using SqlCommand command = new SqlCommand(@"
 SELECT TOP 1
        ISNULL(NULLIF(LTRIM(RTRIM(WorkflowStatus)), N''),
@@ -152,10 +153,18 @@ SELECT CASE WHEN
         WHERE Id = @eventId
           AND UPPER(LTRIM(RTRIM(ISNULL(FinalResult,N'')))) IN (N'OOS',N'ACTION',N'FAIL')
     )
+    OR EXISTS
+    (
+        SELECT 1 FROM dbo.QualityEvents WITH(UPDLOCK,HOLDLOCK)
+        WHERE (SourceRecordID=@eventId OR SampleNumber=@eventNo)
+          AND (UPPER(LTRIM(RTRIM(ISNULL(SourceModule,N'')))) IN(N'EM',N'ENVIRONMENTAL MONITORING')
+               OR UPPER(LTRIM(RTRIM(ISNULL(DetectionSource,N''))))=N'ENVIRONMENTAL MONITORING')
+    )
 THEN 1 ELSE 0 END;", connection, transaction))
             {
                 oosCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
                 oosCommand.Parameters.Add("@eventId", SqlDbType.Int).Value = eventId;
+                oosCommand.Parameters.Add("@eventNo", SqlDbType.NVarChar, 100).Value = eventNo;
                 bool hasOos = Convert.ToInt32(oosCommand.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture) == 1;
                 if (!hasOos)
                     return;
@@ -178,7 +187,8 @@ SELECT TOP (1)
        ISNULL(FinalDisposition,N''),
        ISNULL(QAConclusion,N''),
        ISNULL(ClosedBy,N''),
-       ClosedDate
+       ClosedDate,
+       QualityEventID
 FROM dbo.QualityEvents WITH (UPDLOCK, HOLDLOCK)
 WHERE
     (
@@ -212,6 +222,10 @@ ORDER BY QualityEventID DESC;", connection, transaction);
             string qaConclusion = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
             string closedBy = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).Trim();
             bool hasClosedDate = !reader.IsDBNull(4);
+            int qualityEventId = reader.GetInt32(5);
+            reader.Close();
+            if (!HasCurrentEMInvestigationEvidenceInTransaction(connection, transaction, eventId, qualityEventId))
+                throw new InvalidOperationException("The closed EM investigation does not cover the current saved result evidence. Approval and report printing require a new investigation.");
 
             // Only an explicitly closed Quality Event can release an ACTION/OOS EM event.
             // "Approved" is an investigation workflow state, not a terminal closure. Cancelled/
@@ -337,6 +351,12 @@ WHERE EventId = @eventId;", connection, transaction);
                         "CanAccessReports",
                         "print approved EM Result Report");
 
+                    string lockedStatus = GetLockedEMWorkflowStatusInTransaction(connection, transaction, eventId);
+                    if (!lockedStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("The EM event is no longer approved. Report printing is blocked.");
+                    var completion = GetEMPlateCompletionCountsInTransaction(connection, transaction, eventId);
+                    if (completion.Total <= 0 || completion.Entered != completion.Total)
+                        throw new InvalidOperationException("EM result completeness changed. Report printing is blocked.");
                     string eventNo;
                     using (SqlCommand eventCommand = new SqlCommand(@"
 SELECT EventNo
@@ -452,6 +472,7 @@ WHERE Id = @eventId;", connection, transaction))
                 string signerRole = EnsureUserPermissionInTransaction(
                     conn, tx, effectiveSignedBy, "CanEnterResults", "record EM results");
 
+                EnsureEMParentPlanActiveInTransaction(conn, tx, eventId);
                 int updated = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.EM_Events
                     SET WorkflowStatus = 'Results Entered'
@@ -521,6 +542,7 @@ WHERE Id = @eventId;", connection, transaction))
                 string signerRole = EnsureActiveUserInTransaction(
                     conn, tx, effectiveModifiedBy, "place an EM event under investigation");
 
+                EnsureEMParentPlanActiveInTransaction(conn, tx, eventId);
                 int updated = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.EM_Events
                     SET

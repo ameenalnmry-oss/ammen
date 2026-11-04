@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+<ItemGroup><ProjectReference Include="../../tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj" /><Compile Include="../../Services/SpecificationEvidenceService.cs" Link="SpecificationEvidenceService.cs" />
+<Compile Include="../../Services/SpecificationNumericStorage.cs" Link="SpecificationNumericStorage.cs" />
+<Compile Include="../../Services/ResultSnapshotGuard.cs" Link="ResultSnapshotGuard.cs" />
+</ItemGroup>
+</Project>

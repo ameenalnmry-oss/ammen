@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Services;
@@ -117,104 +117,6 @@ namespace PharmaLIMS
             _legacyReconciliationId = reconciliationId;
             _legacyCertificateNumber = certificateNumber.Trim();
             _legacyReissueReason = BuildLegacyReissueReason(reconciliationReason);
-        }
-
-        private string BuildLegacyReissueReason(string reconciliationReason)
-        {
-            string baseReason = reconciliationReason == null ? string.Empty : reconciliationReason.Trim();
-            string trace = $"Legacy Certificate Evidence Reconciliation #{_legacyReconciliationId}; legacy certificate {_legacyCertificateNumber}.";
-            return string.IsNullOrWhiteSpace(baseReason) ? trace : baseReason + " " + trace;
-        }
-
-        private (bool TargetActive, bool TargetCancelled, bool ReplacementComplete) GetLegacyReissueRouteState()
-        {
-            if (!_legacyCertificateReissueRouteActive || currentSampleId <= 0)
-                return (false, false, false);
-
-            SqlParameter[] parameters =
-            {
-                new SqlParameter("@SampleID", SqlDbType.Int) { Value = currentSampleId },
-                new SqlParameter("@CertificateID", SqlDbType.Int) { Value = _legacyReissueCertificateId }
-            };
-
-            DataTable state = DatabaseHelper.ExecuteQuery(@"
-SELECT
-    CASE WHEN EXISTS
-    (
-        SELECT 1 FROM dbo.Certificates c
-        WHERE c.CertificateID=@CertificateID AND c.SampleID=@SampleID
-          AND ISNULL(c.IsCancelled,0)=0
-          AND UPPER(ISNULL(c.CertificateStatus,ISNULL(c.Status,N''))) IN(N'ACTIVE',N'ISSUED')
-    ) THEN 1 ELSE 0 END AS TargetActive,
-    CASE WHEN EXISTS
-    (
-        SELECT 1 FROM dbo.Certificates c
-        WHERE c.CertificateID=@CertificateID AND c.SampleID=@SampleID
-          AND (ISNULL(c.IsCancelled,0)=1 OR UPPER(ISNULL(c.CertificateStatus,ISNULL(c.Status,N'')))=N'CANCELLED')
-    ) THEN 1 ELSE 0 END AS TargetCancelled,
-    CASE WHEN EXISTS
-    (
-        SELECT 1
-        FROM dbo.Certificates r
-        INNER JOIN dbo.CertificateDocumentSnapshots s ON s.CertificateID=r.CertificateID
-        WHERE r.SampleID=@SampleID
-          AND r.ReissuedFromCertificateID=@CertificateID
-          AND ISNULL(r.IsCancelled,0)=0
-          AND UPPER(ISNULL(r.CertificateStatus,ISNULL(r.Status,N''))) IN(N'ACTIVE',N'ISSUED')
-          AND LEN(ISNULL(r.ReportHash,N''))=64
-          AND LEN(ISNULL(s.SnapshotHash,N''))=64
-    ) THEN 1 ELSE 0 END AS ReplacementComplete;", parameters);
-
-            if (state.Rows.Count != 1)
-                throw new InvalidOperationException("The legacy certificate reissue state could not be verified.");
-
-            DataRow row = state.Rows[0];
-            return (
-                Convert.ToInt32(row["TargetActive"], CultureInfo.InvariantCulture) == 1,
-                Convert.ToInt32(row["TargetCancelled"], CultureInfo.InvariantCulture) == 1,
-                Convert.ToInt32(row["ReplacementComplete"], CultureInfo.InvariantCulture) == 1);
-        }
-
-        private void ApplyLegacyReissueRouteUi(string status, bool canCertificate, bool hasOpenQualityEvent)
-        {
-            if (!_legacyCertificateReissueRouteActive || currentSampleId != _legacyReissueSampleId)
-                return;
-
-            var routeState = GetLegacyReissueRouteState();
-            string documentName = IsPotableWaterSample() ? "Report" : "COA";
-
-            if (routeState.ReplacementComplete)
-            {
-                BtnCancelCOA.Content = $"Legacy {documentName} Reissued";
-                BtnCancelCOA.IsEnabled = false;
-                BtnCertificate.Content = $"Open Replacement {documentName}";
-                BtnCertificate.IsEnabled = canCertificate;
-                return;
-            }
-
-            if (routeState.TargetActive)
-            {
-                BtnCancelCOA.Content = $"Cancel Legacy {documentName} (Step 1)";
-                BtnCancelCOA.IsEnabled = CanCancelCertificate();
-                BtnCertificate.Content = $"Issue Replacement {documentName} (Step 2)";
-                BtnCertificate.IsEnabled = false;
-                return;
-            }
-
-            if (routeState.TargetCancelled)
-            {
-                BtnCancelCOA.Content = $"Legacy {documentName} Cancelled";
-                BtnCancelCOA.IsEnabled = false;
-                BtnCertificate.Content = $"Issue Replacement {documentName} (Step 2)";
-                BtnCertificate.IsEnabled = canCertificate && !hasOpenQualityEvent && status == "COA Cancelled";
-                return;
-            }
-
-            BtnCancelCOA.Content = "Legacy Reissue Blocked";
-            BtnCancelCOA.IsEnabled = false;
-            BtnCertificate.Content = "Legacy Reissue Blocked";
-            BtnCertificate.IsEnabled = false;
-            lblStatus.Text = "Controlled legacy reissue is blocked because the signed target certificate state no longer matches the routed workflow.";
         }
 
         private string GetCurrentUserName()
@@ -393,7 +295,8 @@ WHERE st.SampleID=@SampleID
             if (currentSampleId <= 0)
                 return null;
 
-            EnsureGlobalWaterDateColumns();
+            if (!AppConfig.TrustedSigningEnabled)
+                EnsureGlobalWaterDateColumns();
             SqlParameter[] pars = { new SqlParameter("@SampleID", currentSampleId) };
             object value = DatabaseHelper.ExecuteScalar(
                 "SELECT " + columnName + " FROM dbo.Samples WHERE SampleID = @SampleID", pars);
@@ -1236,8 +1139,7 @@ WHERE st.SampleID=@SampleID
                    status.Equals("Reviewed", StringComparison.OrdinalIgnoreCase) ||
                    status.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
                    status.Equals("COA Issued", StringComparison.OrdinalIgnoreCase) ||
-                   status.Equals("Completed", StringComparison.OrdinalIgnoreCase) ||
-                   status.Equals("Released After Investigation", StringComparison.OrdinalIgnoreCase);
+                   status.Equals("Completed", StringComparison.OrdinalIgnoreCase);
         }
 
         private void RefreshCalculatedStatuses()
@@ -1345,6 +1247,7 @@ WHERE st.SampleID=@SampleID
 
         private void UpdateWorkflowButtons()
         {
+            UpdateTrustedWaterRecoveryButton();
             if (BtnStartAnalysis == null ||
                 BtnCorrectTimes == null ||
                 BtnSubmitReview == null ||
@@ -1392,7 +1295,7 @@ WHERE st.SampleID=@SampleID
                 status == "Results Entered" ||
                 status == "Alert" ||
                 status == "OOS" ||
-                status == "Released After Investigation";
+                WaterWorkflowEvidenceGuard.IsPendingCompletionStatus(status);
 
             BtnSaveResults.IsEnabled = canEnterResults && !locked && resultEntryStatus;
 
@@ -1732,6 +1635,11 @@ WHERE st.SampleID=@SampleID
                     return;
                 }
 
+                _loadedTrustedWaterSnapshotHash = null;
+                _loadedTrustedWaterSnapshot = null;
+                WaterWorkflowSnapshot trustedBeforeLoad = AppConfig.TrustedSigningEnabled
+                    ? CaptureTrustedWaterLoadSnapshot(sampleNumber) : null;
+
                 string query = @"
                     SELECT TOP 1
                         s.SampleID,
@@ -1829,6 +1737,8 @@ WHERE st.SampleID=@SampleID
                 string status = row["Status"] == DBNull.Value ? "" : row["Status"].ToString();
                 SetSampleStatus(status);
                 await LoadTestsForSample(currentSampleId);
+                if (AppConfig.TrustedSigningEnabled)
+                    FinishTrustedWaterLoadSnapshot(trustedBeforeLoad, currentSampleId);
                 UpdateWorkflowButtons();
 
                 lblStatus.Text = "Water sample loaded successfully.";
@@ -1908,6 +1818,7 @@ WHERE st.SampleID=@SampleID
                 resultItems.Clear();
 
                 _loadedWaterSnapshot = null;
+                _loadedWaterDisplayEvidence = Array.Empty<WaterResultDisplayEvidence>();
                 _loadedWaterDisplayValues.Clear();
                 string query = WaterResultSnapshotSql.Build(false);
 
@@ -1948,6 +1859,7 @@ WHERE st.SampleID=@SampleID
 
                 _loadedWaterSnapshot = dt.Copy();
                 _loadedWaterSnapshot.AcceptChanges();
+                _loadedWaterDisplayEvidence = CaptureWaterDisplayEvidence();
                 dgResults.ItemsSource = null;
                 dgResults.ItemsSource = resultItems;
                 dgResults.Items.Refresh();
@@ -1965,7 +1877,10 @@ WHERE st.SampleID=@SampleID
 
         private void ClearSampleDisplay()
         {
+            _loadedTrustedWaterSnapshotHash = null;
+            _loadedTrustedWaterSnapshot = null;
             _loadedWaterSnapshot = null;
+            _loadedWaterDisplayEvidence = Array.Empty<WaterResultDisplayEvidence>();
             _loadedWaterDisplayValues.Clear();
             currentSampleId = 0;
             currentSampleType = "";
@@ -1991,7 +1906,13 @@ WHERE st.SampleID=@SampleID
 
         private async void BtnSaveResults_Click(object sender, RoutedEventArgs e)
         {
-            if (_isSavingResults)
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await RunTrustedWaterWorkflowAsync("SaveResults");
+                return;
+            }
+
+            if (_isSavingResults || _isRefreshingEquipmentAtSave)
                 return;
 
             if (currentSampleId == 0)
@@ -2016,8 +1937,12 @@ WHERE st.SampleID=@SampleID
                 return;
             }
 
-            dgResults.CommitEdit(DataGridEditingUnit.Cell, true);
-            dgResults.CommitEdit(DataGridEditingUnit.Row, true);
+            try { CommitWaterResultGridEdits(); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Invalid Water Result", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             RefreshCalculatedStatuses();
 
             bool hasAnyResult = false;
@@ -2037,9 +1962,12 @@ WHERE st.SampleID=@SampleID
                 return;
             }
 
+            if (!await RefreshWaterEquipmentBeforeSaveAsync()) return;
+
             foreach (ResultItem item in resultItems)
             {
-                if (string.IsNullOrWhiteSpace(item.ResultValue))
+                if (string.IsNullOrWhiteSpace(item.ResultValue) ||
+                    (WaterWorkflowEvidenceGuard.IsPendingCompletionStatus(statusBeforeSave) && WasWaterResultCompletedAtLoad(item.SampleTestID)))
                     continue;
 
                 item.PassFail = CalculatePassFail(item);
@@ -2138,9 +2066,11 @@ WHERE st.SampleID=@SampleID
                     developmentTimingOverrideUsed =
                         ValidateWaterIncubationCompleteBeforeResultsInTransaction(con, tran);
 
-                    bool resultEvidenceChanged = PersistWaterEdits(con, tran, signatureWindow);
+                    bool pendingCompletionOnly = WaterWorkflowEvidenceGuard.IsPendingCompletionStatus(lockedStatus);
+                    bool resultEvidenceChanged = PersistWaterEdits(con, tran, signatureWindow, pendingCompletionOnly, out bool newOosResult);
 
-                    foreach (ResultItem item in resultItems.Where(item => !string.IsNullOrWhiteSpace(item.ResultValue)))
+                    foreach (ResultItem item in resultItems.Where(item => !string.IsNullOrWhiteSpace(item.ResultValue) &&
+                        (!pendingCompletionOnly || !WasWaterResultCompletedAtLoad(item.SampleTestID))))
                     {
                         LabEquipmentUsageService.PersistAssignmentInTransaction(
                             con, tran, "WATER", currentSampleId, item.SampleTestID, item.EquipmentID,
@@ -2184,7 +2114,9 @@ WHERE st.SampleID=@SampleID
                             "Water");
                     }
 
-                    if (oosTests > 0)
+                    if (pendingCompletionOnly && lockedStatus.Equals("Released After Investigation", StringComparison.OrdinalIgnoreCase) && !newOosResult)
+                        newStatus = lockedStatus;
+                    else if (oosTests > 0)
                         newStatus = "Under Investigation";
                     else if (pendingCount > 0)
                         newStatus = "Partially Entered";
@@ -2200,7 +2132,8 @@ WHERE st.SampleID=@SampleID
                         signatureWindow.SignedBy, signerRole);
                     UpdateSampleStatusInTransaction(con, tran, newStatus, lockedStatus, "Result save");
 
-                    if (oosTests > 0)
+                    if (oosTests > 0 &&
+                        (!lockedStatus.Equals("Released After Investigation", StringComparison.OrdinalIgnoreCase) || newOosResult))
                     {
                         qualityEventSummary = DatabaseHelper.CreateOrUpdateQualityEventForOOS(
                             con,
@@ -2539,8 +2472,14 @@ WHERE SampleID=@SampleID;", connection, transaction);
             return true;
         }
 
-        private void BtnCorrectTimes_Click(object sender, RoutedEventArgs e)
+        private async void BtnCorrectTimes_Click(object sender, RoutedEventArgs e)
         {
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await RunTrustedWaterWorkflowAsync("CorrectTimes");
+                return;
+            }
+
             if (_isWorkflowBusy || currentSampleId <= 0)
                 return;
             if (!IsWaterSampleType(currentSampleType))
@@ -2670,8 +2609,14 @@ WHERE SampleID=@SampleID
             }
         }
 
-        private void BtnStartAnalysis_Click(object sender, RoutedEventArgs e)
+        private async void BtnStartAnalysis_Click(object sender, RoutedEventArgs e)
         {
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await RunTrustedWaterWorkflowAsync("StartAnalysis");
+                return;
+            }
+
             if (_isWorkflowBusy)
                 return;
 
@@ -2771,8 +2716,14 @@ WHERE SampleID=@SampleID
             }
         }
 
-        private void BtnSubmitReview_Click(object sender, RoutedEventArgs e)
+        private async void BtnSubmitReview_Click(object sender, RoutedEventArgs e)
         {
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await RunTrustedWaterWorkflowAsync("SubmitReview");
+                return;
+            }
+
             if (_isWorkflowBusy)
                 return;
 
@@ -2810,6 +2761,17 @@ WHERE SampleID=@SampleID
                 return;
             }
 
+            try
+            {
+                CommitWaterResultGridEdits();
+                EnsureWaterVisibleEvidenceSavedAtLoad();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Unsaved Water Evidence", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             ElectronicSignature signatureWindow =
                 _serviceProvider.GetRequiredService<ElectronicSignature>();
             signatureWindow.Configure(GetSignatureRecordNumber(), currentUser, "Submit for Review", true);
@@ -2830,6 +2792,9 @@ WHERE SampleID=@SampleID
 
                     string lockedStatus = LockAndValidateSampleStatusInTransaction(
                         con, tran, status, "Submit for review");
+
+                    DatabaseHelper.EnsureSampleApprovalQualityGatesInTransaction(con, tran, currentSampleId);
+                    EnsureWaterVisibleEvidenceSaved(con, tran);
 
                     int currentPendingCount = GetPendingResultsCountInTransaction(con, tran);
                     if (currentPendingCount > 0)
@@ -2863,8 +2828,14 @@ WHERE SampleID=@SampleID
             }
         }
 
-        private void BtnReview_Click(object sender, RoutedEventArgs e)
+        private async void BtnReview_Click(object sender, RoutedEventArgs e)
         {
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await RunTrustedWaterWorkflowAsync("Review");
+                return;
+            }
+
             if (_isWorkflowBusy)
                 return;
 
@@ -2932,6 +2903,17 @@ WHERE SampleID=@SampleID
                 return;
             }
 
+            try
+            {
+                CommitWaterResultGridEdits();
+                EnsureWaterVisibleEvidenceSavedAtLoad();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Unsaved Water Evidence", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             ElectronicSignature signatureWindow =
                 _serviceProvider.GetRequiredService<ElectronicSignature>();
             signatureWindow.Configure(GetSignatureRecordNumber(), currentUser, "Technical Review", true);
@@ -2957,6 +2939,9 @@ WHERE SampleID=@SampleID
 
                     DatabaseHelper.EnsureSampleWorkflowSeparationInTransaction(
                         con, tran, currentSampleId, signatureWindow.SignedBy, signerRole, "Review");
+
+                    DatabaseHelper.EnsureSampleApprovalQualityGatesInTransaction(con, tran, currentSampleId);
+                    EnsureWaterVisibleEvidenceSaved(con, tran);
 
                     int currentPendingCount = GetPendingResultsCountInTransaction(con, tran);
                     if (currentPendingCount > 0)
@@ -2994,8 +2979,14 @@ WHERE SampleID=@SampleID
             }
         }
 
-        private void BtnApprove_Click(object sender, RoutedEventArgs e)
+        private async void BtnApprove_Click(object sender, RoutedEventArgs e)
         {
+            if (AppConfig.TrustedSigningEnabled)
+            {
+                await RunTrustedWaterWorkflowAsync("Approve");
+                return;
+            }
+
             if (_isWorkflowBusy)
                 return;
 
@@ -3050,6 +3041,17 @@ WHERE SampleID=@SampleID
                 return;
             }
 
+            try
+            {
+                CommitWaterResultGridEdits();
+                EnsureWaterVisibleEvidenceSavedAtLoad();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Unsaved Water Evidence", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             ElectronicSignature signatureWindow =
                 _serviceProvider.GetRequiredService<ElectronicSignature>();
             signatureWindow.Configure(GetSignatureRecordNumber(), currentUser, "QA Approval", true);
@@ -3077,6 +3079,8 @@ WHERE SampleID=@SampleID
                         con, tran, currentSampleId, signatureWindow.SignedBy, signerRole, "Approval");
                     DatabaseHelper.EnsureSampleApprovalQualityGatesInTransaction(
                         con, tran, currentSampleId);
+
+                    EnsureWaterVisibleEvidenceSaved(con, tran);
 
                     int currentPendingCount = GetPendingResultsCountInTransaction(con, tran);
                     if (currentPendingCount > 0)

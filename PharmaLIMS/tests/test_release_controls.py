@@ -362,8 +362,8 @@ class ReleaseControlsTests(unittest.TestCase):
 
         self.assertIn('x:Name="BtnCorrectTimes"', xaml)
         self.assertIn('Click="BtnCorrectTimes_Click"', xaml)
-        correction = source.split("private void BtnCorrectTimes_Click", 1)[1].split(
-            "private void BtnStartAnalysis_Click", 1
+        correction = source.split("private async void BtnCorrectTimes_Click", 1)[1].split(
+            "private async void BtnStartAnalysis_Click", 1
         )[0]
         for required in (
             '"CanRegisterSamples"',
@@ -450,9 +450,10 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("BtnLabResources_Click", main_code)
         self.assertIn('x:Class="PharmaLIMS.LabResources"', resources_xaml)
         self.assertIn("Save with E-Signature", resources_xaml)
-        self.assertIn("EnsureUserPermissionInTransaction", resources_code)
-        self.assertIn("LabEquipmentSignatures", resources_code)
-        self.assertIn("ExpectedRowVersion", resources_code)
+        self.assertIn("new TrustedEquipmentSignature(", resources_code)
+        self.assertNotIn("INSERT dbo.LabEquipmentSignatures", resources_code)
+        self.assertIn("IsConfirmed", resources_code)
+        self.assertIn("_selectedRowVersion", resources_code)
         self.assertIn("20261008_001", [entry["versionKey"] for entry in manifest["migrations"]])
 
     def test_lab_equipment_usage_is_signed_and_bound_to_result_workflows(self):
@@ -554,7 +555,9 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn("testId == 2 || testId == 3", service)
         self.assertIn('2 => "Routine direct pH measurement', service)
         self.assertIn('3 => "Conductivity: collect 100 mL', service)
-        self.assertIn("temperatureC < 24m || temperatureC > 26m", service)
+        self.assertIn("WaterLesTemperatureContract.Parse(temperatureText)", service)
+        temperature = (ROOT / "Services/WaterLesTemperatureContract.cs").read_text(encoding="utf-8-sig")
+        self.assertIn("value >= 24m && value <= 26m", temperature)
         self.assertIn("AppendEvidenceInTransaction", service)
         self.assertIn("LES Execution Evidence", water_xaml)
         self.assertIn("Instrument verification confirmed", water_xaml)
@@ -652,7 +655,7 @@ class ReleaseControlsTests(unittest.TestCase):
         self.assertIn('string.IsNullOrWhiteSpace(GetComboText(CmbRawPurpose))', validation)
         self.assertIn('"Sample Purpose is required."', validation)
 
-        save = source.split("private void BtnSave_Click", 1)[1].split("private void ValidateForm", 1)[0]
+        save = source.split("private async void BtnSave_Click", 1)[1].split("private void ValidateForm", 1)[0]
         self.assertIn("DatabaseHelper.CanRegisterSamples(actor)", save)
 
         insert = source.split("private void InsertSample()", 1)[1].split("private void UpdateSample()", 1)[0]
@@ -1295,7 +1298,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_em_and_water_open_picker_statuses_are_not_conflated(self):
         em_results = read_source_family("EMResultsEntry.xaml.cs")
         sample_management = (ROOT / "SampleManagement.xaml.cs").read_text(encoding="utf-8-sig")
-        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig")
+        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig") + (ROOT / "ResultsEntry.xaml.Part6.cs").read_text(encoding="utf-8-sig")
         water_xaml = (ROOT / "ResultsEntry.xaml").read_text(encoding="utf-8-sig")
 
         self.assertIn('AS WorkflowStatus', em_results)
@@ -2100,7 +2103,7 @@ class ReleaseControlsTests(unittest.TestCase):
         repository = (ROOT / "Repositories/PrmSpecificationRepository.cs").read_text(encoding="utf-8-sig")
 
         loader = results.split("private void LoadApprovedTestsForSample", 1)[1].split(
-            "private void BtnStartAnalysis_Click", 1
+            "private async void BtnStartAnalysis_Click", 1
         )[0]
         self.assertIn("if (!requireConfiguredSpecification)", loader)
         self.assertIn("return;", loader)
@@ -2388,7 +2391,7 @@ class ReleaseControlsTests(unittest.TestCase):
         main_xaml = (ROOT / "MainWindow.xaml").read_text(encoding="utf-8-sig")
         preflight = (ROOT / "Infrastructure/SystemPreflightService.cs").read_text(encoding="utf-8-sig")
         water_register = (ROOT / "NewSampleDialog.xaml.cs").read_text(encoding="utf-8-sig")
-        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig")
+        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig") + (ROOT / "ResultsEntry.xaml.Part6.cs").read_text(encoding="utf-8-sig")
         helper = read_database_helper_source()
         em = read_source_family("EMResultsEntry.xaml.cs")
         external = (ROOT / "ExternalTrendThreeCycleReviewWindow.xaml.cs").read_text(encoding="utf-8-sig")
@@ -5813,7 +5816,7 @@ class ReleaseControlsTests(unittest.TestCase):
         xaml = (ROOT / "LegacyCertificateEvidenceReconciliation.xaml").read_text(encoding="utf-8-sig")
         preflight = (ROOT / "Infrastructure/SystemPreflightService.cs").read_text(encoding="utf-8-sig")
         preflight_ui = (ROOT / "SystemPreflight.xaml.cs").read_text(encoding="utf-8-sig")
-        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig")
+        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig") + (ROOT / "ResultsEntry.xaml.Part6.cs").read_text(encoding="utf-8-sig")
         prm_results = read_source_family("ProductionRawMaterialResults.xaml.cs")
 
         self.assertIn("Open Controlled Reissue Workflow", xaml)
@@ -5910,7 +5913,7 @@ class ReleaseControlsTests(unittest.TestCase):
     def test_v247_water_legacy_reissue_route_prefills_reason_locks_target_and_links_replacement(self):
         reconciliation = (ROOT / "LegacyCertificateEvidenceReconciliation.xaml.cs").read_text(encoding="utf-8-sig")
         reconciliation_xaml = (ROOT / "LegacyCertificateEvidenceReconciliation.xaml").read_text(encoding="utf-8-sig")
-        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig")
+        water_results = (ROOT / "ResultsEntry.xaml.cs").read_text(encoding="utf-8-sig") + (ROOT / "ResultsEntry.xaml.Part6.cs").read_text(encoding="utf-8-sig")
         report = (ROOT / "ReportCertificate.xaml.cs").read_text(encoding="utf-8-sig")
         certificates = (ROOT / "DatabaseHelper.Certificates.cs").read_text(encoding="utf-8-sig")
 

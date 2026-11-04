@@ -1,0 +1,110 @@
+using System;
+using System.ComponentModel;
+using System.IO;
+using System.Text;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+public sealed class Eq001SiteSourceFile : IDisposable
+{
+    private readonly SafeFileHandle handle;
+    private readonly FileStream stream;
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    private struct Disposition { [MarshalAs(UnmanagedType.U1)] public bool DeleteFile; }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFile(string path, uint access, uint share,
+        IntPtr attributes, uint creation, uint flags, IntPtr template);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetFileInformationByHandle(SafeFileHandle file, int kind,
+        ref Disposition information, uint size);
+
+    private Eq001SiteSourceFile(SafeFileHandle handle)
+    {
+        this.handle = handle;
+        stream = new FileStream(handle, FileAccess.ReadWrite);
+    }
+
+    public static Eq001SiteSourceFile Open(string path, bool createNew)
+    {
+        // Read/write/delete rights with no sharing: another writer or atomic
+        // editor save cannot replace the file during comparison or rollback.
+        SafeFileHandle handle = CreateFile(path, 0xC0010000, 0, IntPtr.Zero,
+            createNew ? 1u : 3u, 0x80, IntPtr.Zero);
+        if (handle.IsInvalid) { int error = Marshal.GetLastWin32Error(); handle.Dispose(); throw new Win32Exception(error); }
+        try { return new Eq001SiteSourceFile(handle); }
+        catch
+        {
+            if (createNew) { var disposition = new Disposition { DeleteFile = true }; SetFileInformationByHandle(handle, 4, ref disposition, 1); }
+            handle.Dispose();
+            throw;
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileInformation
+    {
+        public uint Attributes;
+        public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime, AccessTime, WriteTime;
+        public uint VolumeSerialNumber, SizeHigh, SizeLow, NumberOfLinks, IndexHigh, IndexLow;
+    }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetFileInformationByHandle(SafeFileHandle file, out FileInformation information);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandle(SafeFileHandle file, StringBuilder path, uint size, uint flags);
+
+    public static Eq001SiteSourceFile OpenQualified(string path, bool createNew)
+    {
+        string expected = Path.GetFullPath(path);
+        SafeFileHandle file = CreateFile(expected, 0xC0010000, 0, IntPtr.Zero,
+            createNew ? 1u : 3u, 0x00200080, IntPtr.Zero);
+        if (file.IsInvalid) { int error = Marshal.GetLastWin32Error(); file.Dispose(); throw new Win32Exception(error); }
+        try
+        {
+            FileInformation information;
+            if (!GetFileInformationByHandle(file, out information)) throw new Win32Exception(Marshal.GetLastWin32Error());
+            if ((information.Attributes & 0x410) != 0 || information.NumberOfLinks != 1)
+                throw new IOException("Source must be a regular file with one link.");
+            var buffer = new StringBuilder(32768);
+            uint length = GetFinalPathNameByHandle(file, buffer, (uint)buffer.Capacity, 0);
+            if (length == 0 || length >= buffer.Capacity) throw new IOException("Cannot verify final source path.");
+            string final = buffer.ToString();
+            if (final.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) final = @"\\" + final.Substring(8);
+            else if (final.StartsWith(@"\\?\", StringComparison.Ordinal)) final = final.Substring(4);
+            if (!String.Equals(final, expected, StringComparison.OrdinalIgnoreCase)) throw new IOException("Source path resolves through an alias.");
+            return new Eq001SiteSourceFile(file);
+        }
+        catch
+        {
+            if (createNew) { var disposition = new Disposition { DeleteFile = true }; SetFileInformationByHandle(file, 4, ref disposition, 1); }
+            file.Dispose();
+            throw;
+        }
+    }
+
+    public byte[] ReadAll()
+    {
+        stream.Position = 0;
+        using (var buffer = new MemoryStream()) { stream.CopyTo(buffer); return buffer.ToArray(); }
+    }
+
+    public void WriteAll(byte[] bytes)
+    {
+        // Never truncate before writing. The caller records this mutation first
+        // and retains the exclusive handle and durable original bytes for rollback.
+        stream.Position = 0;
+        stream.Write(bytes, 0, bytes.Length);
+        stream.SetLength(bytes.Length);
+        stream.Flush(true);
+    }
+
+    public void DeleteOnClose(bool delete)
+    {
+        var disposition = new Disposition { DeleteFile = delete };
+        if (!SetFileInformationByHandle(handle, 4, ref disposition, 1)) throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
+
+    public void Dispose() { stream.Dispose(); handle.Dispose(); }
+}

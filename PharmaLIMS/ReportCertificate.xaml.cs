@@ -704,7 +704,9 @@ namespace PharmaLIMS
             if (value == null || value == DBNull.Value)
                 return false;
 
-            string raw = value.ToString().Trim();
+            // Database numeric values must not pass through the workstation's
+            // decimal separator before being parsed for the certificate.
+            string raw = Convert.ToString(value, CultureInfo.InvariantCulture).Trim();
 
             if (string.IsNullOrWhiteSpace(raw))
                 return false;
@@ -788,7 +790,7 @@ namespace PharmaLIMS
             decimal numeric;
 
             if (TryGetDecimal(resultValue, out numeric))
-                return numeric.ToString("0.##", CultureInfo.InvariantCulture);
+                return numeric.ToString("0.############################", CultureInfo.InvariantCulture);
 
             return raw;
         }
@@ -811,22 +813,19 @@ namespace PharmaLIMS
             if (IsAppearanceTest(testName))
                 return "Clear and Colorless";
 
-            if (IsPhTest(testName))
+            if (Services.WaterNumericResultEvaluator.IsRangeTest(testName))
             {
                 if (TryGetDecimal(alertLimit, out decimal lower) &&
-                    TryGetDecimal(actionLimit, out decimal upper))
-                    return lower.ToString("0.##", CultureInfo.InvariantCulture) + " - " +
-                           upper.ToString("0.##", CultureInfo.InvariantCulture);
+                    TryGetDecimal(actionLimit, out decimal upper) &&
+                    Services.WaterNumericResultEvaluator.HasCompleteLimits(testName, lower, upper))
+                    return lower.ToString("0.############################", CultureInfo.InvariantCulture) + " - " +
+                           upper.ToString("0.############################", CultureInfo.InvariantCulture);
 
-                if (stored.Contains("operational", StringComparison.OrdinalIgnoreCase) ||
-                    stored.Contains("trend", StringComparison.OrdinalIgnoreCase))
-                    return "Operational / trend parameter";
-
-                return string.IsNullOrWhiteSpace(stored) ? "Approved specification snapshot missing" : stored;
+                return "Check Required";
             }
 
             if (TryGetDecimal(actionLimit, out decimal numericLimit) && numericLimit > 0)
-                return "NMT " + numericLimit.ToString("0.##", CultureInfo.InvariantCulture);
+                return "NMT " + numericLimit.ToString("0.############################", CultureInfo.InvariantCulture);
 
             if (IsAbsencePresenceTest(unit, testName))
                 return stored.Contains("100 mL", StringComparison.OrdinalIgnoreCase)
@@ -904,19 +903,15 @@ namespace PharmaLIMS
                     : "Non-Conform";
             }
 
-            if (IsPhTest(testName))
+            if (Services.WaterNumericResultEvaluator.IsRangeTest(testName))
             {
                 if (!TryGetDecimal(resultValue, out decimal value))
                     return "Check Required";
 
                 if (TryGetDecimal(alertLimit, out decimal lower) &&
-                    TryGetDecimal(actionLimit, out decimal upper))
+                    TryGetDecimal(actionLimit, out decimal upper) &&
+                    Services.WaterNumericResultEvaluator.HasCompleteLimits(testName, lower, upper))
                     return value >= lower && value <= upper ? "Conform" : "Non-Conform";
-
-                string stored = (storedDescription ?? string.Empty).Trim();
-                if (stored.Contains("operational", StringComparison.OrdinalIgnoreCase) ||
-                    stored.Contains("trend", StringComparison.OrdinalIgnoreCase))
-                    return "Trend";
 
                 return "Check Required";
             }
@@ -943,16 +938,6 @@ namespace PharmaLIMS
 
                 decimal limit = IsSoftWaterPoint(sampleType) ? 5.0m : 300.0m;
                 return value <= limit ? "Conform" : "Non-Conform";
-            }
-
-            if (IsResidualChlorineTest(testName))
-            {
-                decimal value;
-
-                if (!TryGetDecimal(resultValue, out value))
-                    return "Non-Conform";
-
-                return value >= 2.0m && value <= 4.0m ? "Conform" : "Non-Conform";
             }
 
             if (IsPathogenTest(testName) && IsPotableWater(sampleType))

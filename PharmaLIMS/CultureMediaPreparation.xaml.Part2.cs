@@ -22,6 +22,8 @@ namespace PharmaLIMS
 {
     public partial class CultureMediaPreparation
     {
+        private MediaPreparationAmendmentSnapshot? _loadedPreparationSnapshot;
+
         private static void EnsureQualificationTestTimingEvidenceInTransaction(
             SqlConnection conn,
             SqlTransaction tx,
@@ -730,6 +732,23 @@ WHEN NOT MATCHED THEN
 
             var row = RowFromGrid(DgPreparations);
             if (row == null) return;
+
+            // Read the displayed header and SOP fields from the same locked evidence snapshot.
+            // A grid row may be older than the record the user is about to amend or review.
+            _loadedPreparationSnapshot = null;
+            _selectedPreparationId = 0;
+            try
+            {
+                DatabaseHelper.ExecuteInTransaction((conn, tx) =>
+                    _loadedPreparationSnapshot = MediaPreparationAmendmentSnapshot.Read(
+                        conn, tx, RowInt(row, "MediaPreparationID"), AppConfig.CommandTimeoutSeconds));
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error loading media preparation", ex);
+                return;
+            }
+            row = _loadedPreparationSnapshot!.Preparation;
 
             string releaseStatus = NormalizeStatus(RowString(row, "ReleaseStatus"));
             _selectedPreparationPrintId = RowInt(row, "MediaPreparationID");
@@ -1889,6 +1908,7 @@ WHEN NOT MATCHED THEN
 
         private void BtnNewPreparation_Click(object sender, RoutedEventArgs e)
         {
+            _loadedPreparationSnapshot = null;
             _selectedPreparationId = 0;
             TxtPreparationNo.Text = "Generated on Save";
             DpPreparationDate.SelectedDate = DateTime.Today;
@@ -1971,9 +1991,18 @@ WHEN NOT MATCHED THEN
                 TxtPreparedBy.Text = signedBy;
                 decimal powderQuantityG = ParseGramQuantity(TxtQuantityWeighedG.Text);
                 int savedPreparationId = _selectedPreparationId;
+                MediaPreparationAmendmentSnapshot? savedSnapshot = null;
 
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
+                    DatabaseHelper.EnsureUserPermissionInTransaction(
+                        conn, tx, signedBy, "CanEnterResults", "save culture media preparation");
+                    MediaPreparationAmendmentSnapshot? originalSnapshot = null;
+                    if (!isNew)
+                    {
+                        originalSnapshot = MediaPreparationAmendmentSnapshot.Read(conn, tx, savedPreparationId, AppConfig.CommandTimeoutSeconds);
+                        MediaPreparationAmendmentSnapshot.EnsureCanAmend(_loadedPreparationSnapshot, originalSnapshot);
+                    }
                     if (isNew)
                     {
                         const string insertSql = @"
@@ -1999,7 +2028,9 @@ VALUES
 SELECT MediaLotID, ISNULL(PowderQuantityG, 0)
 FROM dbo.MediaPreparations WITH (UPDLOCK, HOLDLOCK)
 WHERE MediaPreparationID = @MediaPreparationID
-  AND ReleaseStatus = 'Under Release';", conn, tx))
+  AND ReleaseStatus = 'Under Release'
+  AND VisualCheckedBy IS NULL AND VisualCheckedAt IS NULL
+  AND SterilityReviewedBy IS NULL AND SterilityReviewedAt IS NULL;", conn, tx))
                         {
                             lockCommand.Parameters.Add("@MediaPreparationID", SqlDbType.Int).Value = savedPreparationId;
                             using SqlDataReader reader = lockCommand.ExecuteReader();
@@ -2047,14 +2078,16 @@ WHERE MediaPreparationID = @MediaPreparationID
 
                     SavePreparationSopFieldsInTransaction(conn, tx, savedPreparationId);
                     StorePendingCultureMediaSignatureInTransaction(conn, tx);
+                    savedSnapshot = MediaPreparationAmendmentSnapshot.Read(conn, tx, savedPreparationId, AppConfig.CommandTimeoutSeconds);
                     AddCultureMediaAuditInTransaction(
                         conn, tx, "MediaPreparations", savedPreparationId,
                         isNew ? "Media Preparation Created" : "Media Preparation Amended",
-                        isNew ? string.Empty : "Under Release", "Under Release",
+                        originalSnapshot?.AuditValue ?? string.Empty, savedSnapshot.AuditValue,
                         signatureReason, signedBy, preparationNo);
                 });
 
                 ClearPendingCultureMediaSignature();
+                _loadedPreparationSnapshot = savedSnapshot;
                 _selectedPreparationId = savedPreparationId;
                 _selectedPreparationPrintId = savedPreparationId;
                 TxtPreparationNo.Text = preparationNo;
@@ -2107,6 +2140,7 @@ WHERE MediaPreparationID = @MediaPreparationID
                     return;
                 }
 
+                MediaPreparationAmendmentSnapshot? reviewedSnapshot = null;
                 DatabaseHelper.ExecuteInTransaction((conn, tx) =>
                 {
                     string signerRole = DatabaseHelper.EnsureUserPermissionInTransaction(
@@ -2115,6 +2149,8 @@ WHERE MediaPreparationID = @MediaPreparationID
                         signedBy,
                         "CanReviewResults",
                         "sign prepared-media visual review");
+                    var reviewSnapshot = MediaPreparationAmendmentSnapshot.Read(conn, tx, _selectedPreparationId, AppConfig.CommandTimeoutSeconds);
+                    MediaPreparationAmendmentSnapshot.EnsureUnchanged(_loadedPreparationSnapshot, reviewSnapshot);
 
                     string lockedPreparedBy;
                     string lockedReleaseStatus;
@@ -2173,7 +2209,9 @@ WHERE MediaPreparationID = @MediaPreparationID
                     AddCultureMediaAuditInTransaction(conn, tx, "MediaPreparations", _selectedPreparationId,
                         "Prepared Media Visual Check Signed", "Pending", ComboText(CmbPreparationVisualConclusion),
                         reason, signedBy, TxtPreparationNo.Text);
+                    reviewedSnapshot = MediaPreparationAmendmentSnapshot.Read(conn, tx, _selectedPreparationId, AppConfig.CommandTimeoutSeconds);
                 });
+                _loadedPreparationSnapshot = reviewedSnapshot;
                 ClearPendingCultureMediaSignature();
                 TxtPreparationVisualCheckedBy.Text = signedBy;
                 UpdatePreparationNextAction();
@@ -2248,6 +2286,9 @@ WHERE MediaPreparationID = @MediaPreparationID
                         tx,
                         signedBy,
                         "release prepared culture media");
+
+                    var releaseSnapshot = MediaPreparationAmendmentSnapshot.Read(conn, tx, releasedPreparationId, AppConfig.CommandTimeoutSeconds);
+                    MediaPreparationAmendmentSnapshot.EnsureUnchanged(_loadedPreparationSnapshot, releaseSnapshot);
 
                     string lockedPreparedBy;
                     string lockedVisualCheckedBy;

@@ -1,0 +1,125 @@
+using PharmaLIMS.Services;
+using PharmaLIMS.Infrastructure;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+
+namespace PharmaLIMS
+{
+    public partial class EquipmentUsageReconciliation : Window
+    {
+        private IReadOnlyList<EquipmentUsageReconciliationCandidate> _candidates = Array.Empty<EquipmentUsageReconciliationCandidate>();
+        private IReadOnlyList<HistoricalEquipmentChoice> _equipment = Array.Empty<HistoricalEquipmentChoice>();
+        public bool WasSaved { get; private set; }
+
+        public EquipmentUsageReconciliation()
+        {
+            InitializeComponent();
+            Loaded += (_, _) => RefreshData();
+        }
+
+        private void RefreshData()
+        {
+            if (string.IsNullOrWhiteSpace(Login.CurrentUser) || !DatabaseHelper.CanApproveResults(Login.CurrentUser))
+                throw new UnauthorizedAccessException("QA approval permission is required to reconcile historical equipment-use evidence.");
+
+            _candidates = EquipmentUsageReconciliationService.LoadCandidates();
+            _equipment = EquipmentUsageReconciliationService.LoadEquipment();
+            gridCandidates.ItemsSource = _candidates;
+            cboEquipment.ItemsSource = _equipment;
+            ClearEditor();
+
+            lblStatus.Text = _candidates.Count == 0
+                ? "No eligible historical equipment-use evidence gap remains."
+                : $"{_candidates.Count} eligible evidence gap(s) require controlled review.";
+        }
+
+        private void ClearEditor()
+        {
+            lblSelected.Text = "Select an eligible finding.";
+            cboEquipment.SelectedItem = null;
+            cboEquipment.IsEnabled = false;
+            txtEvidenceReference.Text = string.Empty;
+            txtEvidenceSummary.Text = string.Empty;
+            txtReason.Text = string.Empty;
+            BtnSignSave.IsEnabled = false;
+        }
+
+        private void gridCandidates_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (gridCandidates.SelectedItem is not EquipmentUsageReconciliationCandidate candidate)
+            {
+                ClearEditor();
+                return;
+            }
+
+            lblSelected.Text = $"{candidate.Display}\n{candidate.TestName}\n{candidate.GapDescription}";
+            cboEquipment.IsEnabled = !candidate.ExistingEquipmentID.HasValue;
+            cboEquipment.SelectedItem = candidate.ExistingEquipmentID.HasValue
+                ? _equipment.FirstOrDefault(item => item.EquipmentID == candidate.ExistingEquipmentID.Value)
+                : null;
+            BtnSignSave.IsEnabled = true;
+        }
+
+        private void BtnSignSave_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (gridCandidates.SelectedItem is not EquipmentUsageReconciliationCandidate candidate)
+                    throw new InvalidOperationException("Select an eligible evidence gap first.");
+                if (cboEquipment.SelectedItem is not HistoricalEquipmentChoice equipment)
+                    throw new InvalidOperationException("Select the historically used equipment.");
+
+                var signature = new ElectronicSignature(
+                    candidate.Display,
+                    Login.CurrentUser,
+                    "Review and Reconcile Historical Equipment Usage",
+                    true)
+                { Owner = this };
+
+                if (signature.ShowDialog() != true || !signature.IsConfirmed)
+                    return;
+
+                EquipmentUsageReconciliationService.Save(
+                    candidate,
+                    equipment.EquipmentID,
+                    txtEvidenceReference.Text,
+                    txtEvidenceSummary.Text,
+                    signature.SignedBy,
+                    signature.Meaning,
+                    txtReason.Text);
+
+                WasSaved = true;
+                MessageBox.Show(
+                    "The append-only historical equipment-use reconciliation was saved. The original result and its timestamps were not changed.",
+                    "Equipment Usage Reconciliation",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                RefreshData();
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.Error("Unable to save historical equipment-use reconciliation.", ex);
+                MessageBox.Show(
+                    UserFacingError.SafeMessage(ex, "Historical equipment-use reconciliation"),
+                    "Equipment Usage Reconciliation",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            try { RefreshData(); }
+            catch (Exception ex)
+            {
+                ApplicationLogger.Error("Unable to refresh historical equipment-use reconciliation.", ex);
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Historical equipment-use reconciliation"), "Equipment Usage Reconciliation", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+    }
+}

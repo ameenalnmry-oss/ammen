@@ -24,6 +24,9 @@ namespace PharmaLIMS
         private bool _dashboardRefreshRunning;
         private bool _maintenanceBlockedByDatabaseActivity;
         private readonly HashSet<Window> _activeWorkflowWindows = new();
+        private DispatcherTimer? _clockTimer;
+        private bool _workflowOpenRunning;
+        private bool _sessionClosed;
 
         public MainWindow()
         {
@@ -65,6 +68,7 @@ namespace PharmaLIMS
             // The bounded operational probe is diagnostic-only and must never unlock regulated
             // workflows from a subset of schema checks.
             await RefreshSystemReadinessAsync(showBlockedWindow: false);
+            if (_sessionClosed) return;
             if (_runtimePreflightChecked && _runtimePreflightReady)
             {
                 await RefreshDashboardAsync();
@@ -101,6 +105,7 @@ namespace PharmaLIMS
             try
             {
                 DashboardSnapshot snapshot = await Task.Run(LoadDashboardSnapshot);
+                if (_sessionClosed) return;
 
                 lblPendingSamples.Text = FormatMetric(snapshot.PendingSamples);
                 lblPendingReview.Text = FormatMetric(snapshot.PendingReview);
@@ -442,6 +447,7 @@ SELECT @Result;");
                 // Runtime workflow authorization always uses the complete read-only preflight.
                 // The bounded operational probe is diagnostic-only and is never a readiness gate.
                 SystemPreflightReport report = await service.RunAsync();
+                if (_sessionClosed) return;
                 ApplySystemReadinessReport(report);
 
                 if (!_runtimePreflightReady && showBlockedWindow && !AppConfig.IsDevelopment && !maintenanceVerification)
@@ -841,13 +847,45 @@ SELECT @Result;");
 
         private void StartClock()
         {
-            DispatcherTimer timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(1);
-            timer.Tick += (s, e) =>
+            _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _clockTimer.Tick += OnClockTick;
+            _clockTimer.Start();
+        }
+
+        private void OnClockTick(object? sender, EventArgs e) =>
+            lblDateTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _sessionClosed = true;
+            if (_clockTimer != null)
             {
-                lblDateTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            };
-            timer.Start();
+                _clockTimer.Stop();
+                _clockTimer.Tick -= OnClockTick;
+                _clockTimer = null;
+            }
+            base.OnClosed(e);
+        }
+
+        internal bool CanEndInteractiveSession() =>
+            !_sessionClosed && !_workflowOpenRunning &&
+            !_maintenanceRunning && !_preflightRunning && !_dashboardRefreshRunning &&
+            !Application.Current.Windows.Cast<Window>().Any(window => !ReferenceEquals(window, this));
+
+        private async void BtnSessionAction_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CanEndInteractiveSession())
+            {
+                MessageBox.Show(this,
+                    "Save or discard your changes and close the open workflow windows first. Wait for any running system check to finish, then try again.",
+                    "Session in Use", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (Application.Current is not App app) return;
+            bool switchUser = ReferenceEquals(sender, BtnSwitchUser);
+            Login? login = app.ReturnToSignIn(manual: true);
+            if (switchUser && login != null)
+                await login.SwitchWindowsUserAsync();
         }
 
         private T GetService<T>() where T : class
@@ -892,6 +930,7 @@ SELECT @Result;");
 
         private void ShowWorkspaceWindow<T>(Func<T> createWindow) where T : Window
         {
+            if (_sessionClosed) return;
             T? existingWindow = Application.Current.Windows
                 .OfType<T>()
                 .FirstOrDefault(window => window.IsVisible);
@@ -1173,6 +1212,7 @@ SELECT @Result;");
 
         private async void BtnPRMResults_Click(object sender, RoutedEventArgs e)
         {
+            if (_sessionClosed || _workflowOpenRunning) return;
             if (!BtnPRMResults.IsEnabled)
             {
                 MessageBox.Show(
@@ -1186,6 +1226,7 @@ SELECT @Result;");
             if (!EnsureRuntimeReadyForWorkflow("Production / Raw Material / Primary Packaging / Stability Results"))
                 return;
 
+            _workflowOpenRunning = true;
             try
             {
                 // v186: do not let an upgraded Development database enter PRM Results
@@ -1193,6 +1234,7 @@ SELECT @Result;");
                 // selected.  Probe the complete PRM Quality Event contract first.
                 PrmSchemaReadinessResult qualityEventReadiness =
                     await PrmSchemaReadinessService.EnsureQualityEventReadyAsync();
+                if (_sessionClosed) return;
                 if (!qualityEventReadiness.IsReady)
                 {
                     bool canRunDevelopmentMaintenance =
@@ -1227,9 +1269,11 @@ SELECT @Result;");
             }
             catch (Exception ex)
             {
+                if (_sessionClosed) return;
                 MessageBox.Show($"Error opening Production / Raw Material Results Entry: {Infrastructure.UserFacingError.SafeMessage(ex)}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally { _workflowOpenRunning = false; }
         }
 
         private void BtnReports_Click(object sender, RoutedEventArgs e)

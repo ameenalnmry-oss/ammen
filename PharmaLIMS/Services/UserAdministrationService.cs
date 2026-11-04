@@ -15,10 +15,12 @@ namespace PharmaLIMS.Services
             "Admin", "Administrator", "Technician", "Supervisor", "QA", "Quality Assurance"
         };
         private readonly DatabaseConnection _database;
+        private readonly bool _useTrustedTransport;
 
-        public UserAdministrationService(DatabaseConnection database)
+        public UserAdministrationService(DatabaseConnection database, bool useTrustedTransport = true)
         {
             _database = database ?? throw new ArgumentNullException(nameof(database));
+            _useTrustedTransport = useTrustedTransport;
         }
 
         public async Task<IReadOnlyList<User>> GetUsersAsync(
@@ -100,6 +102,8 @@ ORDER BY Username;", connection, transaction);
             string signedBy,
             CancellationToken cancellationToken = default)
         {
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled) { return await TrustedApplicationSession.AdminAsync("CreateUser", user, 0, null, initialPassword, performedBy, reason, signatureMeaning, cancellationToken); }
+
             ValidateUserForSave(user, isNew: true);
             PasswordSecurity.ValidateNewPassword(initialPassword, user.Username);
             string actor = RequireActor(performedBy);
@@ -193,6 +197,8 @@ SELECT CONVERT(int, SCOPE_IDENTITY());", connection, transaction))
             string signedBy,
             CancellationToken cancellationToken = default)
         {
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled) { await TrustedApplicationSession.AdminAsync("UpdateUser", user, user.UserId, user.AuthenticationRowVersion, "", performedBy, reason, signatureMeaning, cancellationToken); return; }
+
             ValidateUserForSave(user, isNew: false);
             string actor = RequireActor(performedBy);
             string auditReason = RequireReason(reason);
@@ -294,6 +300,8 @@ WHERE UserID = @UserID
             byte[] expectedVersion,
             CancellationToken cancellationToken = default)
         {
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled) { await TrustedApplicationSession.AdminAsync("ResetPassword", null, userId, expectedVersion, newPassword, performedBy, reason, signatureMeaning, cancellationToken); return; }
+
             if (userId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(userId));
             PasswordSecurity.ValidateNewPassword(newPassword);
@@ -377,6 +385,8 @@ WHERE UserID = @UserID
             byte[] expectedVersion,
             CancellationToken cancellationToken = default)
         {
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled) { await TrustedApplicationSession.AdminAsync("UnlockUser", null, userId, expectedVersion, "", performedBy, reason, signatureMeaning, cancellationToken); return; }
+
             if (userId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(userId));
             string actor = RequireActor(performedBy);
@@ -469,7 +479,7 @@ SELECT UserID, Username, FullName, Role, Department, Section, IsActive,
        CanAccessWater, CanAccessEM, CanRegisterSamples, CanEnterResults,
        CanReviewResults, CanApproveResults, CanIssueCOA, CanCancelCOA,
        CanAccessReports, CanManageUsers, CanManageSettings, MustChangePassword, AuthenticationRowVersion, FailedLoginAttempts,
-       CASE WHEN ISNULL(IsLocked,0)=1 AND (LockedUntil IS NULL OR LockedUntil>SYSDATETIME()) THEN 1 ELSE 0 END AS IsLockedNow
+       CONVERT(bit, CASE WHEN ISNULL(IsLocked,0)=1 AND (LockedUntil IS NULL OR LockedUntil>SYSDATETIME()) THEN 1 ELSE 0 END) AS IsLockedNow
 FROM dbo.Users WITH (UPDLOCK, HOLDLOCK)
 WHERE UserID = @UserID;", connection, transaction);
             command.Parameters.Add("@UserID", SqlDbType.Int).Value = userId;

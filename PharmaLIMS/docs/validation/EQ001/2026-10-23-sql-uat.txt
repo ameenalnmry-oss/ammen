@@ -1,0 +1,188 @@
+PASS: SQL connection with encryption and certificate validation
+APPLY 20260823_001
+Apply: Migrations/20260714_001_Harden_GMP_Workflows.sql
+APPLY 20260714_001
+Apply: Migrations/20260715_001_Harden_Culture_Media_Qualification_Report.sql
+APPLY 20260715_001
+Apply: Migrations/20260716_002_Extend_EM_Surface_Personnel.sql
+APPLY 20260716_002
+Apply: Migrations/20260716_003_Seed_Dispensing_Surface_Personnel_Templates.sql
+APPLY 20260716_003
+Apply: Migrations/20260717_001_Ensure_PRM_Workflow_Dependencies.sql
+APPLY 20260717_001
+Apply: Migrations/20260717_002_Normalize_Global_COA_Sequence.sql
+APPLY 20260717_002
+Apply: Migrations/20260717_003_Add_EM_SurfaceType.sql
+APPLY 20260717_003
+Apply: Migrations/20260718_001_Release_Hardening.sql
+APPLY 20260718_001
+Apply: Migrations/20260718_002_EM_Planning_Workflow.sql
+APPLY 20260718_002
+Apply: Migrations/20260721_001_Global_EM_Compliance.sql
+APPLY 20260721_001
+Apply: Migrations/20260721_002_Culture_Media_Global_Compliance.sql
+APPLY 20260721_002
+Apply: Migrations/20260722_001_Repair_EM_CultureMedia_Schema.sql
+APPLY 20260722_001
+Apply: Migrations/20260722_002_Full_Compliance_Hardening.sql
+APPLY 20260722_002
+Apply: Migrations/20260722_003_Resolve_Project_Complexities.sql
+APPLY 20260722_003
+Apply: Migrations/20260722_004_PRM_Specification_Master.sql
+APPLY 20260722_004
+Apply: Migrations/20260722_005_Link_PRM_Specifications_To_Items.sql
+APPLY 20260722_005
+Apply: Migrations/20260723_002_Default_Oral_Tablet_Microbiology_Profiles.sql
+APPLY 20260723_002
+Apply: Migrations/20260809_001_Protect_Compliance_Records.sql
+APPLY 20260809_001
+Apply: Migrations/20260810_001_Controlled_External_Trend_Imports.sql
+APPLY 20260810_001
+Apply: Migrations/20260811_001_External_Trend_Area_Classification.sql
+APPLY 20260811_001
+Apply: Migrations/20260811_002_Three_Cycle_EM_Trend_Governance.sql
+APPLY 20260811_002
+Apply: Migrations/20260813_001_External_Trend_Query_Performance.sql
+APPLY 20260813_001
+Apply: Migrations/20260819_001_EM_Approved_Limits_Snapshot_Control.sql
+APPLY 20260819_001
+Apply: Migrations/20260821_001_Enforce_Unique_User_Identity.sql
+APPLY 20260821_001
+Apply: Migrations/20260822_006_PRM_Legacy_Specification_State_Reconciliation.sql
+APPLY 20260822_006
+Apply: Migrations/20260823_001_PRM_Specification_Remediation.sql
+APPLY 20260823_001
+Apply: Migrations/20260823_002_Culture_Media_Requirement_Approval_Gate.sql
+APPLY 20260823_002
+Apply: Migrations/20260823_003_Quality_Event_Structured_Evidence_Schema.sql
+APPLY 20260823_003
+Apply: Migrations/20260823_004_Water_Planning_Schema.sql
+APPLY 20260823_004
+Apply: Migrations/20260824_001_PRM_Item_Stage_And_Investigation_Controls.sql
+APPLY 20260824_001
+Apply: Migrations/20260824_002_PRM_Standard_Microbiology_Profiles.sql
+APPLY 20260824_002
+Apply: Migrations/20260825_001_PRM_Analysis_Lifecycle_Reconciliation.sql
+APPLY 20260825_001
+Apply: Migrations/20260825_007_PRM_Quality_Event_Legacy_Identity_Reconciliation.sql
+APPLY 20260825_007
+Apply: Migrations/20260826_001_PRM_Quality_Event_Current_Baseline.sql
+APPLY 20260826_001
+Apply: Migrations/20260826_002_PRM_Quality_Event_Operational_Readiness.sql
+APPLY 20260826_002
+Apply: Migrations/20260826_003_EM_Investigation_Checklist_Master_Data.sql
+APPLY 20260826_003
+Apply: Migrations/20260826_004_External_Trend_Current_State_Reconciliation.sql
+APPLY 20260826_004
+Apply: Migrations/20260827_001_PRM_Investigation_Evidence_Version_Binding.sql
+APPLY 20260827_001
+Apply: Migrations/20260827_002_PRM_Legacy_Evidence_Reconciliation.sql
+APPLY 20260827_002
+Apply: Migrations/20260828_001_Quality_Event_Evidence_History_And_Time_Hardening.sql
+APPLY 20260828_001
+Apply: Migrations/20260828_002_EM_Water_Planning_Integrity_Hardening.sql
+APPLY 20260828_002
+Apply: Migrations/20260828_003_EM_Limit_Snapshot_Reconciliation_And_Strict_Creation.sql
+APPLY 20260828_003
+Apply: Migrations/20260829_001_External_Trend_Generation_Performance_V3.sql
+APPLY 20260829_001
+Apply: Migrations/20260830_001_PRM_Oral_Tablet_Compendial_Microbial_Limits.sql
+APPLY 20260830_001
+Apply: Migrations/20260830_002_PRM_Oral_Tablet_Compendial_Reference_Clarification.sql
+APPLY 20260830_002
+Apply: Migrations/20260905_000_GMP_Timing_Schema_Prerequisite_Compile_Safe.sql
+APPLY 20260905_000
+Apply: Migrations/20260905_001_GMP_Microbiology_Timing_Gates.sql
+APPLY 20260905_001
+Apply: Migrations/20260906_000_GMP_Timing_Governance_Schema_Prerequisite_Compile_Safe.sql
+APPLY 20260906_000
+Apply: Migrations/20260906_000A_GMP_Timing_Disposition_Width_Prerequisite.sql
+APPLY 20260906_000
+Apply: Migrations/20260906_000B_GMP_Timing_Disposition_Width_Contract.sql
+APPLY 20260906_000
+Apply: Migrations/20260906_001_GMP_Timing_Governance_Hardening.sql
+APPLY 20260906_001
+Apply: Migrations/20260906_002_GMP_Final_Release_And_Preflight_Hardening.sql
+APPLY 20260906_002
+Apply: Migrations/20260906_002A_PRM_Report_Status_Contract_Repair.sql
+APPLY 20260906_002
+Apply: Migrations/20260906_004_EM_Area_Snapshot_Compile_Safe_Repair.sql
+APPLY 20260906_004
+Apply: Migrations/20260906_005_GMP_Timing_Schema_Contract_Hardening.sql
+APPLY 20260906_005
+Apply: Migrations/20260906_006_Water_Controlled_Master_Schema_Backfill.sql
+APPLY 20260906_006
+Apply: Migrations/20260906_007_Tests_Active_Contract_Backfill.sql
+APPLY 20260906_007
+Apply: Migrations/20260907_000_Water_Controlled_Profile_Workflow.sql
+APPLY 20260907_000
+Apply: Migrations/20260908_000_Water_MQC_G_0018_Test_Catalog.sql
+APPLY 20260908_000
+Apply: Migrations/20260908_001_Legacy_Certificate_Evidence_Reconciliation.sql
+APPLY 20260908_001
+Apply: Migrations/20260908_002_Legacy_Certificate_Evidence_Validation_Normalization.sql
+APPLY 20260908_002
+Apply: Migrations/20260909_000_Legacy_Certificate_Evidence_Quality_Gate.sql
+APPLY 20260909_000
+Apply: Migrations/20260909_001_Legacy_Certificate_Reissue_Evidence_Quality.sql
+APPLY 20260909_001
+Apply: Migrations/20260910_000_Review_Result_And_Authentication_Concurrency.sql
+APPLY 20260910_000
+Apply: Migrations/20260911_000_Authentication_Login_Compatibility_Backfill.sql
+APPLY 20260911_000
+Apply: Migrations/20260913_001_PRM_Standard_Profile_Governance_Hardening.sql
+APPLY 20260913_001
+Apply: Migrations/20260915_000_User_Administration_Security_Hardening.sql
+APPLY 20260915_000
+Apply: Migrations/20260917_000_User_Administration_Write_Compatibility.sql
+APPLY 20260917_000
+Apply: Migrations/20260917_001_User_Administration_Signature_Evidence.sql
+APPLY 20260917_001
+Apply: Migrations/20260921_001_Harden_AppendOnly_Protection_Triggers.sql
+APPLY 20260921_001
+Apply: Migrations/20260921_002_Protect_PRM_Certificate_History.sql
+APPLY 20260921_002
+Apply: Migrations/20260921_003_Protect_PRM_Certificate_Issued_Evidence.sql
+APPLY 20260921_003
+Apply: Migrations/20260930_001_Laboratory_Receipt_Evidence.sql
+APPLY 20260930_001
+Apply: Migrations/20261007_001_Water_LimitDescription_Schema_Contract.sql
+APPLY 20261007_001
+Apply: Migrations/20261008_001_Lab_Equipment_Foundation.sql
+APPLY 20261008_001
+Apply: Migrations/20261008_002_Lab_Equipment_Usage_Traceability.sql
+APPLY 20261008_002
+Apply: Migrations/20261008_003_Equipment_Test_Compatibility.sql
+APPLY 20261008_003
+Apply: Migrations/20261008_004_Microbiology_Equipment_Operational_Uses.sql
+APPLY 20261008_004
+Apply: Migrations/20261009_001_Water_LES_Execution_Evidence.sql
+APPLY 20261009_001
+Apply: Migrations/20261009_002_Water_Resources_Traceability.sql
+APPLY 20261009_002
+PASS: current controlled baseline and all active migrations execute on empty disposable SQL database
+PASS: UAT staging refuses default opt-in: EQ001_UAT_Replay_Protection.sql (SQL 56110)
+PASS: UAT staging refuses default opt-in: EQ001_UAT_Trusted_Commit_Procedure.sql (SQL 56150)
+PASS: actual replay schema and trusted SQL procedure stage successfully in isolated UAT
+PASS: real authenticator and restricted SQL store create equipment plus immutable signature
+PASS: audit evidence commits with equipment and signature
+PASS: duplicate RequestId is rejected atomically (SQL 56140)
+PASS: equipment update persists with checked rowversion
+PASS: old/new signed state comes from persisted SQL rows
+PASS: stale equipment rowversion cannot overwrite current data (SQL 56141)
+PASS: denied replay/concurrency attempts add no signatures
+PASS: WPF SQL principal cannot call trusted commit (SQL 229)
+PASS: WPF SQL principal cannot insert signature evidence directly (SQL 229)
+PASS: signature evidence is append-only (SQL 56401)
+PASS: account compare-and-swap rejects concurrent authorization edit
+PASS: revoked signer cannot authenticate for signature
+PASS: SQL independently rejects revoked signer (SQL 56139)
+PASS: incorrect password rejected (attempt 1)
+PASS: incorrect password rejected (attempt 2)
+PASS: incorrect password rejected (attempt 3)
+PASS: incorrect password rejected (attempt 4)
+PASS: incorrect password rejected (attempt 5)
+PASS: five real failed reauthentications persist SQL account lockout
+PASS: locked account cannot sign with correct password
+EQ001 SQL UAT: 25 checks passed.
+Disposable UAT database and test SQL logins removed.

@@ -95,25 +95,8 @@ WHERE rn=1;",
                     "LES execution evidence is incomplete for '" + testName +
                     "'. Enter the calibration / verification reference.");
 
-            if (testId == 3)
-            {
-                if (!decimal.TryParse(
-                        (temperatureText ?? string.Empty).Trim(),
-                        NumberStyles.Number,
-                        CultureInfo.InvariantCulture,
-                        out decimal temperatureC))
-                {
-                    throw new InvalidOperationException(
-                        "Conductivity LES requires the sample temperature in C using '.' as the decimal separator.");
-                }
+            if (testId == 3) WaterLesTemperatureContract.Parse(temperatureText);
 
-                if (temperatureC < 24m || temperatureC > 26m)
-                {
-                    throw new InvalidOperationException(
-                        "Conductivity LES requires a controlled sample temperature of 25 C +/- 1 C. " +
-                        "Recorded value: " + temperatureC.ToString("0.##", CultureInfo.InvariantCulture) + " C.");
-                }
-            }
         }
 
         public static void AppendEvidenceInTransaction(
@@ -138,17 +121,7 @@ WHERE rn=1;",
 
             string procedureReference = GetProcedureReference(testId);
             string guidance = GetGuidance(testId);
-            decimal? temperatureC = null;
-            if (!string.IsNullOrWhiteSpace(temperatureText))
-            {
-                if (!decimal.TryParse(
-                        temperatureText.Trim(),
-                        NumberStyles.Number,
-                        CultureInfo.InvariantCulture,
-                        out decimal parsed))
-                    throw new InvalidOperationException("Invalid LES sample temperature.");
-                temperatureC = parsed;
-            }
+            decimal? temperatureC = testId == 3 ? WaterLesTemperatureContract.Parse(temperatureText) : null;
 
             string equipmentCode;
             string equipmentName;

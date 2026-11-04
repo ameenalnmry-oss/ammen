@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CertificateSource Condition="'$(CertificateSource)' == ''">$(MSBuildProjectDirectory)/../../ReportCertificate.xaml.cs</CertificateSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="SitePrecisionProgram.cs" Condition="'$(SitePrecisionOnly)' != 'true'" />
+    <Compile Remove="Program.cs" Condition="'$(SitePrecisionOnly)' == 'true'" />
+    <Compile Include="../../Services/WaterReportNumericContract.cs" Link="Production/WaterReportNumericContract.cs" />
+    <Compile Include="../../Services/ControlledNumericValue.cs" Link="Production/ControlledNumericValue.cs" />
+    <Compile Include="../../Services/WaterNumericResultEvaluator.cs" Link="Production/WaterNumericResultEvaluator.cs" />
+  </ItemGroup>
+  <Target Name="ExtractCertificateMethods" BeforeTargets="CoreCompile">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/extract_report_methods.py&quot; &quot;$(CertificateSource)&quot; &quot;$(IntermediateOutputPath)CertificateMethods.g.cs&quot;" />
+    <ItemGroup><Compile Include="$(IntermediateOutputPath)CertificateMethods.g.cs" /></ItemGroup>
+  </Target>
+</Project>

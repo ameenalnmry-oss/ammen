@@ -1,0 +1,787 @@
+{
+  "SourceWitnessDate": "2026-11-04",
+  "PriorQualificationCommit": "1935ec8ae4a52c3a0cd3cb63d08e2bd7952ed39f",
+  "OriginalArchiveSha256": "b9244b38b1d4cb72dbd0bacf913fb7e92e07802626057e5169a5c58d71b6309a",
+  "CapturedCurrentFiles": {
+    "Infrastructure/ComplianceRecordProtectionContract.cs": {
+      "RawSha256": "5a5e3f9f428eaf1591a1fa24a580a076a32bd8ffd5b8e5be32b8b717997efa43",
+      "NormalizedSha256": "2920d92e58f9d470a7999954d8dd1471c7a91707cf50dac5b7fde0c813d58972"
+    },
+    "LabResources.xaml.cs": {
+      "RawSha256": "3206264b3b1d7088b7f17a37fac78cc21fa74b6297a925e0ea4c00451df1c6d6",
+      "NormalizedSha256": "3206264b3b1d7088b7f17a37fac78cc21fa74b6297a925e0ea4c00451df1c6d6"
+    },
+    "Services/MicroEquipmentActivityService.cs": {
+      "RawSha256": "44dee3fea0810ec720284fac69401694ab9b09de8a298d5d36446fa56a512078",
+      "NormalizedSha256": "44dee3fea0810ec720284fac69401694ab9b09de8a298d5d36446fa56a512078"
+    },
+    "Services/TrustedApplicationSession.cs": {
+      "RawSha256": "b600f826898067e873fbc51a44c2c478da14c9a2ac70d94e8e13b71bb265cf90",
+      "NormalizedSha256": "b600f826898067e873fbc51a44c2c478da14c9a2ac70d94e8e13b71bb265cf90"
+    },
+    "Services/WaterResourceEvidenceService.cs": {
+      "RawSha256": "888bdf1d88f0553518d2db3765c704557d3dd23cc01e27099f38e793e8162e02",
+      "NormalizedSha256": "888bdf1d88f0553518d2db3765c704557d3dd23cc01e27099f38e793e8162e02"
+    },
+    "SystemPreflight.xaml": {
+      "RawSha256": "99123c329dbd60c034567f4f4c179eff86de8b9d6fd969b7a40490ea13b9a9f3",
+      "NormalizedSha256": "99123c329dbd60c034567f4f4c179eff86de8b9d6fd969b7a40490ea13b9a9f3"
+    },
+    "SystemPreflight.xaml.cs": {
+      "RawSha256": "7e4c0bc285917455ae01147db1a9e812994dfee251bc9c99e8674793045a54ba",
+      "NormalizedSha256": "7e4c0bc285917455ae01147db1a9e812994dfee251bc9c99e8674793045a54ba"
+    },
+    "tools/PharmaLIMS.TrustedSigning.Host/Program.cs": {
+      "RawSha256": "9ecf7433c7616fe53c2e4aa92329c1e0927a7e37a53571daa4e4141be57984b0",
+      "NormalizedSha256": "9ecf7433c7616fe53c2e4aa92329c1e0927a7e37a53571daa4e4141be57984b0"
+    },
+    "tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs": {
+      "RawSha256": "b2b01f625c6014f68dfdd710560ba5f8eaa12763e85454172d6bbf9fb161adf7",
+      "NormalizedSha256": "b2b01f625c6014f68dfdd710560ba5f8eaa12763e85454172d6bbf9fb161adf7"
+    },
+    "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs": {
+      "RawSha256": "1aa53b98fb18e6739b5193bba08b23a5e0e8574fa1baae2fce67a4e11e0db7b1",
+      "NormalizedSha256": "1aa53b98fb18e6739b5193bba08b23a5e0e8574fa1baae2fce67a4e11e0db7b1"
+    },
+    "Database/MigrationManifest.json": {
+      "RawSha256": "7167786744f37253b5209bd2db7a1c148b976aad7d7196dca3a6560c57e66ece",
+      "NormalizedSha256": "c4fafbaaaff3bf20f7a5e5cf4a75ca14264c91c919abeff7c38dc71659a03d37"
+    },
+    "EquipmentUsageReconciliation.xaml": {
+      "RawSha256": "ccb990e92c8f7a610edb338e27864e831acfef687d5314e97c8247108c623d38",
+      "NormalizedSha256": "5788346b4dc53f1a40546ddcf8b8344091b8a12aaab75627623201ae8480793b"
+    },
+    "EquipmentUsageReconciliation.xaml.cs": {
+      "RawSha256": "1dd2cd460c4d9e54e759806374b38bbb6b9d8d81202d62ff8cd98f69d80cfff0",
+      "NormalizedSha256": "4133c8c9831fcc7032c9d4cf2f8f428c04c060b1beb308bea2213bbd3b4729d9"
+    },
+    "tools/PharmaLIMS.TrustedSigning.Host/TrustedEquipmentConfirmStore.cs": {
+      "RawSha256": "8e0b56f56b299139e89b51d96773a33d8cb6b572bb5229fa0ec05c5028b61ddd",
+      "NormalizedSha256": "8e0b56f56b299139e89b51d96773a33d8cb6b572bb5229fa0ec05c5028b61ddd"
+    },
+    "tools/PharmaLIMS.TrustedSigning.Host/TrustedEquipmentDraftStore.cs": {
+      "RawSha256": "e0e2d5f786d3d3c0e2c86605fdb8958ae3eec1ea0ec429655d02bd8db51fc98a",
+      "NormalizedSha256": "e0e2d5f786d3d3c0e2c86605fdb8958ae3eec1ea0ec429655d02bd8db51fc98a"
+    },
+    "tools/PharmaLIMS.TrustedSigning.Host/TrustedEquipmentLinkStore.cs": {
+      "RawSha256": "3139b3e6c8c83574c90dc76149eeec944c30fb06a73594e95dfd54a4264e0974",
+      "NormalizedSha256": "3139b3e6c8c83574c90dc76149eeec944c30fb06a73594e95dfd54a4264e0974"
+    },
+    "tools/PharmaLIMS.TrustedSigning/EquipmentConfirmContract.cs": {
+      "RawSha256": "2d04fe88921e3845b9e7bb77a3594f7d9fe0f9b720fd3f460451b84b876c60dd",
+      "NormalizedSha256": "2d04fe88921e3845b9e7bb77a3594f7d9fe0f9b720fd3f460451b84b876c60dd"
+    },
+    "tools/PharmaLIMS.TrustedSigning/EquipmentDraftContract.cs": {
+      "RawSha256": "29adf1de53fe050e3d1f4cb73362daf77bee7c137890d90f5674370ae765e127",
+      "NormalizedSha256": "29adf1de53fe050e3d1f4cb73362daf77bee7c137890d90f5674370ae765e127"
+    },
+    "tools/PharmaLIMS.TrustedSigning/EquipmentLinkContract.cs": {
+      "RawSha256": "638abfa523859520ac917a14d6b523a983e286485649b4dbbc5bb85ae4a8d5b4",
+      "NormalizedSha256": "638abfa523859520ac917a14d6b523a983e286485649b4dbbc5bb85ae4a8d5b4"
+    },
+    "Services/EquipmentConfirmRecovery.cs": {
+      "RawSha256": "23fe8def5ec250ffe998b77c6503dba61e1c68515fe7127dbbb0a1f8528c0852",
+      "NormalizedSha256": "23fe8def5ec250ffe998b77c6503dba61e1c68515fe7127dbbb0a1f8528c0852"
+    },
+    "Services/EquipmentDraftRecovery.cs": {
+      "RawSha256": "08e84003b9266946d20af068a26dd0999aa09292ab08a2d70e553912b4849afd",
+      "NormalizedSha256": "08e84003b9266946d20af068a26dd0999aa09292ab08a2d70e553912b4849afd"
+    },
+    "Services/EquipmentLinkRecovery.cs": {
+      "RawSha256": "faff164724a5cff4526a191a40e22e828c2501e06164f0bf275fd616887eb00e",
+      "NormalizedSha256": "faff164724a5cff4526a191a40e22e828c2501e06164f0bf275fd616887eb00e"
+    },
+    "Services/EquipmentUsageReconciliationService.cs": {
+      "RawSha256": "d600d0f187798be621a2136fdef99d316d054848a63758993be14b030d77f066",
+      "NormalizedSha256": "d600d0f187798be621a2136fdef99d316d054848a63758993be14b030d77f066"
+    },
+    "scripts/EQ001_TrustedEquipmentConfirm_Installer_REVIEW_ONLY.sql": {
+      "RawSha256": "7fef4030b7ce852a454e799c01ba6d77a125b5470fe8c9f8f2949448b99a4b58",
+      "NormalizedSha256": "7fef4030b7ce852a454e799c01ba6d77a125b5470fe8c9f8f2949448b99a4b58"
+    },
+    "scripts/EQ001_TrustedEquipmentDraft_Installer_REVIEW_ONLY.sql": {
+      "RawSha256": "bb8a66d92f51cc89534028700126191cf7a29ff5a8f92da215384b99e32e9eab",
+      "NormalizedSha256": "d54bb5ae8539c3eff503c0c3438495e77cb753ab52a457d5ef1800465ad974ec"
+    },
+    "scripts/EQ001_TrustedEquipmentLink_Installer_REVIEW_ONLY.sql": {
+      "RawSha256": "801c5be9d21b5a9c7d10d9904108990ce188f0a6f1df26f0452db7041adc1d86",
+      "NormalizedSha256": "801c5be9d21b5a9c7d10d9904108990ce188f0a6f1df26f0452db7041adc1d86"
+    },
+    "scripts/EQ001_UAT_MicroEquipment_ConfirmUse.sql": {
+      "RawSha256": "5aedc879ff932ec13616479d2975b325336cae2c4f2e42be2a4f70e67b99681a",
+      "NormalizedSha256": "4cffe076523261726ccce1cce44021dc1fa76e24f55a8bed8fbd216c2e770523"
+    },
+    "scripts/EQ001_UAT_MicroEquipment_Draft.sql": {
+      "RawSha256": "45d71cc52dbf39f2a8182814aa28c49e09dd3673f8c8ace8ea937ce9f45d675f",
+      "NormalizedSha256": "7246d704ebfe7707e4be8db343b314346c35a8d75d21bb857569d28d48bbe9a6"
+    },
+    "scripts/EQ001_UAT_MicroEquipment_Link.sql": {
+      "RawSha256": "8fc85c19c680e465e207a6332e6c1931015997b8a571a97ad2833f544e986982",
+      "NormalizedSha256": "1b03a23cb3ecc701daa27540dddf98209bc2e7f3f6494fa09d91c7c1470a064d"
+    },
+    "scripts/EQ001_UAT_MicroEquipment_NonUseExecution.sql": {
+      "RawSha256": "713044dbbf04e83ef1fdd0322591299bfae9ccc86c2230504d95f04fb0c14eca",
+      "NormalizedSha256": "35c5e126deee97dd8dcbc16218f8cb19908f24689778314dc1637de458bfeca1"
+    },
+    "Database/Migrations/20261029_001_Historical_Equipment_Usage_Reconciliation.sql": {
+      "RawSha256": "c065b5fe31c81923a48cb8f9b54373bec2f5f3b140b4b13f1edf9fdd41d71b44",
+      "NormalizedSha256": "c065b5fe31c81923a48cb8f9b54373bec2f5f3b140b4b13f1edf9fdd41d71b44"
+    }
+  },
+  "CurrentPreflight": "using PharmaLIMS.Infrastructure;\nusing System;\nusing System.Collections.Generic;\nusing System.Data;\nusing System.Globalization;\nusing System.Linq;\nusing System.Text;\nusing System.Windows;\nusing System.Windows.Controls;\n\nnamespace PharmaLIMS\n{\n    public partial class SystemPreflight : Window\n    {\n        private readonly SystemPreflightService _preflightService;\n        private SystemPreflightReport? _lastReport;\n        public SystemPreflightReport? LastReport => _lastReport;\n\n        public SystemPreflight(SystemPreflightService preflightService)\n        {\n            InitializeComponent();\n            _preflightService = preflightService ?? throw new ArgumentNullException(nameof(preflightService));\n\n            string buildVersion = typeof(SystemPreflight).Assembly.GetName().Version?.ToString() ?? \"unknown\";\n            lblEnvironment.Text = \"Environment: \" + AppConfig.EnvironmentName + \" | Build: \" + buildVersion;\n            lblTarget.Text = AppConfig.SqlServerName + \" / \" + AppConfig.DatabaseName;\n            Loaded += SystemPreflight_Loaded;\n        }\n\n        private async void SystemPreflight_Loaded(object sender, RoutedEventArgs e)\n        {\n            Loaded -= SystemPreflight_Loaded;\n            await RunPreflightAsync();\n        }\n\n        private async void BtnRun_Click(object sender, RoutedEventArgs e)\n        {\n            await RunPreflightAsync();\n        }\n\n        private async System.Threading.Tasks.Task RunPreflightAsync()\n        {\n            BtnRun.IsEnabled = false;\n            BtnRun.Content = \"Running...\";\n            lblOverall.Text = \"Checking the configured runtime and SQL Server database...\";\n            lblExecutedAt.Text = string.Empty;\n\n            try\n            {\n                _lastReport = await _preflightService.RunAsync();\n                gridChecks.ItemsSource = _lastReport.Checks;\n                lblBlockers.Text = _lastReport.BlockerCount.ToString();\n                lblWarnings.Text = _lastReport.WarningCount.ToString();\n                lblPassed.Text = _lastReport.PassCount.ToString();\n                lblExecutedAt.Text = $\"Executed {_lastReport.ExecutedAt:yyyy-MM-dd HH:mm:ss} | {_lastReport.Server} / {_lastReport.Database}\";\n                UpdateRemediationActions();\n\n                if (_lastReport.BlockerCount > 0)\n                {\n                    lblOverall.Text = \"BLOCKED \u2014 correct the blocker(s) before regulated workflow use.\";\n                    lblOverall.Foreground = System.Windows.Media.Brushes.Firebrick;\n                }\n                else if (_lastReport.WarningCount > 0)\n                {\n                    lblOverall.Text = \"PASS WITH WARNINGS \u2014 no release blocker detected by these checks.\";\n                    lblOverall.Foreground = System.Windows.Media.Brushes.DarkGoldenrod;\n                }\n                else\n                {\n                    lblOverall.Text = \"PASS \u2014 no blocker or warning detected by the runtime preflight.\";\n                    lblOverall.Foreground = System.Windows.Media.Brushes.DarkGreen;\n                }\n            }\n            catch (Exception ex)\n            {\n                BtnPrmSpecifications.Visibility = Visibility.Collapsed;\n                BtnPrmSpecifications.IsEnabled = false;\n                BtnWaterProfiles.Visibility = Visibility.Collapsed;\n                BtnWaterProfiles.IsEnabled = false;\n                BtnEquipmentReconcile.Visibility = Visibility.Collapsed;\n                BtnEquipmentReconcile.IsEnabled = false;\n                BtnEmReconcile.Visibility = Visibility.Collapsed;\n                BtnEmReconcile.IsEnabled = false;\n                BtnCertificateReconcile.Visibility = Visibility.Collapsed;\n                BtnCertificateReconcile.IsEnabled = false;\n                ApplicationLogger.Error(\"Runtime system preflight failed unexpectedly.\", ex);\n                lblOverall.Text = \"Preflight failed before completion.\";\n                lblOverall.Foreground = System.Windows.Media.Brushes.Firebrick;\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"Runtime system preflight\"),\n                    \"System Preflight\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n            finally\n            {\n                BtnRun.IsEnabled = true;\n                BtnRun.Content = \"Run Preflight\";\n            }\n        }\n\n        private void UpdateRemediationActions()\n        {\n            bool hasPrmSpecificationFinding = _lastReport?.Checks.Any(check =>\n                (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                 string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                string.Equals(check.Area, \"Master Data\", StringComparison.OrdinalIgnoreCase) &&\n                string.Equals(check.Check, \"PRM approved-profile signature evidence\", StringComparison.OrdinalIgnoreCase)) == true;\n\n            BtnPrmSpecifications.Visibility = hasPrmSpecificationFinding ? Visibility.Visible : Visibility.Collapsed;\n            // Opening the controlled master is diagnostic/remediation navigation only.\n            // Save/Review/Approve remain permission-checked and electronically signed inside the PRM workflow.\n            BtnPrmSpecifications.IsEnabled = hasPrmSpecificationFinding &&\n                !string.IsNullOrWhiteSpace(Login.CurrentUser);\n\n            bool hasWaterProfileFinding = _lastReport?.Checks.Any(check =>\n                (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                 string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                string.Equals(check.Area, \"Master Data\", StringComparison.OrdinalIgnoreCase) &&\n                string.Equals(check.Check, \"Water controlled test profiles\", StringComparison.OrdinalIgnoreCase)) == true;\n\n            BtnWaterProfiles.Visibility = hasWaterProfileFinding ? Visibility.Visible : Visibility.Collapsed;\n            BtnWaterProfiles.IsEnabled = hasWaterProfileFinding &&\n                !string.IsNullOrWhiteSpace(Login.CurrentUser) &&\n                DatabaseHelper.CanManageSettings(Login.CurrentUser);\n\n            bool hasEquipmentUsageFinding = _lastReport?.Checks.Any(check =>\n                (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                 string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                string.Equals(check.Area, \"Laboratory Resources\", StringComparison.OrdinalIgnoreCase) &&\n                string.Equals(check.Check, \"Equipment usage traceability\", StringComparison.OrdinalIgnoreCase)) == true;\n\n            BtnEquipmentReconcile.Visibility = hasEquipmentUsageFinding ? Visibility.Visible : Visibility.Collapsed;\n            BtnEquipmentReconcile.IsEnabled = hasEquipmentUsageFinding &&\n                !string.IsNullOrWhiteSpace(Login.CurrentUser) &&\n                DatabaseHelper.CanApproveResults(Login.CurrentUser);\n\n            bool hasHistoricalEmFinding = _lastReport?.Checks.Any(check =>\n                (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                 string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                string.Equals(check.Area, \"Environmental Monitoring\", StringComparison.OrdinalIgnoreCase) &&\n                string.Equals(check.Check, \"Historical EM limit evidence\", StringComparison.OrdinalIgnoreCase)) == true;\n\n            BtnEmReconcile.Visibility = hasHistoricalEmFinding ? Visibility.Visible : Visibility.Collapsed;\n            BtnEmReconcile.IsEnabled = hasHistoricalEmFinding &&\n                !string.IsNullOrWhiteSpace(Login.CurrentUser) &&\n                DatabaseHelper.CanApproveResults(Login.CurrentUser);\n\n            bool hasLegacyCertificateFinding = _lastReport?.Checks.Any(check =>\n                (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                 string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                (string.Equals(check.Check, \"Legacy PRM certificate evidence\", StringComparison.OrdinalIgnoreCase) ||\n                 string.Equals(check.Check, \"Legacy certificate snapshot evidence\", StringComparison.OrdinalIgnoreCase))) == true;\n\n            BtnCertificateReconcile.Visibility = hasLegacyCertificateFinding ? Visibility.Visible : Visibility.Collapsed;\n            BtnCertificateReconcile.IsEnabled = hasLegacyCertificateFinding &&\n                !string.IsNullOrWhiteSpace(Login.CurrentUser) &&\n                DatabaseHelper.CanApproveResults(Login.CurrentUser);\n        }\n\n        private async void BtnPrmSpecifications_Click(object sender, RoutedEventArgs e)\n        {\n            try\n            {\n                bool hasFinding = _lastReport?.Checks.Any(check =>\n                    (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                     string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                    string.Equals(check.Area, \"Master Data\", StringComparison.OrdinalIgnoreCase) &&\n                    string.Equals(check.Check, \"PRM approved-profile signature evidence\", StringComparison.OrdinalIgnoreCase)) == true;\n\n                if (!hasFinding)\n                {\n                    MessageBox.Show(\n                        \"No unresolved PRM approved-profile signature finding is present in the current preflight report.\",\n                        \"PRM Specification Master\",\n                        MessageBoxButton.OK,\n                        MessageBoxImage.Information);\n                    return;\n                }\n\n                if (string.IsNullOrWhiteSpace(Login.CurrentUser))\n                    throw new UnauthorizedAccessException(\"An authenticated user is required to open the controlled PRM Specification Master.\");\n\n                var manager = new ProductionRawMaterialSamples(specificationMasterOnly: true)\n                {\n                    Owner = this\n                };\n                manager.ShowDialog();\n\n                await RunPreflightAsync();\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Unable to open controlled PRM Specification Master from System Preflight.\", ex);\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"PRM Specification Master\"),\n                    \"PRM Specification Master\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n        }\n\n        private async void BtnWaterProfiles_Click(object sender, RoutedEventArgs e)\n        {\n            try\n            {\n                if (string.IsNullOrWhiteSpace(Login.CurrentUser) ||\n                    !DatabaseHelper.CanManageSettings(Login.CurrentUser))\n                {\n                    throw new UnauthorizedAccessException(\n                        \"Settings permission is required to manage controlled Water Test Profiles.\");\n                }\n\n                var manager = new WaterTestProfileManagement\n                {\n                    Owner = this\n                };\n                manager.ShowDialog();\n\n                if (manager.WasChanged)\n                    await RunPreflightAsync();\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Unable to open controlled Water Test Profile management from System Preflight.\", ex);\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"Water Test Profile management\"),\n                    \"Water Test Profiles\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n        }\n\n        private async void BtnEquipmentReconcile_Click(object sender, RoutedEventArgs e)\n        {\n            try\n            {\n                bool hasFinding = _lastReport?.Checks.Any(check =>\n                    (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                     string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                    string.Equals(check.Area, \"Laboratory Resources\", StringComparison.OrdinalIgnoreCase) &&\n                    string.Equals(check.Check, \"Equipment usage traceability\", StringComparison.OrdinalIgnoreCase)) == true;\n\n                if (!hasFinding)\n                {\n                    MessageBox.Show(\n                        \"No unresolved equipment-usage traceability finding is present in the current preflight report.\",\n                        \"Equipment Usage Reconciliation\",\n                        MessageBoxButton.OK,\n                        MessageBoxImage.Information);\n                    return;\n                }\n\n                if (string.IsNullOrWhiteSpace(Login.CurrentUser) ||\n                    !DatabaseHelper.CanApproveResults(Login.CurrentUser))\n                {\n                    throw new UnauthorizedAccessException(\n                        \"QA approval permission is required to reconcile historical equipment-use evidence.\");\n                }\n\n                var reconciliation = new EquipmentUsageReconciliation\n                {\n                    Owner = this\n                };\n                reconciliation.ShowDialog();\n\n                if (reconciliation.WasSaved)\n                    await RunPreflightAsync();\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Unable to open controlled equipment-use reconciliation from System Preflight.\", ex);\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"Historical equipment-use reconciliation\"),\n                    \"Equipment Usage Reconciliation\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n        }\n\n        private async void BtnEmReconcile_Click(object sender, RoutedEventArgs e)\n        {\n            try\n            {\n                if (_lastReport == null ||\n                    !_lastReport.Checks.Any(check =>\n                        (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                         string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                        string.Equals(check.Area, \"Environmental Monitoring\", StringComparison.OrdinalIgnoreCase) &&\n                        string.Equals(check.Check, \"Historical EM limit evidence\", StringComparison.OrdinalIgnoreCase)))\n                {\n                    MessageBox.Show(\n                        \"No unresolved historical EM limit-evidence finding is present in the current preflight report.\",\n                        \"EM Reconciliation\",\n                        MessageBoxButton.OK,\n                        MessageBoxImage.Information);\n                    return;\n                }\n\n                if (string.IsNullOrWhiteSpace(Login.CurrentUser) ||\n                    !DatabaseHelper.CanApproveResults(Login.CurrentUser))\n                {\n                    throw new UnauthorizedAccessException(\n                        \"QA approval permission is required to reconcile historical EM limit evidence.\");\n                }\n\n                List<EmReconciliationCandidate> candidates = LoadHistoricalEmReconciliationCandidates();\n                if (candidates.Count == 0)\n                {\n                    MessageBox.Show(\n                        \"No unresolved historical EM events were found. Run System Preflight again to refresh the report.\",\n                        \"EM Reconciliation\",\n                        MessageBoxButton.OK,\n                        MessageBoxImage.Information);\n                    await RunPreflightAsync();\n                    return;\n                }\n\n                EmReconciliationCandidate? selected = SelectHistoricalEmEvent(candidates);\n                if (selected == null)\n                    return;\n\n                var reconciliation = new EMLegacySnapshotReconciliation(selected.EventId, selected.EventNo)\n                {\n                    Owner = this\n                };\n                reconciliation.ShowDialog();\n\n                if (reconciliation.WasSaved)\n                    await RunPreflightAsync();\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Unable to open controlled historical EM reconciliation from System Preflight.\", ex);\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"Historical EM snapshot reconciliation\"),\n                    \"EM Reconciliation\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n        }\n\n        private async void BtnCertificateReconcile_Click(object sender, RoutedEventArgs e)\n        {\n            try\n            {\n                bool hasFinding = _lastReport?.Checks.Any(check =>\n                    (string.Equals(check.Status, \"WARNING\", StringComparison.OrdinalIgnoreCase) ||\n                     string.Equals(check.Status, \"BLOCKER\", StringComparison.OrdinalIgnoreCase)) &&\n                    (string.Equals(check.Check, \"Legacy PRM certificate evidence\", StringComparison.OrdinalIgnoreCase) ||\n                     string.Equals(check.Check, \"Legacy certificate snapshot evidence\", StringComparison.OrdinalIgnoreCase))) == true;\n\n                if (!hasFinding)\n                {\n                    MessageBox.Show(\n                        \"No unresolved legacy certificate evidence finding is present in the current preflight report.\",\n                        \"Certificate Reconciliation\",\n                        MessageBoxButton.OK,\n                        MessageBoxImage.Information);\n                    return;\n                }\n\n                if (string.IsNullOrWhiteSpace(Login.CurrentUser) ||\n                    !DatabaseHelper.CanApproveResults(Login.CurrentUser))\n                {\n                    throw new UnauthorizedAccessException(\n                        \"QA approval permission is required to reconcile legacy certificate evidence.\");\n                }\n\n                var reconciliation = new LegacyCertificateEvidenceReconciliation\n                {\n                    Owner = this\n                };\n                reconciliation.ShowDialog();\n\n                if (reconciliation.WasSaved || reconciliation.RequiresPreflightRefresh)\n                    await RunPreflightAsync();\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Unable to open controlled legacy certificate reconciliation from System Preflight.\", ex);\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"Legacy certificate evidence reconciliation\"),\n                    \"Certificate Reconciliation\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n        }\n\n        private static List<EmReconciliationCandidate> LoadHistoricalEmReconciliationCandidates()\n        {\n            DataTable table = DatabaseHelper.ExecuteQuery(@\"\n;WITH EffectiveEvidence AS\n(\n    SELECT P.Id,\n           P.EventId,\n           CASE WHEN P.AlertLimitSnapshot IS NOT NULL AND P.ActionLimitSnapshot IS NOT NULL\n                      AND NULLIF(LTRIM(RTRIM(ISNULL(P.ResultUnitSnapshot,N''))),N'') IS NOT NULL\n                      AND (UPPER(LTRIM(RTRIM(P.Method)))<>N'ACTIVE AIR SAMPLING' OR ISNULL(P.AirVolumeLitersSnapshot,0)>0)\n                THEN 1\n                WHEN R.ReconciliationID IS NOT NULL THEN 1\n                ELSE 0 END AS EvidenceComplete\n    FROM dbo.EM_EventPlates P\n    OUTER APPLY\n    (\n        SELECT TOP(1) X.ReconciliationID\n        FROM dbo.EM_LimitSnapshotReconciliations X\n        WHERE X.PlateID=P.Id\n        ORDER BY X.ReconciliationID DESC\n    ) R\n)\nSELECT E.Id AS EventID,\n       ISNULL(NULLIF(LTRIM(RTRIM(E.EventNo)),N''),N'EventID ' + CONVERT(nvarchar(20),E.Id)) AS EventNo,\n       ISNULL(NULLIF(LTRIM(RTRIM(E.WorkflowStatus)),N''),N'Unknown') AS WorkflowStatus,\n       COUNT_BIG(*) AS UnresolvedPlateCount\nFROM EffectiveEvidence X\nINNER JOIN dbo.EM_Events E ON E.Id=X.EventId\nWHERE X.EvidenceComplete=0\nGROUP BY E.Id,E.EventNo,E.WorkflowStatus\nORDER BY E.EventNo,E.Id;\");\n\n            List<EmReconciliationCandidate> eventCandidates = table.Rows.Cast<DataRow>()\n                .Select(row => new EmReconciliationCandidate\n                {\n                    EventId = Convert.ToInt32(row[\"EventID\"], CultureInfo.InvariantCulture),\n                    EventNo = Convert.ToString(row[\"EventNo\"], CultureInfo.InvariantCulture) ?? string.Empty,\n                    WorkflowStatus = Convert.ToString(row[\"WorkflowStatus\"], CultureInfo.InvariantCulture) ?? string.Empty,\n                    UnresolvedPlateCount = Convert.ToInt64(row[\"UnresolvedPlateCount\"], CultureInfo.InvariantCulture)\n                })\n                .ToList();\n\n            if (eventCandidates.Count > 1)\n            {\n                eventCandidates.Insert(0, new EmReconciliationCandidate\n                {\n                    EventId = 0,\n                    EventNo = \"ALL UNRESOLVED HISTORICAL EVENTS (batch mode)\",\n                    WorkflowStatus = \"Mixed statuses\",\n                    UnresolvedPlateCount = eventCandidates.Sum(candidate => candidate.UnresolvedPlateCount)\n                });\n            }\n\n            return eventCandidates;\n        }\n\n        private EmReconciliationCandidate? SelectHistoricalEmEvent(IReadOnlyList<EmReconciliationCandidate> candidates)\n        {\n            var dialog = new Window\n            {\n                Title = \"Select Historical EM Event\",\n                Owner = this,\n                Width = 620,\n                Height = 520,\n                MinWidth = 520,\n                MinHeight = 400,\n                WindowStartupLocation = WindowStartupLocation.CenterOwner,\n                ResizeMode = ResizeMode.CanResize\n            };\n\n            var layout = new Grid { Margin = new Thickness(16) };\n            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });\n            layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });\n            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });\n\n            var instruction = new TextBlock\n            {\n                Text = \"Select any unresolved historical EM event, including Approved/Completed/Closed records, or choose ALL UNRESOLVED HISTORICAL EVENTS for controlled batch reconciliation. \" +\n                       \"Only controlled historical evidence may be entered. Batch mode groups plates with the same Grade + Method; every plate still receives an independent append-only signed reconciliation record and the original EM records are never rewritten.\",\n                TextWrapping = TextWrapping.Wrap,\n                Margin = new Thickness(0, 0, 0, 12)\n            };\n            Grid.SetRow(instruction, 0);\n            layout.Children.Add(instruction);\n\n            var list = new ListBox\n            {\n                ItemsSource = candidates,\n                DisplayMemberPath = nameof(EmReconciliationCandidate.Display),\n                MinHeight = 260\n            };\n            if (candidates.Count > 0)\n                list.SelectedIndex = 0;\n            Grid.SetRow(list, 1);\n            layout.Children.Add(list);\n\n            var actions = new StackPanel\n            {\n                Orientation = Orientation.Horizontal,\n                HorizontalAlignment = HorizontalAlignment.Right,\n                Margin = new Thickness(0, 12, 0, 0)\n            };\n            var open = new Button\n            {\n                Content = \"Open Reconciliation\",\n                Width = 160,\n                Height = 34,\n                Margin = new Thickness(0, 0, 8, 0),\n                IsDefault = true\n            };\n            var cancel = new Button\n            {\n                Content = \"Cancel\",\n                Width = 90,\n                Height = 34,\n                IsCancel = true\n            };\n\n            open.Click += (_, _) =>\n            {\n                if (list.SelectedItem is not EmReconciliationCandidate)\n                {\n                    MessageBox.Show(\n                        \"Select an EM event first.\",\n                        \"EM Reconciliation\",\n                        MessageBoxButton.OK,\n                        MessageBoxImage.Information);\n                    return;\n                }\n                dialog.DialogResult = true;\n            };\n            actions.Children.Add(open);\n            actions.Children.Add(cancel);\n            Grid.SetRow(actions, 2);\n            layout.Children.Add(actions);\n\n            dialog.Content = layout;\n            return dialog.ShowDialog() == true\n                ? list.SelectedItem as EmReconciliationCandidate\n                : null;\n        }\n\n        private sealed class EmReconciliationCandidate\n        {\n            public int EventId { get; init; }\n            public string EventNo { get; init; } = string.Empty;\n            public string WorkflowStatus { get; init; } = string.Empty;\n            public long UnresolvedPlateCount { get; init; }\n            public string Display => $\"{EventNo} \u2014 {WorkflowStatus} \u2014 {UnresolvedPlateCount} unresolved plate(s)\";\n        }\n\n        private void BtnCopyReleaseChecklist_Click(object sender, RoutedEventArgs e)\n        {\n            try\n            {\n                Clipboard.SetText(BuildReleaseAcceptanceChecklist(_lastReport));\n                MessageBox.Show(\n                    \"Release/UAT checklist copied. Complete it with real Windows and SQL Server evidence; copying the checklist does not mark any item as passed.\",\n                    \"Release Acceptance Checklist\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Information);\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Unable to copy the release acceptance checklist.\", ex);\n                MessageBox.Show(\n                    UserFacingError.SafeMessage(ex, \"Release acceptance checklist\"),\n                    \"Release Acceptance Checklist\",\n                    MessageBoxButton.OK,\n                    MessageBoxImage.Error);\n            }\n        }\n\n        private static string BuildReleaseAcceptanceChecklist(SystemPreflightReport? report)\n        {\n            var sb = new StringBuilder();\n            sb.AppendLine(\"PharmaLIMS RELEASE / UAT ACCEPTANCE CHECKLIST\");\n            sb.AppendLine(\"Generated: \" + DateTime.Now.ToString(\"yyyy-MM-dd HH:mm:ss\", CultureInfo.InvariantCulture));\n            sb.AppendLine(\"Environment: \" + AppConfig.EnvironmentName);\n            sb.AppendLine(\"Target: \" + AppConfig.SqlServerName + \" / \" + AppConfig.DatabaseName);\n            if (report == null)\n            {\n                sb.AppendLine(\"Current System Preflight: NOT RUN IN THIS WINDOW\");\n            }\n            else\n            {\n                sb.AppendLine(\"Current System Preflight: \" +\n                    (report.BlockerCount == 0 ? \"PASS\" : \"BLOCKED\") +\n                    \" | Blockers=\" + report.BlockerCount.ToString(CultureInfo.InvariantCulture) +\n                    \" | Warnings=\" + report.WarningCount.ToString(CultureInfo.InvariantCulture));\n            }\n\n            sb.AppendLine();\n            sb.AppendLine(\"CONTROL NOTICE\");\n            sb.AppendLine(\"This is a manual acceptance record. Static/source tests and System Preflight do not prove Windows WPF build, SQL migration execution, concurrency, printing, or end-to-end UAT.\");\n            sb.AppendLine();\n            sb.AppendLine(\"DATABASE READINESS\");\n            sb.AppendLine(\"[ ] All checksum-controlled migrations were applied to the intended SQL Server database.\");\n            sb.AppendLine(\"[ ] System Preflight completed with 0 BLOCKER findings.\");\n            sb.AppendLine(\"[ ] Users.AuthenticationRowVersion is ROWVERSION NOT NULL.\");\n            sb.AppendLine(\"[ ] Users.MustChangePassword is BIT NOT NULL.\");\n            sb.AppendLine(\"[ ] Users.PasswordChangedAt is DATETIME2(0) NULL.\");\n            sb.AppendLine(\"[ ] EM_Events.ResultRowVersion is ROWVERSION NOT NULL.\");\n            sb.AppendLine(\"[ ] EM_EventPlates.ResultRowVersion is ROWVERSION NOT NULL.\");\n            sb.AppendLine(\"[ ] SampleTests.ResultRowVersion is ROWVERSION NOT NULL.\");\n            sb.AppendLine();\n            sb.AppendLine(\"WINDOWS / SQL SERVER VALIDATION\");\n            sb.AppendLine(\"[ ] Clean Release build succeeds on the intended Windows .NET 8 WPF environment.\");\n            sb.AppendLine(\"[ ] DatabaseIntegration / ReviewRegression executables pass against a representative SQL Server/LocalDB test database.\");\n            sb.AppendLine(\"[ ] Login, legacy-credential transition, lockout, unlock, temporary-password change, and electronic signature scenarios pass.\");\n            sb.AppendLine(\"[ ] User Management create/update/permissions/reset/unlock/concurrency and separation-of-duties scenarios pass.\");\n            sb.AppendLine(\"[ ] Water registration/results/review/approval/Quality Event/certificate workflows pass.\");\n            sb.AppendLine(\"[ ] EM planning/collection/results/review/approval/reporting and concurrent-edit scenarios pass.\");\n            sb.AppendLine(\"[ ] PRM registration/results/review/approval/Quality Event/certificate/reissue workflows pass.\");\n            sb.AppendLine(\"[ ] Audit Trail evidence is attributable and complete for the tested critical actions.\");\n            sb.AppendLine(\"[ ] COA / PRM / EM / Trend reports render and print correctly on A4 at normal Windows scaling/printer settings.\");\n            sb.AppendLine(\"[ ] UI load/responsiveness evidence completed with the site-approved representative data volume (including Sample Management, Results Entry, EM, and Reports); no unhandled exception, data loss, or unacceptable UI freeze.\");\n            sb.AppendLine(\"[ ] Concurrent-user load evidence completed against representative SQL Server infrastructure and reviewed against the approved performance acceptance criteria.\");\n            sb.AppendLine(\"[ ] QA reviewed the executed evidence and approved release/deployment.\");\n            sb.AppendLine();\n            sb.AppendLine(\"Executed By: ____________________    Date: __________\");\n            sb.AppendLine(\"Reviewed By: ____________________    Date: __________\");\n            sb.AppendLine(\"QA Approval: ____________________    Date: __________\");\n            return sb.ToString();\n        }\n\n        private void BtnCopy_Click(object sender, RoutedEventArgs e)\n        {\n            if (_lastReport == null)\n            {\n                MessageBox.Show(\"Run the preflight first.\", \"System Preflight\", MessageBoxButton.OK, MessageBoxImage.Information);\n                return;\n            }\n\n            try\n            {\n                Clipboard.SetText(BuildTextReport(_lastReport));\n                MessageBox.Show(\"Preflight report copied to the clipboard.\", \"System Preflight\", MessageBoxButton.OK, MessageBoxImage.Information);\n            }\n            catch (Exception ex)\n            {\n                ApplicationLogger.Error(\"Copying the system preflight report failed.\", ex);\n                MessageBox.Show(UserFacingError.SafeMessage(ex, \"Copy preflight report\"), \"System Preflight\", MessageBoxButton.OK, MessageBoxImage.Error);\n            }\n        }\n\n        private static string BuildTextReport(SystemPreflightReport report)\n        {\n            var text = new StringBuilder();\n            text.AppendLine(\"PharmaLIMS Runtime System Preflight\");\n            text.AppendLine($\"Executed: {report.ExecutedAt:yyyy-MM-dd HH:mm:ss}\");\n            text.AppendLine($\"Build: {typeof(SystemPreflight).Assembly.GetName().Version?.ToString() ?? \"unknown\"}\");\n            text.AppendLine($\"Target: {report.Server} / {report.Database}\");\n            text.AppendLine($\"Blockers: {report.BlockerCount}; Warnings: {report.WarningCount}; Passed: {report.PassCount}\");\n            text.AppendLine(new string('-', 88));\n\n            foreach (SystemPreflightCheck check in report.Checks)\n                text.AppendLine($\"[{check.Status}] {check.Area} | {check.Check} | {check.Details}\");\n\n            return text.ToString();\n        }\n\n        private void BtnClose_Click(object sender, RoutedEventArgs e)\n        {\n            Close();\n        }\n    }\n}\n",
+  "RepairPaths": [
+    "CultureMediaPreparation.xaml.Part2.cs",
+    "CultureMediaPreparation.xaml.Part3.cs",
+    "CultureMediaPreparation.xaml.cs",
+    "DatabaseHelper.EmSourcePlan.cs",
+    "DatabaseHelper.EnvironmentalMonitoring.cs",
+    "DatabaseHelper.QualityEvents.cs",
+    "EMResultsEntry.xaml.Part3.cs",
+    "EMResultsEntry.xaml.cs",
+    "Infrastructure/QualityEventInvestigationConcurrencyGuard.cs",
+    "PRMQualityEventInvestigation.xaml.cs",
+    "ProductionRawMaterialResults.xaml.cs",
+    "QualityEventInvestigation.xaml.Part2.cs",
+    "QualityEventInvestigation.xaml.cs",
+    "ReportCertificate.xaml.cs",
+    "Services/MediaPreparationAmendmentSnapshot.cs",
+    "SystemPreflight.xaml.cs",
+    "tools/PharmaLIMS.TrustedSigning/TrustedCallerMap.cs",
+    "tools/PharmaLIMS.TrustedSigning/TrustedPipeConnectionPool.cs",
+    "tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs"
+  ],
+  "OriginalMigrationManifest": {
+    "application": "PharmaLIMS",
+    "applicationVersion": "2026.10.19.306",
+    "generatedAtUtc": "2026-09-23T19:26:23Z",
+    "baselineThrough": "20260722_003",
+    "freshInstallBaseline": {
+      "versionKey": "BASELINE_20260823_001",
+      "description": "Controlled empty PharmaLIMS core schema for fresh installations",
+      "file": "Baseline/20260823_001_PharmaLIMS_Core_Baseline.sql",
+      "sha256": "44fca0a9eb7fd64187d56d3f98486affa89bd404498fa53f53f1516eb5d6ad42"
+    },
+    "migrations": [
+      {
+        "versionKey": "20260712_001",
+        "description": "20260712_001_Create_PRM_ElectronicSignatures",
+        "file": "Migrations/20260712_001_Create_PRM_ElectronicSignatures.sql",
+        "sha256": "b5c51b277e4a1bfe5f8de8ab97eb295ddb29d6871e5c3a7c2035251ce656589a",
+        "supersededBy": "20260714_001"
+      },
+      {
+        "versionKey": "20260714_001",
+        "description": "20260714_001_Harden_GMP_Workflows",
+        "file": "Migrations/20260714_001_Harden_GMP_Workflows.sql",
+        "sha256": "9dcf22a5ac212f567a7db1ca50904d35d7cf4fe11b90f7edf05e5449051d5e94"
+      },
+      {
+        "versionKey": "20260715_001",
+        "description": "20260715_001_Harden_Culture_Media_Qualification_Report",
+        "file": "Migrations/20260715_001_Harden_Culture_Media_Qualification_Report.sql",
+        "sha256": "97c58509a872bacb91f7c6e7964185e6b846a1df780ef609e0686baeb9b377f9"
+      },
+      {
+        "versionKey": "20260716_002",
+        "description": "20260716_002_Extend_EM_Surface_Personnel",
+        "file": "Migrations/20260716_002_Extend_EM_Surface_Personnel.sql",
+        "sha256": "53b183e0596839d977f847e9db6ca20cdfd0c23856e3f18b79e1a59f07d678ac"
+      },
+      {
+        "versionKey": "20260716_003",
+        "description": "20260716_003_Seed_Dispensing_Surface_Personnel_Templates",
+        "file": "Migrations/20260716_003_Seed_Dispensing_Surface_Personnel_Templates.sql",
+        "sha256": "31255580e6c87f85ad468c2303bab1d8b6157afbc079457ba43bffc9075ff61e"
+      },
+      {
+        "versionKey": "20260717_001",
+        "description": "20260717_001_Ensure_PRM_Workflow_Dependencies",
+        "file": "Migrations/20260717_001_Ensure_PRM_Workflow_Dependencies.sql",
+        "sha256": "2251af5d3682b9831af568630368a22c7d5e0b9888bbc48835dc9eac64b84cba"
+      },
+      {
+        "versionKey": "20260717_002",
+        "description": "20260717_002_Normalize_Global_COA_Sequence",
+        "file": "Migrations/20260717_002_Normalize_Global_COA_Sequence.sql",
+        "sha256": "5595bb418009a66789cdea53dafc777b2ebedd63bffcf4183bd6dbed146312b9"
+      },
+      {
+        "versionKey": "20260717_003",
+        "description": "20260717_003_Add_EM_SurfaceType",
+        "file": "Migrations/20260717_003_Add_EM_SurfaceType.sql",
+        "sha256": "b547257a1106f1afeb8aaf1b99a7261dfb687702bb52dec3bff28756a7ebe8af"
+      },
+      {
+        "versionKey": "20260718_001",
+        "description": "20260718_001_Release_Hardening",
+        "file": "Migrations/20260718_001_Release_Hardening.sql",
+        "sha256": "0a56913e9cd28fa906ce8520a68000cac24fab0a8f33023e3ceab8a1acd2f9a2"
+      },
+      {
+        "versionKey": "20260718_002",
+        "description": "20260718_002_EM_Planning_Workflow",
+        "file": "Migrations/20260718_002_EM_Planning_Workflow.sql",
+        "sha256": "59aba08ab311b0931b019652c163a963d62749f1459d4f54427f65596f3bbe2c"
+      },
+      {
+        "versionKey": "20260721_001",
+        "description": "20260721_001_Global_EM_Compliance",
+        "file": "Migrations/20260721_001_Global_EM_Compliance.sql",
+        "sha256": "0d7fb57c000b8c038e6d5f85bf8ded83d915b288240653b669bf5b57edfeeb10"
+      },
+      {
+        "versionKey": "20260721_002",
+        "description": "20260721_002_Culture_Media_Global_Compliance",
+        "file": "Migrations/20260721_002_Culture_Media_Global_Compliance.sql",
+        "sha256": "2c5c7a7da5c89b2bb7bfd05ed54e969f2c747e9480a7144de1cfb4522f68f85e"
+      },
+      {
+        "versionKey": "20260722_001",
+        "description": "20260722_001_Repair_EM_CultureMedia_Schema",
+        "file": "Migrations/20260722_001_Repair_EM_CultureMedia_Schema.sql",
+        "sha256": "5c82f3db9cf356d64d30e03d8be2f49ca9a002e50a0a93f5f43982dd5bec3f3b"
+      },
+      {
+        "versionKey": "20260722_002",
+        "description": "20260722_002_Full_Compliance_Hardening",
+        "file": "Migrations/20260722_002_Full_Compliance_Hardening.sql",
+        "sha256": "e6985d446a1d7919a6ba3bf1a09a1ab7309fbd5adb24033f5fc5c3596eb635ec"
+      },
+      {
+        "versionKey": "20260722_003",
+        "description": "20260722_003_Resolve_Project_Complexities",
+        "file": "Migrations/20260722_003_Resolve_Project_Complexities.sql",
+        "sha256": "47fb20228e02d4ab57dd0bb30847d2a6466322f1850fb311e64c7739e7bc4f11"
+      },
+      {
+        "versionKey": "20260722_004",
+        "description": "20260722_004_PRM_Specification_Master",
+        "file": "Migrations/20260722_004_PRM_Specification_Master.sql",
+        "sha256": "387e4eb4e726a540153cf3939a3e821a191d8fc29ab5472eb02fee6c8592684c"
+      },
+      {
+        "versionKey": "20260722_005",
+        "description": "20260722_005_Link_PRM_Specifications_To_Items",
+        "file": "Migrations/20260722_005_Link_PRM_Specifications_To_Items.sql",
+        "sha256": "a77c01e996c71b9db880d12a1332bfacb66d9a2b4463705c261657e7a45d0b25"
+      },
+      {
+        "versionKey": "20260723_002R2",
+        "description": "20260723_002R2_Oral_Tablet_Profiles_And_PRM_Analysis_Times",
+        "file": "Migrations/20260723_002_Default_Oral_Tablet_Microbiology_Profiles.sql",
+        "sha256": "80e9654dfa10d79260d3a32a40612c1c107f1a197618ac16edb811c9e0f86ed4"
+      },
+      {
+        "versionKey": "20260809_001",
+        "description": "20260809_001_Protect_Compliance_Records",
+        "file": "Migrations/20260809_001_Protect_Compliance_Records.sql",
+        "sha256": "2ae1f86bf29c8626ce973f57e275147b7a78b1a5911c6b3ae0aa90e42d6d7457"
+      },
+      {
+        "versionKey": "20260810_001",
+        "description": "20260810_001_Controlled_External_Trend_Imports",
+        "file": "Migrations/20260810_001_Controlled_External_Trend_Imports.sql",
+        "sha256": "8fd6af290adf0560d1e496e3a36a00bff98d769bf607a1111e6a11a7d88c4dd0"
+      },
+      {
+        "versionKey": "20260811_001",
+        "description": "20260811_001_External_Trend_Area_Classification",
+        "file": "Migrations/20260811_001_External_Trend_Area_Classification.sql",
+        "sha256": "603f9246a605bf36241dd061aa89b4fd01531732d67020913f59c02d484b10e1"
+      },
+      {
+        "versionKey": "20260811_002",
+        "description": "20260811_002_Three_Cycle_EM_Trend_Governance",
+        "file": "Migrations/20260811_002_Three_Cycle_EM_Trend_Governance.sql",
+        "sha256": "b9b831f1ff5d0aecbce191fe098f518591609dd59baa6c8d41fc508788bd7671"
+      },
+      {
+        "versionKey": "20260813_001",
+        "description": "20260813_001_External_Trend_Query_Performance",
+        "file": "Migrations/20260813_001_External_Trend_Query_Performance.sql",
+        "sha256": "e5ce214b5c6c4f73580bf117375866af8d45f7fdbc27b6cc6331429e48e2124d"
+      },
+      {
+        "versionKey": "20260815_001",
+        "description": "20260815_001_External_Trend_Review_Hardening",
+        "file": "Migrations/20260815_001_External_Trend_Review_Hardening.sql",
+        "sha256": "a995e33f86f84056a18be16ce0dea4e86ea001dea0b7bcd4d4d5c6adccaf3cd1",
+        "supersededBy": "20260826_004"
+      },
+      {
+        "versionKey": "20260816_001",
+        "description": "20260816_001_External_Trend_Query_Performance_V2",
+        "file": "Migrations/20260816_001_External_Trend_Query_Performance_V2.sql",
+        "sha256": "e35d50aba834bf84531c2e16acbd455fb47c579dbe9bf9c588c7a3df37cf8747",
+        "supersededBy": "20260826_004"
+      },
+      {
+        "versionKey": "20260819_001",
+        "description": "20260819_001_EM_Approved_Limits_Snapshot_Control",
+        "file": "Migrations/20260819_001_EM_Approved_Limits_Snapshot_Control.sql",
+        "sha256": "aeccf2a1192233a2fff2034bd600ed1e91521e72ea0bf42fd79d7221fcd04a6b"
+      },
+      {
+        "versionKey": "20260821_001",
+        "description": "20260821_001_Enforce_Unique_User_Identity",
+        "file": "Migrations/20260821_001_Enforce_Unique_User_Identity.sql",
+        "sha256": "aafee83ca62b9085883ae58cf47543f05b35937604f7472f9ad9bc2d0f71d924"
+      },
+      {
+        "versionKey": "20260822_006",
+        "description": "20260822_006_PRM_Legacy_Specification_State_Reconciliation",
+        "file": "Migrations/20260822_006_PRM_Legacy_Specification_State_Reconciliation.sql",
+        "sha256": "97055e65683fa31f65524f64e69ebc1978bdecbc9291748587a71869b3435cb2"
+      },
+      {
+        "versionKey": "20260823_001",
+        "description": "20260823_001_PRM_Specification_Remediation",
+        "file": "Migrations/20260823_001_PRM_Specification_Remediation.sql",
+        "sha256": "35bcb9cacb191695932ccd996fede717e24dd9d93c48dc09b598a5399bc73a12"
+      },
+      {
+        "versionKey": "20260823_002",
+        "description": "20260823_002_Culture_Media_Requirement_Approval_Gate",
+        "file": "Migrations/20260823_002_Culture_Media_Requirement_Approval_Gate.sql",
+        "sha256": "95b3f0702deeebc8ae146e35632968cb82be7fb918c438d4aba992975556f28e"
+      },
+      {
+        "versionKey": "20260823_003",
+        "description": "20260823_003_Quality_Event_Structured_Evidence_Schema",
+        "file": "Migrations/20260823_003_Quality_Event_Structured_Evidence_Schema.sql",
+        "sha256": "6840939e0ee5992ff5bb055724eee5a21f30855a077e93610d17cbec8cd18cab"
+      },
+      {
+        "versionKey": "20260823_004",
+        "description": "20260823_004_Water_Planning_Schema",
+        "file": "Migrations/20260823_004_Water_Planning_Schema.sql",
+        "sha256": "2751dca3cd4f77b087cd4855707fdc951a76f031a7ee99deb8ebc7106a400fa3"
+      },
+      {
+        "versionKey": "20260823_005",
+        "description": "20260823_005_External_Trend_Snapshot_Schema_Reconciliation",
+        "file": "Migrations/20260823_005_External_Trend_Snapshot_Schema_Reconciliation.sql",
+        "sha256": "5fe41794f61e31056a3730fe835877fbab99126356dbf48bfcd7338184524309",
+        "supersededBy": "20260826_004"
+      },
+      {
+        "versionKey": "20260824_001",
+        "description": "20260824_001_PRM_Item_Stage_And_Investigation_Controls",
+        "file": "Migrations/20260824_001_PRM_Item_Stage_And_Investigation_Controls.sql",
+        "sha256": "7de682ff2c88a18acbaa24b4b05951178c5e395c2139941f33a192e56911410d"
+      },
+      {
+        "versionKey": "20260824_002",
+        "description": "20260824_002_PRM_Standard_Microbiology_Profiles",
+        "file": "Migrations/20260824_002_PRM_Standard_Microbiology_Profiles.sql",
+        "sha256": "4f928d03b4ffff8e4dad3228f4cd7985ec95ccc8015ce95e6760d8f4ad2b3187"
+      },
+      {
+        "versionKey": "20260824_003",
+        "description": "20260824_003_PRM_Quality_Event_Schema_Reconciliation",
+        "file": "Migrations/20260824_003_PRM_Quality_Event_Schema_Reconciliation.sql",
+        "sha256": "0c003a8a96e4ba0e6f9d36c5e06e5acf02187723faad21c1beebe55321a6cfd0",
+        "supersededBy": "20260826_001"
+      },
+      {
+        "versionKey": "20260825_001",
+        "description": "20260825_001_PRM_Analysis_Lifecycle_Reconciliation",
+        "file": "Migrations/20260825_001_PRM_Analysis_Lifecycle_Reconciliation.sql",
+        "sha256": "e6dfdbfbea26550cd1aed84cbf8a14aab4ebcaf2ad412911987c2e3e666f04f0"
+      },
+      {
+        "versionKey": "20260825_002",
+        "description": "20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite",
+        "file": "Migrations/20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite.sql",
+        "sha256": "59c2d6ae5110c3ba31c9c368961469c80cbc35b294522b0f767293feeae15fe7",
+        "supersededBy": "20260826_001"
+      },
+      {
+        "versionKey": "20260825_003",
+        "description": "20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite",
+        "file": "Migrations/20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite.sql",
+        "sha256": "361d9354732817b94636883b160e9e3a15abc2b11af0c4fe9ad302e0e997da98",
+        "supersededBy": "20260826_001"
+      },
+      {
+        "versionKey": "20260825_004",
+        "description": "20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite",
+        "file": "Migrations/20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite.sql",
+        "sha256": "2ff1e6b1ddc91b639d9d5d4e94501242c07661601b4c6116b9230cc70436c14c",
+        "supersededBy": "20260826_001"
+      },
+      {
+        "versionKey": "20260825_005",
+        "description": "20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline",
+        "file": "Migrations/20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline.sql",
+        "sha256": "ffca92962d9f74ad19195b84544b6becb561510151576091f9b8cc39eb009325",
+        "supersededBy": "20260826_001"
+      },
+      {
+        "versionKey": "20260825_006",
+        "description": "20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge",
+        "file": "Migrations/20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge.sql",
+        "sha256": "0069ddea78fd1938299173119cd0affb5116cd892d78530a0b8a56fc8fd4ab52",
+        "supersededBy": "20260826_001"
+      },
+      {
+        "versionKey": "20260825_007",
+        "description": "20260825_007_PRM_Quality_Event_Legacy_Identity_Reconciliation",
+        "file": "Migrations/20260825_007_PRM_Quality_Event_Legacy_Identity_Reconciliation.sql",
+        "sha256": "04b2d41d8b0be074adb15964ec5bff04ee7e8b37a84209569930e58e79a1ce87"
+      },
+      {
+        "versionKey": "20260826_001",
+        "description": "20260826_001_PRM_Quality_Event_Current_Baseline",
+        "file": "Migrations/20260826_001_PRM_Quality_Event_Current_Baseline.sql",
+        "sha256": "72173e48f410f1948926955eac018c61f138ab5520df73ce1aa5a6f0cf47fe19"
+      },
+      {
+        "versionKey": "20260826_002",
+        "description": "20260826_002_PRM_Quality_Event_Operational_Readiness",
+        "file": "Migrations/20260826_002_PRM_Quality_Event_Operational_Readiness.sql",
+        "sha256": "1d1bbd533554e509a19176e27fe459ae375e56214198e3fe1380c396b49e8c21"
+      },
+      {
+        "versionKey": "20260826_003",
+        "description": "20260826_003_EM_Investigation_Checklist_Master_Data",
+        "file": "Migrations/20260826_003_EM_Investigation_Checklist_Master_Data.sql",
+        "sha256": "c7d03c61134bfabc8278c82173f7d2c443def1cc9d6afc3bfe2e6ba97b7539bd"
+      },
+      {
+        "versionKey": "20260826_004",
+        "description": "20260826_004_External_Trend_Current_State_Reconciliation",
+        "file": "Migrations/20260826_004_External_Trend_Current_State_Reconciliation.sql",
+        "sha256": "bdba0ca117eaa4d3045ec23a4118fb676a90fe26298b5d04692041df77749518",
+        "executionMode": "resumable"
+      },
+      {
+        "versionKey": "20260827_001",
+        "description": "20260827_001_PRM_Investigation_Evidence_Version_Binding",
+        "file": "Migrations/20260827_001_PRM_Investigation_Evidence_Version_Binding.sql",
+        "sha256": "ecca1d42f1f69ab59d876261c634b6a442d041556afdcd17e0d77c43c2442a92"
+      },
+      {
+        "versionKey": "20260827_002",
+        "description": "20260827_002_PRM_Legacy_Evidence_Reconciliation",
+        "file": "Migrations/20260827_002_PRM_Legacy_Evidence_Reconciliation.sql",
+        "sha256": "92c106cefdf8d423b63fa41ee9b1c761c1148ac5eee7e76824bf8d41f49e004f"
+      },
+      {
+        "versionKey": "20260828_001",
+        "description": "20260828_001_Quality_Event_Evidence_History_And_Time_Hardening",
+        "file": "Migrations/20260828_001_Quality_Event_Evidence_History_And_Time_Hardening.sql",
+        "sha256": "8e07fcc09d6dd64a5622a6e48d90ff65a52a3e999d0fff11fc0e9e1fdbe42bab"
+      },
+      {
+        "versionKey": "20260828_002",
+        "description": "20260828_002_EM_Water_Planning_Integrity_Hardening",
+        "file": "Migrations/20260828_002_EM_Water_Planning_Integrity_Hardening.sql",
+        "sha256": "187cf969bcabe12498a5cef73a15c1f31c6918d82c2cfac6a6f2e4ef740a519a"
+      },
+      {
+        "versionKey": "20260828_003",
+        "description": "20260828_003_EM_Limit_Snapshot_Reconciliation_And_Strict_Creation",
+        "file": "Migrations/20260828_003_EM_Limit_Snapshot_Reconciliation_And_Strict_Creation.sql",
+        "sha256": "0be89fa85b7c601bc74fb7bf8020791679f41c8791d1cdced69d28a9c225437c"
+      },
+      {
+        "versionKey": "20260829_001",
+        "description": "20260829_001_External_Trend_Generation_Performance_V3",
+        "file": "Migrations/20260829_001_External_Trend_Generation_Performance_V3.sql",
+        "sha256": "598cb8bf35515c68d8e435bab917315d9004987d57308412d73582d2d1080f0a"
+      },
+      {
+        "versionKey": "20260830_001",
+        "description": "20260830_001_PRM_Oral_Tablet_Compendial_Microbial_Limits",
+        "file": "Migrations/20260830_001_PRM_Oral_Tablet_Compendial_Microbial_Limits.sql",
+        "sha256": "71ac0592e3808d320f9a3f3261f87ae4f8aae656a4e2fe18a03256e9a4a65059"
+      },
+      {
+        "versionKey": "20260830_002",
+        "description": "20260830_002_PRM_Oral_Tablet_Compendial_Reference_Clarification",
+        "file": "Migrations/20260830_002_PRM_Oral_Tablet_Compendial_Reference_Clarification.sql",
+        "sha256": "24dd72b770367f408d785e9258d24642e33d9cac8d69f8c9617425a5319a95af"
+      },
+      {
+        "versionKey": "20260830_003",
+        "description": "20260830_003_EM_Trend_Historical_Context_And_Consistency",
+        "file": "Migrations/20260830_003_EM_Trend_Historical_Context_And_Consistency.sql",
+        "sha256": "7b54c15cf7b40f1029bdcf940b2ae6cd0144be0b4e8df88ac00fc4067349e5b3",
+        "supersededBy": "20260906_004"
+      },
+      {
+        "versionKey": "20260905_000",
+        "description": "20260905_000_GMP_Timing_Schema_Prerequisite_Compile_Safe",
+        "file": "Migrations/20260905_000_GMP_Timing_Schema_Prerequisite_Compile_Safe.sql",
+        "sha256": "4a3695f00343c436b586aace2189eabb4b5a7ebed2a7c0db05f33fd956941bfa"
+      },
+      {
+        "versionKey": "20260905_001",
+        "description": "20260905_001_GMP_Microbiology_Timing_Gates",
+        "file": "Migrations/20260905_001_GMP_Microbiology_Timing_Gates.sql",
+        "sha256": "5602a6dd6bebbff0fa0aa2caec2cf76591ffbee8b195c7b35d12fdad35f9cec1"
+      },
+      {
+        "versionKey": "20260906_000",
+        "description": "20260906_000_GMP_Timing_Governance_Schema_Prerequisite_Compile_Safe",
+        "file": "Migrations/20260906_000_GMP_Timing_Governance_Schema_Prerequisite_Compile_Safe.sql",
+        "sha256": "5cdcb618f1cadc9bbe808d7c064f38a6bf35156d1037edd947e566c27a89dac3"
+      },
+      {
+        "versionKey": "20260906_000A",
+        "description": "20260906_000A_GMP_Timing_Disposition_Width_Prerequisite",
+        "file": "Migrations/20260906_000A_GMP_Timing_Disposition_Width_Prerequisite.sql",
+        "sha256": "f7e09df2a7a25cef46d54f460cc658b7ffd559b146cfc124f921cd7382378b2a"
+      },
+      {
+        "versionKey": "20260906_000B",
+        "description": "20260906_000B_GMP_Timing_Disposition_Width_Contract",
+        "file": "Migrations/20260906_000B_GMP_Timing_Disposition_Width_Contract.sql",
+        "sha256": "83dd9fe8394fbe2aceccf74629a21f0a5a5c52be8f0df04f207222ec859f6f95"
+      },
+      {
+        "versionKey": "20260906_001",
+        "description": "20260906_001_GMP_Timing_Governance_Hardening",
+        "file": "Migrations/20260906_001_GMP_Timing_Governance_Hardening.sql",
+        "sha256": "8794c450468642a32f2c59f46c5a8140549b5165b7acea32a7eaecf1619238ac"
+      },
+      {
+        "versionKey": "20260906_002",
+        "description": "20260906_002_GMP_Final_Release_And_Preflight_Hardening",
+        "file": "Migrations/20260906_002_GMP_Final_Release_And_Preflight_Hardening.sql",
+        "sha256": "77310fa63f120c33a04718e40866d573bb19b905d4de46d8d8c59841e879014e"
+      },
+      {
+        "versionKey": "20260906_002A",
+        "description": "20260906_002A_PRM_Report_Status_Contract_Repair",
+        "file": "Migrations/20260906_002A_PRM_Report_Status_Contract_Repair.sql",
+        "sha256": "5b13e3a00d7bde17539502f04de08a358878884bae5c1a96c4cf136c10df8dfd"
+      },
+      {
+        "versionKey": "20260906_003",
+        "description": "20260906_003_EM_Area_Snapshot_Schema_Repair",
+        "file": "Migrations/20260906_003_EM_Area_Snapshot_Schema_Repair.sql",
+        "sha256": "f84f0f785208ae0c6a447838308fbfb9e4ba6ed88c33d26a732cf78b88d01352",
+        "supersededBy": "20260906_004"
+      },
+      {
+        "versionKey": "20260906_004",
+        "description": "20260906_004_EM_Area_Snapshot_Compile_Safe_Repair",
+        "file": "Migrations/20260906_004_EM_Area_Snapshot_Compile_Safe_Repair.sql",
+        "sha256": "efaa4820ea748e6ff7b2eee8320a0eb39886094f7272fd2e589c9f85955ed62a"
+      },
+      {
+        "versionKey": "20260906_005",
+        "description": "20260906_005_GMP_Timing_Schema_Contract_Hardening",
+        "file": "Migrations/20260906_005_GMP_Timing_Schema_Contract_Hardening.sql",
+        "sha256": "413963812f94f4b6d93a09ffe86d555c2a2308c17929c5d8430406b59e2d3c45"
+      },
+      {
+        "versionKey": "20260906_006",
+        "description": "20260906_006_Water_Controlled_Master_Schema_Backfill",
+        "file": "Migrations/20260906_006_Water_Controlled_Master_Schema_Backfill.sql",
+        "sha256": "dfb19f7cb22d18c821a79a573840da1affd5c2c9d3d079b561e0bfebae9bbe05"
+      },
+      {
+        "versionKey": "20260906_007",
+        "description": "20260906_007_Tests_Active_Contract_Backfill",
+        "file": "Migrations/20260906_007_Tests_Active_Contract_Backfill.sql",
+        "sha256": "cd959979eb195747fece81157b46f50801df366bf922389a08fbcef669d4e04b"
+      },
+      {
+        "versionKey": "20260907_000",
+        "description": "20260907_000_Water_Controlled_Profile_Workflow",
+        "file": "Migrations/20260907_000_Water_Controlled_Profile_Workflow.sql",
+        "sha256": "67ed2fb43e36a82d779f716a653650f6baa73f7f7876c49bf2b77c359832b241"
+      },
+      {
+        "versionKey": "20260908_000",
+        "description": "20260908_000_Water_MQC_G_0018_Test_Catalog",
+        "file": "Migrations/20260908_000_Water_MQC_G_0018_Test_Catalog.sql",
+        "sha256": "3885e0a7eb66b9d1470f30647adcdccd557a96cb284bd57c608cb748ba9d5dd5"
+      },
+      {
+        "versionKey": "20260908_001",
+        "description": "20260908_001_Legacy_Certificate_Evidence_Reconciliation",
+        "file": "Migrations/20260908_001_Legacy_Certificate_Evidence_Reconciliation.sql",
+        "sha256": "0359812d1443b91e6945d11d71fdf1c72d8eaea80f4915da7ef990c523be22a0"
+      },
+      {
+        "versionKey": "20260908_002",
+        "description": "20260908_002_Legacy_Certificate_Evidence_Validation_Normalization",
+        "file": "Migrations/20260908_002_Legacy_Certificate_Evidence_Validation_Normalization.sql",
+        "sha256": "7f1148c563a71663f926c9ae71fa49268cf10e43870d62c6d548d435b36a08f9"
+      },
+      {
+        "versionKey": "20260909_000",
+        "description": "20260909_000_Legacy_Certificate_Evidence_Quality_Gate",
+        "file": "Migrations/20260909_000_Legacy_Certificate_Evidence_Quality_Gate.sql",
+        "sha256": "e84ca46c7f638be52ded364e88b226be44b3cfdcc6b10c84b4240c344ab5fb5e"
+      },
+      {
+        "versionKey": "20260909_001",
+        "description": "20260909_001_Legacy_Certificate_Reissue_Evidence_Quality",
+        "file": "Migrations/20260909_001_Legacy_Certificate_Reissue_Evidence_Quality.sql",
+        "sha256": "c212ab18677455879dcf66bf6c52e801231908de54603cbc0432441c46615ce9"
+      },
+      {
+        "versionKey": "20260910_000",
+        "description": "Review remediation: EM precision, complete-set concurrency and guarded authentication",
+        "file": "Migrations/20260910_000_Review_Result_And_Authentication_Concurrency.sql",
+        "sha256": "2fdbe5a678539957c0f9049b86b1297de674b0d7bb254d4e8904fe49fa73e0db"
+      },
+      {
+        "versionKey": "20260911_000",
+        "description": "Authentication-only compatibility backfill for secure login transition",
+        "file": "Migrations/20260911_000_Authentication_Login_Compatibility_Backfill.sql",
+        "sha256": "832ffb73859f2db064043bfe72e04744242ea5a645eec9c07ead919d558859b8"
+      },
+      {
+        "versionKey": "20260913_000",
+        "description": "20260913_000_PRM_Standard_Profile_Readiness",
+        "file": "Migrations/20260913_000_PRM_Standard_Profile_Readiness.sql",
+        "sha256": "69c57cbb007ce13ff720f49be5f639161991802c19ad99bd738f34d7449c4f04",
+        "supersededBy": "20260913_001"
+      },
+      {
+        "versionKey": "20260913_001",
+        "description": "20260913_001_PRM_Standard_Profile_Governance_Hardening",
+        "file": "Migrations/20260913_001_PRM_Standard_Profile_Governance_Hardening.sql",
+        "sha256": "ca8f01bdb22bb223586f29a17cf092fdcc03625ec29b251f078b85547958f72c"
+      },
+      {
+        "versionKey": "20260915_000",
+        "description": "User administration security hardening: mandatory personal password change and password-change evidence",
+        "file": "Migrations/20260915_000_User_Administration_Security_Hardening.sql",
+        "sha256": "b4e2c69d6846957b72fd6641c37ec7f3adeb3d14b14710f8fb3999a5b3375e26"
+      },
+      {
+        "versionKey": "20260917_000",
+        "description": "User administration write compatibility: legacy Users CreatedAt/UpdatedAt schema backfill without fabricating historical timestamps",
+        "file": "Migrations/20260917_000_User_Administration_Write_Compatibility.sql",
+        "sha256": "32ed032df23d1b14d152a14e720a5efbdf05fc24613c56ef4e94c39409309465"
+      },
+      {
+        "versionKey": "20260917_001",
+        "description": "User administration electronic-signature evidence: transactional persistence, signer binding and append-only protection",
+        "file": "Migrations/20260917_001_User_Administration_Signature_Evidence.sql",
+        "sha256": "a6143e2bdbdb56570a7bf6057249866f2e63a048a033f18b7beb2f220dcc338a"
+      },
+      {
+        "versionKey": "20260921_001",
+        "description": "Harden append-only evidence triggers to reject zero-row UPDATE/DELETE while preserving INSERT validation",
+        "file": "Migrations/20260921_001_Harden_AppendOnly_Protection_Triggers.sql",
+        "sha256": "6574df0533af5d398ef1aaa6ad93d818f08e6d9d23ca417f033a26c5692e9d56"
+      },
+      {
+        "versionKey": "20260921_002",
+        "description": "Protect PRM certificate lifecycle history as append-only evidence",
+        "file": "Migrations/20260921_002_Protect_PRM_Certificate_History.sql",
+        "sha256": "46b7a433714d65c49474b0ee89eb96995a4ac70c41a6a9f1bc3e6caf84c719e6"
+      },
+      {
+        "versionKey": "20260921_003",
+        "description": "Protect issued PRM certificate identity and document evidence while preserving controlled cancellation",
+        "file": "Migrations/20260921_003_Protect_PRM_Certificate_Issued_Evidence.sql",
+        "sha256": "9c6449e78b13117dcedddf4612571bf3ada8b3f8f48ee1d40c331cdd2e533216"
+      },
+      {
+        "versionKey": "20260930_001",
+        "description": "Signed, append-only laboratory receipt evidence for PRM samples and EM events",
+        "file": "Migrations/20260930_001_Laboratory_Receipt_Evidence.sql",
+        "sha256": "47128426eeb408105f5529dc63141f30c72a1dfc808538df5c207b5dea4cdc77"
+      },
+      {
+        "versionKey": "20261007_001",
+        "description": "Water result immutable LimitDescription schema contract",
+        "file": "Migrations/20261007_001_Water_LimitDescription_Schema_Contract.sql",
+        "sha256": "28ef9333fac8e3da114c9c5b7c9023c24c18548185f6699744657dff8736e81b"
+      },
+      {
+        "versionKey": "20261008_001",
+        "description": "Laboratory equipment master, qualification/calibration readiness and signed history foundation",
+        "file": "Migrations/20261008_001_Lab_Equipment_Foundation.sql",
+        "sha256": "90a4fa19c72b331fe7c1583f4fcf918133c7841b81857ef6eb1a39a1ad54e749"
+      },
+      {
+        "versionKey": "20261008_002",
+        "description": "Signed equipment usage traceability for Water, EM and PRM result records",
+        "file": "Migrations/20261008_002_Lab_Equipment_Usage_Traceability.sql",
+        "sha256": "6985997061267206a27ec9f1b1499eed69a147a50d15f1c34cb2857b7a6c4a7d"
+      },
+      {
+        "versionKey": "20261008_003",
+        "description": "Controlled test and method equipment-type compatibility rules",
+        "file": "Migrations/20261008_003_Equipment_Test_Compatibility.sql",
+        "sha256": "2b0cc5e4cc768bc5a58c8cfb175173788e5d78035861530a663609ebc4bc9904"
+      },
+      {
+        "versionKey": "20261008_004",
+        "description": "Controlled microbiology equipment operational-use matrix and incubator role normalization",
+        "file": "Migrations/20261008_004_Microbiology_Equipment_Operational_Uses.sql",
+        "sha256": "89c8e39c433d533c89d9af24ed0b64db0d163a5e11fbffa5ec6ad7cab32cd532"
+      },
+      {
+        "versionKey": "20261009_001",
+        "description": "Append-only Water LES execution evidence for structured pH and conductivity execution",
+        "file": "Migrations/20261009_001_Water_LES_Execution_Evidence.sql",
+        "sha256": "3c722b66e625faa0a9f5cd48ef085944fba71c25f762c203c1ea306f2176635b"
+      },
+      {
+        "versionKey": "20261009_002",
+        "description": "Append-only controlled Water equipment and test kit resource evidence",
+        "file": "Migrations/20261009_002_Water_Resources_Traceability.sql",
+        "sha256": "4f246f168f8ce835f7eb83f4d0969049b7540783c65a7c7c3f7ea235cfa7bde8"
+      },
+      {
+        "versionKey": "20261010_001",
+        "description": "Full specification content/authorship evidence, PRM investigation history, preparation concurrency and frozen media identity; authoritative Water kit execution date",
+        "file": "Migrations/20261010_001_Review_Content_And_Identity_Protection.sql",
+        "sha256": "db9aa55419e798cc0790fadeb8f49e1c2fbd0d857f9dbe6921cb8bb9f973b547"
+      },
+      {
+        "versionKey": "20261010_002",
+        "description": "Microbiology equipment activity ledger",
+        "file": "Migrations/20261010_002_Micro_Equipment_Activity_Ledger.sql",
+        "sha256": "3115438b20551dbb63562711ffe097ebadd4fa64798832df870019d3d33f9e91"
+      },
+      {
+        "versionKey": "20261010_003",
+        "description": "Water visual method evidence",
+        "file": "Migrations/20261010_003_Water_Visual_Method_Evidence.sql",
+        "sha256": "c26a61e54e130fd9ed881de0e13a4335ede70e432060e91f4c55e37200b30f35"
+      },
+      {
+        "versionKey": "20261011_001",
+        "description": "Recorded UAT lifecycle details",
+        "file": "Migrations/20261011_001_Micro_Equipment_Lifecycle_Details.sql",
+        "sha256": "ba4ed6a4eb0bfe1cecab2934ea0a89feede720a944081b9a62238fb8601ba603"
+      },
+      {
+        "versionKey": "20261011_002",
+        "description": "Micro equipment structured calibration and cleaning evidence",
+        "file": "Migrations/20261011_002_Micro_Equipment_Structured_Evidence.sql",
+        "sha256": "7312f34caabef98e4e69c9b918c8004bbfec9e386a68e5f3c0669030e91bd2bb"
+      },
+      {
+        "versionKey": "20261011_003",
+        "description": "Updated microbiology equipment scope guard",
+        "file": "Migrations/20261011_003_Micro_Equipment_Scope_Guard.sql",
+        "sha256": "13459559b18303a464d94d819c993011b3dde3485cdeee997d025f49bdee6573"
+      },
+      {
+        "versionKey": "20261014_001",
+        "description": "Controlled microbiology equipment signed stage transition",
+        "file": "Migrations/20261014_001_Micro_Equipment_Signed_Status_Guard.sql",
+        "sha256": "c2ca7d582606b610534f1b029ab903052e17207f24c7cf577e8fa600ccb1a1cd"
+      },
+      {
+        "versionKey": "20261017_001",
+        "description": "Trusted equipment signing origin and immutable signed-content integrity (no permission cutover)",
+        "file": "Migrations/20261017_001_Equipment_Signing_Integrity.sql",
+        "sha256": "42dc0045474d9c2c022eb29498d8b35a70df000869419c2ebdada61cbd91eebf"
+      }
+    ]
+  }
+}

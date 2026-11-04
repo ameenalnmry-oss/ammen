@@ -1,4 +1,4 @@
-﻿using PharmaLIMS.Services;
+using PharmaLIMS.Services;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
@@ -23,6 +23,7 @@ namespace PharmaLIMS.Infrastructure
     public sealed class SystemPreflightReport
     {
         public DateTime ExecutedAt { get; init; }
+        public string ExecutedAtDisplay => PreflightTimestamp.Format(ExecutedAt);
         public string Server { get; init; } = string.Empty;
         public string Database { get; init; } = string.Empty;
         public IReadOnlyList<SystemPreflightCheck> Checks { get; init; } = Array.Empty<SystemPreflightCheck>();
@@ -595,7 +596,7 @@ FROM (VALUES
     (N'CultureMediaLots'), (N'MediaPreparations'), (N'MediaQualifications'), (N'CultureMediaSignatures'), (N'CultureMediaPrintHistory'),
     (N'CultureMediaQualificationRequirements'), (N'MediaQualificationRequirementSnapshots'),
     (N'PRM_NumberSequences'), (N'PRM_Samples'), (N'PRM_SampleTests'),
-    (N'PRM_SpecificationTests'), (N'PRM_SpecificationSignatures'), (N'PRM_TimingMigrationHistory'), (N'PRM_TimingMigrationTestEvidence'), (N'PRM_SpecificationTimingReapprovalHistory'), (N'PRM_TimingGovernanceMigrationState'), (N'PRM_TimingQELegacyLinkCorrections'),
+    (N'PRM_SpecificationTests'), (N'PRM_SpecificationSignatures'), (N'PRM_SpecificationContentHistory'), (N'PRM_TimingMigrationHistory'), (N'PRM_TimingMigrationTestEvidence'), (N'PRM_SpecificationTimingReapprovalHistory'), (N'PRM_TimingGovernanceMigrationState'), (N'PRM_TimingQELegacyLinkCorrections'),
     (N'PRM_ElectronicSignatures'), (N'PRM_Certificates'), (N'PRM_CertificateHistory'), (N'PRM_CertificateSnapshots'),
     (N'EMTrendReviewSnapshots'),
     (N'LIMS_SchemaVersions')
@@ -1017,6 +1018,10 @@ ORDER BY r.TableName,r.ColumnName;" ).ConfigureAwait(false);
         {
             DataTable missing = await _database.ExecuteQueryAsync(@"
 DECLARE @Missing TABLE(ControlName nvarchar(256) NOT NULL);
+
+IF NOT EXISTS(SELECT 1 FROM sys.triggers WHERE parent_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory')
+    AND name=N'TRG_PRM_SpecificationContentHistory_AppendOnly' AND is_disabled=0 AND is_instead_of_trigger=1)
+    INSERT @Missing VALUES(N'TRG_PRM_SpecificationContentHistory_AppendOnly');
 
 /* Review remediation: these must be actual advancing rowversions, not binary(8). */
 INSERT @Missing(ControlName)
@@ -1869,12 +1874,22 @@ THEN 1 ELSE 0 END;").ConfigureAwait(false);
             }
             else
             {
+                if (PrmEffectiveProfileSource.Enabled)
+                {
+                    int controls = await _database.ExecuteScalarAsync<int>(PrmEffectiveProfileSource.ControlValidationSql).ConfigureAwait(false);
+                    if (Convert.ToInt32(controls, System.Globalization.CultureInfo.InvariantCulture) != 1)
+                    {
+                        Add(checks, "Master Data", "BLOCKER", "PRM supersession integrity",
+                            "Controlled UAT supersession views or append-only protections are missing or changed. No historical profile finding was suppressed.");
+                        return;
+                    }
+                }
                 DataTable unsupportedApprovedProfiles = await _database.ExecuteQueryAsync(@"
 SELECT DISTINCT
     configured.SpecificationNo,
     configured.SampleCategory,
     configured.VersionNo
-FROM dbo.PRM_SpecificationTests configured
+FROM " + PrmEffectiveProfileSource.Sql + @" configured
 WHERE configured.ApprovalStatus=N'Approved'
   AND configured.IsActive=1
   AND (configured.EffectiveDate IS NULL OR configured.EffectiveDate<=CAST(SYSDATETIME() AS date))
@@ -2619,7 +2634,15 @@ FROM
             else
                 Add(checks, "Identity", "BLOCKER", "User identity", JoinDetails(identityFindings));
 
-            DataTable legacyCredentialFindings = await _database.ExecuteQueryAsync(@"
+            string legacyCredentialQuery = AppConfig.TrustedSigningEnabled ? @"
+IF OBJECT_ID(N'dbo.EQ001_CredentialReadiness',N'V') IS NULL
+BEGIN
+    SELECT N'Missing protected credential readiness view; controlled deployment is required.' AS Details;
+    RETURN;
+END;
+EXEC(N'SELECT N''Active account pending one-time secure credential migration: '' + Username AS Details
+       FROM dbo.EQ001_CredentialReadiness
+       WHERE IsActive=1 AND CredentialInitialized=0;');" : @"
 IF OBJECT_ID(N'dbo.Users', N'U') IS NULL
 BEGIN
     SELECT N'Missing dbo.Users.' AS Details;
@@ -2634,7 +2657,8 @@ WHERE ISNULL(IsActive,1) = 1
   (
       NULLIF(LTRIM(RTRIM(PasswordHashNew)),N'') IS NULL
       OR NULLIF(LTRIM(RTRIM(PasswordSalt)),N'') IS NULL
-  );" ).ConfigureAwait(false);
+  );";
+            DataTable legacyCredentialFindings = await _database.ExecuteQueryAsync(legacyCredentialQuery).ConfigureAwait(false);
 
             if (legacyCredentialFindings.Rows.Count == 0)
             {

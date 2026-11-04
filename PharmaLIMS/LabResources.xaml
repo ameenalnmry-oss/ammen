@@ -176,6 +176,105 @@
                                  Background="#F8FAFC"
                                  ToolTip="Read-only controlled use matrix. Result-level compatibility is enforced separately where a direct one-to-one rule is approved."/>
 
+                        <Separator Margin="0,8,0,12"/>
+                        <TextBlock Text="New Equipment Activity Draft" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="Creates a draft record only. Actual equipment use must be confirmed separately." Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Activity Type" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox x:Name="CboActivityType" Height="34" Margin="0,0,8,10">
+                                    <ComboBoxItem Content="Use"/>
+                                    <ComboBoxItem Content="Incubation"/>
+                                    <ComboBoxItem Content="Calibration"/>
+                                    <ComboBoxItem Content="Periodic Verification"/>
+                                    <ComboBoxItem Content="Cleaning"/>
+                                    <ComboBoxItem Content="Sanitization"/>
+                                    <ComboBoxItem Content="Maintenance"/>
+                                    <ComboBoxItem Content="Breakdown"/>
+                                    <ComboBoxItem Content="Repair"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel><TextBlock Text="Method / SOP reference" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="TxtActivityMethod" Height="34" Margin="0,0,0,10"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <Button Content="Create Activity Draft" Style="{StaticResource PrimaryButton}"
+                                HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnCreateActivityDraft_Click"/>
+                        <TextBlock Text="Link Draft to Registered Samples / Events" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="Registered samples appear here automatically. Select one or multiple samples to document actual use of ONE equipment item. Selection alone does not confirm use." TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Activity ID" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtActivityId" Height="32" Margin="0,0,8,8"/></StackPanel>
+                            <StackPanel><TextBlock Text="Source Module" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox x:Name="CboSourceModule" Height="32" Margin="0,0,0,8" SelectionChanged="CboSourceModule_SelectionChanged">
+                                    <ComboBoxItem Content="PRM"/><ComboBoxItem Content="EM"/><ComboBoxItem Content="WATER"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="Search registered samples (by number)" Style="{StaticResource FieldLabel}"/>
+                        <DockPanel Margin="0,0,0,8">
+                            <Button Content="Refresh Samples" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Right" Click="BtnRefreshSamples_Click" Margin="8,0,0,0"/>
+                            <TextBox x:Name="TxtSampleSearch" Height="32" KeyDown="TxtSampleSearch_KeyDown"/>
+                        </DockPanel>
+                        <TextBlock Text="Registered samples (click to select/deselect multiple)" Style="{StaticResource FieldLabel}"/>
+                        <ListBox x:Name="LstAvailableSamples" Height="125" SelectionMode="Multiple" DisplayMemberPath="Label" SelectionChanged="LstAvailableSamples_SelectionChanged" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="LblAvailableSamples" Text="Select a source module to load registered samples." Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Sample / Event ID (manual fallback)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtSourceParentId" Height="32" Margin="0,0,8,8"/></StackPanel>
+                            <StackPanel><TextBlock Text="Optional Test / Plate ID (advanced)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtSourceResultId" Height="32" Margin="0,0,0,8"/></StackPanel>
+                        </UniformGrid>
+                        <Button Content="Link Selected Samples to Activity" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnLinkActivity_Click"/>
+                        <TextBlock Text="Confirm Actual Use (Use activities only)" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="Use the Activity ID above. Enter actual start and end including UTC offset, e.g. 2026-10-11T08:30:00+03:00. Requires linked sample(s) and matching performer." TextWrapping="Wrap" Foreground="#64748B" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2">
+                            <StackPanel><TextBlock Text="Actual Start (ISO 8601)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="DpActualUseStart" Height="32" Margin="0,0,8,8"/></StackPanel>
+                            <StackPanel><TextBlock Text="Actual End (ISO 8601)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="DpActualUseEnd" Height="32" Margin="0,0,0,8"/></StackPanel>
+                        </UniformGrid>
+                        <Button Content="Confirm Actual Use" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnConfirmActualUse_Click"/>
+                        <TextBlock Text="Record Non-Use Activity Execution" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="For Cleaning, Calibration, Verification, Sanitization, Maintenance and other non-Use drafts. Enter the Activity ID, actual timestamps above, and an execution description below. Submission is NOT approval or equipment release." Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <TextBlock Text="Calibration measurement (Calibration activities only)" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
+                        <UniformGrid Columns="3" Margin="0,0,0,8">
+                            <StackPanel><TextBlock Text="Reference value" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtCalibrationReference" Margin="0,0,8,0"/></StackPanel>
+                            <StackPanel><TextBlock Text="As-found value" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtCalibrationObserved" Margin="0,0,8,0"/></StackPanel>
+                            <StackPanel><TextBlock Text="Max absolute error" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtCalibrationTolerance"/></StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="Additional points (each line: reference,observed,max-error OR minimum,observed,maximum when manual normal range is selected). Use dot decimals." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,5"/>
+                        <TextBox x:Name="TxtCalibrationAdditionalPoints" Height="85" MaxLength="2500" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" Margin="0,0,0,9"/>
+                        <TextBlock Text="Manual normal range (alternative to Reference / Max error): enter Minimum, Maximum; observed value uses As-found above. Additional lines: minimum,observed,maximum." TextWrapping="Wrap" Foreground="#475569" Margin="0,0,0,5"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,8">
+                            <StackPanel><TextBlock Text="Normal Minimum" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtCalibrationMinimum" Margin="0,0,8,0"/></StackPanel>
+                            <StackPanel><TextBlock Text="Normal Maximum" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtCalibrationMaximum"/></StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="Cleaning record (Cleaning / Sanitization activities only)" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,8">
+                            <StackPanel><TextBlock Text="Cleaning agent / lot" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TxtCleaningAgent" Margin="0,0,8,0" MaxLength="90"/></StackPanel>
+                            <StackPanel><TextBlock Text="Verification outcome" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="CboCleaningOutcome"><ComboBoxItem Content="Pass"/><ComboBoxItem Content="Fail"/></ComboBox></StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="Execution details / observations / outcome" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtNonUseExecutionDetails" Height="64" MaxLength="500" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <Button Content="Submit Non-Use Execution" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Margin="0,0,0,12" Click="BtnSubmitNonUseExecution_Click"/>
+                        <TextBlock Text="Review / Approve Submitted Activity" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,7"/>
+                        <TextBlock Text="Enter Activity ID above and a signature reason. Each stage requires its own authorized user; performer cannot review or approve, and reviewer cannot approve." TextWrapping="Wrap" Foreground="#64748B" Margin="0,0,0,8"/>
+                        <TextBlock Text="Signature Reason (required)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtActivitySignatureReason" MaxLength="500" Height="34" Margin="0,0,0,8" ToolTip="Required reason for the electronic stage signature"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Button Content="Review Activity" Style="{StaticResource SecondaryButton}" Click="BtnReviewActivity_Click"/>
+                            <Button Content="Approve Activity" Style="{StaticResource PrimaryButton}" Click="BtnApproveActivity_Click"/>
+                        </StackPanel>
+                        <Separator Margin="0,8,0,12"/>
+                        <TextBlock Text="Equipment Activity History" FontSize="17" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,6"/>
+                        <TextBlock x:Name="LblActivityHistory" Text="Select an equipment record to view its activity history." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <DataGrid x:Name="GridActivityHistory" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  HeadersVisibility="Column" MinHeight="125" MaxHeight="220" Margin="0,0,0,14">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Activity ID" Binding="{Binding ActivityID}" Width="80"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding ActivityType}" Width="*"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding ActivityStatus}" Width="92"/>
+                                <DataGridTextColumn Header="Linked Samples" Binding="{Binding LinkedSamples}" Width="220"/>
+                                <DataGridTextColumn Header="Performed By" Binding="{Binding PerformedBy}" Width="110"/>
+                                <DataGridTextColumn Header="Created (UTC)" Binding="{Binding CreatedAt}" Width="130"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
                         <TextBlock Text="Notes" Style="{StaticResource FieldLabel}"/>
                         <TextBox x:Name="TxtNotes" Height="64" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,12"/>
 
@@ -185,8 +284,10 @@
                         </Border>
 
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="Save with E-Signature" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
+                            <Button x:Name="BtnSaveEquipment" Content="Save with E-Signature" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
                             <Button Content="Reload" Style="{StaticResource SecondaryButton}" Click="BtnReload_Click"/>
+                            <Button Content="Print Equipment History" Style="{StaticResource SecondaryButton}" Click="BtnPrintEquipmentHistory_Click"/>
+                            <Button Content="Print Selected Activity" Style="{StaticResource SecondaryButton}" Click="BtnPrintSelectedActivity_Click"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

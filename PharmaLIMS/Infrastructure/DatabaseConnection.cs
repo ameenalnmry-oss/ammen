@@ -13,6 +13,8 @@ namespace PharmaLIMS.Infrastructure
             _connectionString = AppConfig.ConnectionString;
         }
 
+        public DatabaseConnection(string connectionString) => _connectionString = connectionString;
+
         public SqlConnection CreateConnection()
         {
             return new SqlConnection(_connectionString);

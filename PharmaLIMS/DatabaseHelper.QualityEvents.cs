@@ -961,12 +961,15 @@ WHERE QualityEventID = @qualityEventId
             });
         }
 
-        public static void SubmitQualityEventToQA(int qualityEventId, string submittedBy)
+        public static void SubmitQualityEventToQA(int qualityEventId, string submittedBy, string expectedInvestigationVersion = null)
         {
             ExecuteInTransaction((conn, tx) =>
             {
                 EnsureQualityEventManagementAuthorizationInTransaction(
                     conn, tx, submittedBy, "submit a Quality Event to QA review");
+                if (expectedInvestigationVersion != null)
+                    QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
+                EnsureEMQualityEventEvidenceCurrentInTransaction(conn, tx, qualityEventId);
 
                 int affected = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.QualityEvents
@@ -1031,7 +1034,8 @@ WHERE QualityEventID = @qualityEventId
             string closedBy,
             string signatureMeaning,
             string signatureReason,
-            string userRole)
+            string userRole,
+            string expectedInvestigationVersion = null)
         {
             if (qualityEventId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(qualityEventId));
@@ -1055,6 +1059,9 @@ WHERE QualityEventID = @qualityEventId
                 string authorizedRole = EnsureQaClosureAuthorizationInTransaction(
                     conn, tx, closedBy, "close a Quality Event");
                 userRole = authorizedRole;
+                if (expectedInvestigationVersion != null)
+                    QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
+                EnsureEMQualityEventEvidenceCurrentInTransaction(conn, tx, qualityEventId);
 
                 int? linkedSampleId = null;
                 int? linkedEmEventId = null;
