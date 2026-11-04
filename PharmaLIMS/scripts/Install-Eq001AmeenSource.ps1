@@ -169,6 +169,7 @@ function Get-CurrentSiteSourceManifest($Plan,[string]$ProjectPath,[scriptblock]$
 
 function Invoke-GuardedSourceChanges($Changes,[string]$BackupDirectory,[string]$Commit,
     [switch]$WaterAnalysisRecord,[switch]$CurrentSiteRecord,[scriptblock]$ValidatePreserved={}) {
+    $SourceCommit=$Commit
     $backupPath=$null;$applied=New-Object 'System.Collections.Generic.List[object]'
     try {
         foreach ($change in $Changes) {
@@ -178,14 +179,14 @@ function Invoke-GuardedSourceChanges($Changes,[string]$BackupDirectory,[string]$
             } elseif (Test-Path -LiteralPath $change.Target) { throw "New source target appeared: $($change.Path)" }
         }
         & $ValidatePreserved
-        $prefix=if($CurrentSiteRecord){'source-current-site-rollback-'}elseif($WaterAnalysisRecord){'source-water-analysis-rollback-'}else{'source-rollback-'}
-        $backupPath=Join-Path $BackupDirectory ($prefix+[guid]::NewGuid().ToString()+'.json')
+        $pattern=if($CurrentSiteRecord){'source-current-site-rollback-{0}.json'}elseif($WaterAnalysisRecord){'source-water-analysis-rollback-{0}.json'}else{'source-rollback-{0}.json'}
+        $backupPath=Join-Path $BackupDirectory ($pattern -f [guid]::NewGuid())
         $rollback=@($Changes|ForEach-Object{[pscustomobject]@{Path=$_.Path;WasPresent=$_.WasPresent;Remove=$_.Remove;
             BeforeSha256=$_.BeforeSha256;InstalledSha256=$_.AfterSha256;OriginalBase64=[Convert]::ToBase64String($_.BeforeBytes)}})
         $record=if($CurrentSiteRecord){[pscustomobject]@{Schema=2;SourceCommit=$Commit;SourcePlanSha256='da7ee6ca2f2a145284306aafaf7d73e063a601be47ef0918304f10d250d04830';
             ParentSourceReceiptCommit='97b347290360d8f8f90f6d29c56029af59298b24';
             ParentSourceReceiptSha256='E71C9820185DACF70A988FD30D2F2AF6814ECBBAE9F945D6576F84FF450F81A2';Files=$rollback}}
-        elseif($WaterAnalysisRecord){[pscustomobject]@{Schema=1;SourceCommit=$Commit;Files=$rollback}}else{$rollback}
+        elseif($WaterAnalysisRecord){[pscustomobject]@{Schema=1; SourceCommit=$SourceCommit; Files=$rollback}}else{$rollback}
         $bytes=[Text.Encoding]::UTF8.GetBytes(($record|ConvertTo-Json -Depth 6))
         $backup=[IO.FileStream]::new($backupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
         try{$backup.Write($bytes,0,$bytes.Length);$backup.Flush($true)}finally{$backup.Dispose()}
