@@ -31,6 +31,8 @@ try{
  $outside=Join-Path $root 'outside';[void][IO.Directory]::CreateDirectory($outside);[IO.File]::WriteAllText((Join-Path $outside 'linked.cs'),'untouched')
  $junction=Join-Path $root 'junction';$null=New-Item -ItemType Junction -Path $junction -Target $outside
  Reject {$bad=[Eq001SiteSourceFile]::OpenQualified((Join-Path $junction 'linked.cs'),$false);$bad.Dispose()} 'Aliased parent rejected.'
+ Reject {$bad=[Eq001SiteSourceFile]::OpenQualified((Join-Path $junction 'new-linked.cs'),$true);$bad.Dispose()} 'New helper through aliased parent rejected.'
+ Assert (-not (Test-Path -LiteralPath (Join-Path $outside 'new-linked.cs'))) 'Rejected creation through alias leaves no helper.'
  [IO.Directory]::Delete($junction)
  Write-Host 'PASS native exclusive handles, readback, hardlink and parent-junction rejection.'
  $first=New-Change 'first.cs';$new=New-Change 'new.cs' $true
@@ -47,10 +49,26 @@ try{
  Reject {Apply @($drift)} 'Changed source rejected before mutation.'
  Assert ([IO.File]::ReadAllText($drift.Target) -ceq 'newer work') 'Newer source preserved.'
  $rollbackFirst=New-Change 'rollback-first.cs';$rollbackNew=New-Change 'rollback-new.cs' $true
+ $keep=Join-Path $root 'preserved.cs';[IO.File]::WriteAllText($keep,'retained')
+ $keepWitness=[pscustomobject]@{Path='preserved.cs';ExpectedRawSha256=(Get-ByteHash ([IO.File]::ReadAllBytes($keep)))}
  $script:validationCalls=0
- Reject {Apply @($rollbackFirst,$rollbackNew) $true { $script:validationCalls++;if($script:validationCalls -eq 2){throw 'Retained input changed during mutation.'} }} 'Post-write drift rolls back transaction.'
+ Reject {Apply @($rollbackFirst,$rollbackNew) $true {
+     $script:validationCalls++;if($script:validationCalls -eq 2){[IO.File]::WriteAllText($keep,'other writer newer data')}
+     Test-CurrentSitePreservedInputs @($keepWitness) $root
+ }} 'Actual retained-byte drift after source write rolls back transaction.'
  Assert ((Get-ByteHash ([IO.File]::ReadAllBytes($rollbackFirst.Target))) -eq $rollbackFirst.BeforeSha256) 'Existing source restored after post-write failure.'
  Assert (-not (Test-Path -LiteralPath $rollbackNew.Target)) 'New source removed after post-write failure.'
+ Assert ([IO.File]::ReadAllText($keep) -ceq 'other writer newer data') 'Other writer data preserved by rollback.'
+ $inventoryFirst=New-Change 'inventory-first.cs';$inventoryNew=New-Change 'inventory-new.cs' $true
+ $known=@(Get-ChildItem -LiteralPath $root -Recurse -File|ForEach-Object{$_.FullName.Substring($root.Length+1).Replace('\','/')})+@('inventory-new.cs')
+ $script:inventoryCalls=0
+ Reject {Apply @($inventoryFirst,$inventoryNew) $true {
+     $script:inventoryCalls++;if($script:inventoryCalls -eq 2){[IO.File]::WriteAllText((Join-Path $root 'ConcurrentExtra.cs'),'other writer source')}
+     Test-CurrentSiteInputInventory $root $known
+ }} 'Actual post-manifest compiler-input addition rolls back transaction.'
+ Assert ((Get-ByteHash ([IO.File]::ReadAllBytes($inventoryFirst.Target))) -eq $inventoryFirst.BeforeSha256) 'Prior bytes restored after input graph change.'
+ Assert (-not (Test-Path -LiteralPath $inventoryNew.Target)) 'New helper removed after input graph change.'
+ Assert ([IO.File]::ReadAllText((Join-Path $root 'ConcurrentExtra.cs')) -ceq 'other writer source') 'Concurrent new source preserved.'
  $partial=New-Change 'partial.cs';$blocked=New-Change 'blocked/new.cs' $true
  $folder=Split-Path -Parent $blocked.Target;$originalAcl=Get-Acl -LiteralPath $folder
  $denyAcl=Get-Acl -LiteralPath $folder;$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User

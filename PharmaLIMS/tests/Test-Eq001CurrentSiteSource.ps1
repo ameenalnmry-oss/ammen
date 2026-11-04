@@ -59,6 +59,11 @@ try{
  foreach($row in $m.Files){Assert (-not $row.Remove) 'No source deletion.';Assert ($row.SourcePath.StartsWith('PharmaLIMS/scripts/site-overlays/')) 'Inert reviewed source only.'}
  Assert ((Snapshot $f.Root) -ceq $before) 'Manifest creation has no source writes.'
  Write-Host 'PASS valid current-source manifest19/361 and unchanged files.'
+ [IO.File]::WriteAllText((Join-Path $f.Root 'AddedAfterManifest.cs'),'new unreviewed source')
+ $blocked=$false
+ try{Test-CurrentSitePreservedInputs $m.PreservedInputs $f.Root $m.KnownPaths}catch{$blocked=$true}
+ Assert $blocked 'Compiler input added after manifest must be rejected by transaction revalidation.'
+ Write-Host 'PASS post-manifest compiler-input addition rejected.'
 }finally{Remove-Item -LiteralPath $f.Root -Recurse -Force}
 Reject 'selected file drift' {param($f)[IO.File]::WriteAllText((Join-Path $f.Root 'SystemPreflight.xaml.cs'),'different')}
 Reject 'retained file drift' {param($f)[IO.File]::WriteAllText((Join-Path $f.Root 'Other/Keep0.cs'),'different')}

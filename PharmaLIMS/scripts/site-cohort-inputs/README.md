@@ -102,7 +102,8 @@ Legacy installer allowlists and the schema1 WaterAnalysis receipt remain separat
 This mode pins the complete370-input source plan SHA256, validates377 existing raw
 input/SQL-sidecar bytes and three absent helpers before mutation, and buffers exact
 candidate bytes. It rejects unlisted compiler/SQL inputs and aliased/reparse paths.
-Retained361 inputs are rechecked before and after writes. Selected source files
+Retained361 inputs and the complete unlisted compiler/SQL inventory are rechecked
+before and after writes. Selected source files
 are held exclusively, verified to be regular single-link files at their expected
 final paths and read back after writing. Failure attempts reverse restoration of
 existing raw bytes and handle-owned deletion of only newly created helpers.

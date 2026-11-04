@@ -58,6 +58,28 @@ function Get-SourceHash([byte[]]$Bytes) {
     return Get-ByteHash ([Text.Encoding]::UTF8.GetBytes($text))
 }
 
+function Test-CurrentSiteInputInventory([string]$ProjectPath,$KnownPaths) {
+    $known=@{}
+    foreach($path in $KnownPaths){
+        if($known.ContainsKey([string]$path)){throw 'Duplicate inventory path.'}
+        $null=Get-CurrentSitePath $ProjectPath $path;$known[[string]$path]=$true
+    }
+    # Walk one level at a time; reject links before recursion can follow them.
+    $pending=New-Object 'System.Collections.Generic.Queue[string]';$pending.Enqueue([IO.Path]::GetFullPath($ProjectPath))
+    $root=[IO.Path]::GetFullPath($ProjectPath).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+    while ($pending.Count) {
+        foreach ($item in Get-ChildItem -LiteralPath ($pending.Dequeue()) -Force) {
+            $relative=$item.FullName.Substring($root.Length).Replace('\','/')
+            if ($relative -match '(^|/)(bin|obj|\.git|\.vs)(/|$)' -or $relative -match '^tests(/|$)' -or
+                ($relative -match '^tools/' -and $relative -notmatch '^tools/PharmaLIMS\.TrustedSigning(?:\.Host)?(/|$)')) { continue }
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "Unreviewed reparse path: $relative" }
+            if ($item.PSIsContainer) { $pending.Enqueue($item.FullName);continue }
+            if (($item.Extension -in @('.cs','.xaml','.csproj','.props','.targets','.sql') -or
+                $item.Name -in @('global.json','NuGet.Config','nuget.config','MigrationManifest.json')) -and -not $known.ContainsKey($relative)) { throw "Unlisted source/database input: $relative" }
+        }
+    }
+}
+
 function Get-CurrentSitePath([string]$ProjectPath,[string]$RelativePath) {
     if ($RelativePath -notmatch '^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$' -or
         $RelativePath -match '(^|/)\.{1,2}(/|$)') { throw 'Unsafe current-site path.' }
@@ -74,7 +96,8 @@ function Get-CurrentSitePath([string]$ProjectPath,[string]$RelativePath) {
     return $target
 }
 
-function Test-CurrentSitePreservedInputs($Inputs,[string]$ProjectPath) {
+function Test-CurrentSitePreservedInputs($Inputs,[string]$ProjectPath,$KnownPaths=$null) {
+    if($null -ne $KnownPaths){Test-CurrentSiteInputInventory $ProjectPath $KnownPaths}
     foreach ($entry in $Inputs) {
         $target=Get-CurrentSitePath $ProjectPath $entry.Path
         if (-not (Test-Path -LiteralPath $target -PathType Leaf) -or
@@ -127,20 +150,7 @@ function Get-CurrentSiteSourceManifest($Plan,[string]$ProjectPath,[scriptblock]$
         $witness=[pscustomobject]@{Path=$path;ExpectedRawSha256=$entry.ExactSha256}
         Test-CurrentSitePreservedInputs @($witness) $ProjectPath;$retained.Add($witness)
     }
-    # Walk one level at a time; reject links before recursion can follow them.
-    $pending=New-Object 'System.Collections.Generic.Queue[string]';$pending.Enqueue([IO.Path]::GetFullPath($ProjectPath))
-    $root=[IO.Path]::GetFullPath($ProjectPath).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
-    while ($pending.Count) {
-        foreach ($item in Get-ChildItem -LiteralPath ($pending.Dequeue()) -Force) {
-            $relative=$item.FullName.Substring($root.Length).Replace('\','/')
-            if ($relative -match '(^|/)(bin|obj|\.git|\.vs)(/|$)' -or $relative -match '^tests(/|$)' -or
-                ($relative -match '^tools/' -and $relative -notmatch '^tools/PharmaLIMS\.TrustedSigning(?:\.Host)?(/|$)')) { continue }
-            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "Unreviewed reparse path: $relative" }
-            if ($item.PSIsContainer) { $pending.Enqueue($item.FullName);continue }
-            if (($item.Extension -in @('.cs','.xaml','.csproj','.props','.targets','.sql') -or
-                $item.Name -in @('global.json','NuGet.Config','nuget.config','MigrationManifest.json')) -and -not $known.ContainsKey($relative)) { throw "Unlisted source/database input: $relative" }
-        }
-    }
+    Test-CurrentSiteInputInventory $ProjectPath @($known.Keys)
     foreach ($path in $allowed) {
         if (-not $source.ContainsKey($path)) { throw 'Reviewed update is absent from input graph.' }
         $entry=$scope[$path];$inputEntry=$source[$path];$add=$path -in $adds
@@ -154,7 +164,7 @@ function Get-CurrentSiteSourceManifest($Plan,[string]$ProjectPath,[scriptblock]$
         $files.Add([pscustomobject]@{Path=$path;SourcePath=('PharmaLIMS/'+$entry.Artifact);Remove=$false;
             ExpectedRawSha256=$inputEntry.CurrentSiteRawSha256;ExpectedNormalizedSha256=$inputEntry.CurrentSiteNormalizedSha256})
     }
-    return [pscustomobject]@{OriginalProject=$ProjectPath;Files=$files.ToArray();PreservedInputs=$retained.ToArray()}
+    return [pscustomobject]@{OriginalProject=$ProjectPath;Files=$files.ToArray();PreservedInputs=$retained.ToArray();KnownPaths=@($known.Keys)}
 }
 
 function Invoke-GuardedSourceChanges($Changes,[string]$BackupDirectory,[string]$Commit,
@@ -387,7 +397,7 @@ if ($CurrentSiteOnly -and -not [Eq001SiteSourceFile].GetMethod('OpenQualified'))
 $preservedCheck={}
 if ($CurrentSiteOnly) {
     $preservedCheck={
-        Test-CurrentSitePreservedInputs $manifest.PreservedInputs $project
+        Test-CurrentSitePreservedInputs $manifest.PreservedInputs $project $manifest.KnownPaths
         if ((Get-ByteHash ([IO.File]::ReadAllBytes($parentReceiptPath))) -ine $parentReceiptHash) { throw 'Parent receipt changed during source update.' }
     }
 }
