@@ -39,12 +39,14 @@ INSERT dbo.EM_PlanSamples VALUES(1,1,1,N'E1',N'Alice');
 INSERT dbo.EM_EventPlates VALUES(1,1,N'Personnel Monitoring',N'PM-1',1,N'Glove',1,10,0,10,N'observed',10,N'OOS',1,2,5,N'CFU/plate',NULL);
 INSERT dbo.QualityEvents(QualityEventID,SourceRecordID,SampleNumber,SourceModule,DetectionSource,CurrentStatus) VALUES(1,1,N'EM-1',N'EM',N'Environmental Monitoring',N'Closed');
 INSERT dbo.QualityEventActions VALUES(1,N'Historical decision',N'Historical signed evidence',N'QA',SYSDATETIME());");
-Sql(cs,@"ALTER TABLE dbo.EM_Events ADD FinalResult nvarchar(50) NULL,WorkflowStatus nvarchar(50) NULL;
-UPDATE dbo.EM_Events SET FinalResult=N'OOS',WorkflowStatus=N'Results Entered';
-ALTER TABLE dbo.EM_PlanSamples ADD AreaID int NULL,Method nvarchar(100) NULL,IsNegativeControl bit NULL,Status nvarchar(50) NULL;
-UPDATE dbo.EM_PlanSamples SET AreaID=1,Method=N'Personnel Monitoring',IsNegativeControl=0,Status=N'Ready for Results';
-ALTER TABLE dbo.QualityEvents ADD FinalDisposition nvarchar(100) NULL,QAConclusion nvarchar(max) NULL,ClosedBy nvarchar(100) NULL,ClosedDate datetime2 NULL;
-UPDATE dbo.QualityEvents SET FinalDisposition=N'Approved',QAConclusion=N'Complete investigation',ClosedBy=N'qa',ClosedDate=SYSDATETIME() WHERE CurrentStatus=N'Closed';");
+// SQL Server compiles column references before ALTER executes. Provision each
+// extension in its own batch, then populate it in a subsequent command.
+Sql(cs,"ALTER TABLE dbo.EM_Events ADD FinalResult nvarchar(50) NULL,WorkflowStatus nvarchar(50) NULL;");
+Sql(cs,"UPDATE dbo.EM_Events SET FinalResult=N'OOS',WorkflowStatus=N'Results Entered';");
+Sql(cs,"ALTER TABLE dbo.EM_PlanSamples ADD AreaID int NULL,Method nvarchar(100) NULL,IsNegativeControl bit NULL,Status nvarchar(50) NULL;");
+Sql(cs,"UPDATE dbo.EM_PlanSamples SET AreaID=1,Method=N'Personnel Monitoring',IsNegativeControl=0,Status=N'Ready for Results';");
+Sql(cs,"ALTER TABLE dbo.QualityEvents ADD FinalDisposition nvarchar(100) NULL,QAConclusion nvarchar(max) NULL,ClosedBy nvarchar(100) NULL,ClosedDate datetime2 NULL;");
+Sql(cs,"UPDATE dbo.QualityEvents SET FinalDisposition=N'Approved',QAConclusion=N'Complete investigation',ClosedBy=N'qa',ClosedDate=SYSDATETIME() WHERE CurrentStatus=N'Closed';");
 void ApprovalGate(bool frozen=false)=>Call(frozen?"EnsureEmApprovalQualityEventGateInTransactionBeforeMergeFix":"EnsureEmApprovalQualityEventGateInTransaction",1,"EM-1");
 Call("CaptureEMInvestigationEvidenceInTransaction",1,1,"original");
 Check("actual approval gate accepts unchanged closed evidence",()=>ApprovalGate());

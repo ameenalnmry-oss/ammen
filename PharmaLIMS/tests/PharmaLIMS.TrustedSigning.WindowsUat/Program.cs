@@ -168,11 +168,14 @@ internal sealed partial class UatRun(UatSettings settings)
         {
             await Exec(settings.MasterConnectionString,$"CREATE DATABASE [{_db}]");
             _admin = new SqlConnectionStringBuilder(settings.MasterConnectionString){InitialCatalog=_db}.ConnectionString;
-            await PrepareSchema();
             _serviceLogin=Environment.MachineName+"\\"+settings.ServiceAccount;
             await Exec(settings.MasterConnectionString,$"CREATE LOGIN [{_serviceLogin}] FROM WINDOWS;CREATE LOGIN [{_clientLogin}] WITH PASSWORD='{_sqlPassword}',CHECK_POLICY=OFF;");
             const string serviceUser="PharmaLIMS_TrustedEquipmentSigner";
-            await Exec(_admin,$"CREATE USER [{serviceUser}] FOR LOGIN [{_serviceLogin}];GRANT SELECT,INSERT,UPDATE ON dbo.Users TO [{serviceUser}];GRANT INSERT ON dbo.UserAdministrationSignatures TO [{serviceUser}];GRANT INSERT ON dbo.AuditTrail TO [{serviceUser}];GRANT EXECUTE ON dbo.EQ001_CommitEquipmentSignature TO [{serviceUser}];CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.Users TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
+            // R9 bridge migrations require the dedicated Windows principal to
+            // exist before granting their narrowly scoped procedure permissions.
+            await Exec(_admin,$"CREATE USER [{serviceUser}] FOR LOGIN [{_serviceLogin}];");
+            await PrepareSchema();
+            await Exec(_admin,$"GRANT SELECT,INSERT,UPDATE ON dbo.Users TO [{serviceUser}];GRANT INSERT ON dbo.UserAdministrationSignatures TO [{serviceUser}];GRANT INSERT ON dbo.AuditTrail TO [{serviceUser}];GRANT EXECUTE ON dbo.EQ001_CommitEquipmentSignature TO [{serviceUser}];CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY INSERT,UPDATE,DELETE ON dbo.Users TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
             await PrepareActivitySchema();
             await PreparePrmSchema();
             string service = new SqlConnectionStringBuilder(_admin){IntegratedSecurity=true}.ConnectionString;

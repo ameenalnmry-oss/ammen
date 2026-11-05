@@ -19,5 +19,21 @@ WHERE NOT EXISTS(SELECT 1 FROM sys.foreign_keys fk JOIN sys.foreign_key_columns 
 WHERE fk.parent_object_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory') AND fk.referenced_object_id=OBJECT_ID(N'dbo.PRM_SpecificationSignatures') AND fk.is_disabled=0 AND fk.is_not_trusted=0
 AND COL_NAME(fc.parent_object_id,fc.parent_column_id)=N'SignatureID' AND COL_NAME(fc.referenced_object_id,fc.referenced_column_id)=N'SignatureID')
 UNION ALL SELECT N'PRM content history signature uniqueness is missing or disabled.'
-WHERE NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory') AND name=N'UX_PRM_SpecificationContentHistory_Signature' AND is_unique=1 AND is_disabled=0 AND has_filter=1);";
+WHERE NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory') AND name=N'UX_PRM_SpecificationContentHistory_Signature' AND is_unique=1 AND is_disabled=0 AND has_filter=1)
+UNION ALL SELECT N'PRM content history append-only trigger is missing, disabled, attached elsewhere or does not unconditionally reject UPDATE and DELETE.'
+WHERE NOT EXISTS
+(
+ SELECT 1 FROM sys.triggers t
+ CROSS APPLY(SELECT REPLACE(REPLACE(REPLACE(REPLACE(UPPER(ISNULL(OBJECT_DEFINITION(t.object_id),N'')),CHAR(13),N''),CHAR(10),N''),CHAR(9),N''),N' ',N'') AS Definition) normalized
+ WHERE t.object_id=OBJECT_ID(N'dbo.TRG_PRM_SpecificationContentHistory_AppendOnly',N'TR')
+ AND t.parent_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory',N'U')
+ AND t.is_disabled=0 AND t.is_not_for_replication=0
+ AND (SELECT COUNT(*) FROM sys.trigger_events ev WHERE ev.object_id=t.object_id)=2
+ AND (SELECT COUNT(*) FROM sys.trigger_events ev WHERE ev.object_id=t.object_id AND ev.type_desc IN(N'UPDATE',N'DELETE'))=2
+ /* Both controlled AFTER and INSTEAD OF variants are valid. Require their
+    complete unconditional body, not a token that could occur in a comment or IF. */
+ AND SUBSTRING(normalized.Definition,NULLIF(CHARINDEX(N'BEGIN',normalized.Definition),0),2147483647)
+ IN(N'BEGINSETNOCOUNTON;THROW56456,''PRMSPECIFICATIONCONTENTHISTORYISAPPEND-ONLYANDCANNOTBEUPDATEDORDELETED.'',1;END',
+    N'BEGINSETNOCOUNTON;THROW56456,''PRMSPECIFICATIONCONTENTHISTORYISAPPEND-ONLYANDCANNOTBEUPDATEDORDELETED.'',1;END;')
+);";
 }
