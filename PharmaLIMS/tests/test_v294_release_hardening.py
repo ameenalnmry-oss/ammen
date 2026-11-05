@@ -69,7 +69,194 @@ class V294ReleaseHardeningTests(unittest.TestCase):
         print_end = code.index("public static DataTable GetEMEventSignatures", print_start)
         print_gate = code[print_start:print_end]
         self.assertIn('"CanAccessReports"', print_gate)
-        self.assertIn("UPDLOCK, HOLDLOCK", print_gate)
+        self.assertIn("GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId)", print_gate)
+        self.assertIn("ReadEmPlateSnapshotInTransaction(conn, tx, eventId)", print_gate)
+
+    def test_em_submit_semantic_permission_maps_to_existing_users_column(self):
+        """Submitting requires current CanEnterResults; unknown permissions still fail closed."""
+        code = source("DatabaseHelper.SecurityAudit.cs")
+        start = code.index("internal static string EnsureUserPermissionInTransaction(")
+        end = code.index("internal static string EnsureQaApprovalAuthorizationInTransaction(", start)
+        guard = code[start:end]
+        self.assertIn('string.Equals(permissionColumn, "CanSubmitForReview", StringComparison.OrdinalIgnoreCase)', guard)
+        self.assertIn('? "CanEnterResults"', guard)
+        self.assertIn('!AllowedPermissionColumns.Contains(effectivePermissionColumn)', guard)
+        self.assertIn('ISNULL([{effectivePermissionColumn}], 0)', guard)
+        self.assertIn('WITH (UPDLOCK, HOLDLOCK)', guard)
+        self.assertIn('!isActive || isLocked || mustChangePassword', guard)
+        self.assertIn('(!permissionGranted && !developmentAdministrator)', guard)
+        self.assertNotIn('ISNULL([{permissionColumn}], 0)', guard)
+        submit_policy = source("DatabaseHelper.SecurityAudit.cs")
+        self.assertIn('return GetUserPermissionFlag(username, "CanEnterResults", false);', submit_policy)
+        self.assertIn('effectiveSubmittedBy, "CanSubmitForReview", "submit EM results for review"', source("DatabaseHelper.EnvironmentalMonitoring.cs"))
+
+    def test_em_approval_rechecks_frozen_result_integrity_before_signature(self):
+        source_text = source("DatabaseHelper.EnvironmentalMonitoring.cs")
+        start = source_text.index("public static void ApproveEMEvent(")
+        end = source_text.index("public static ", start + 20) if "public static " in source_text[start + 20:] else len(source_text)
+        approval = source_text[start:end]
+        gate = "EmReportEvidenceGuard.EnsureConsistent(approvalEvidence);"
+        self.assertIn("ReadEmPlateSnapshotInTransaction(conn, tx, eventId)", approval)
+        self.assertIn(gate, approval)
+        self.assertLess(approval.index("EnsureEmApprovalQualityEventGateInTransaction"), approval.index(gate))
+        self.assertLess(approval.index(gate), approval.index("UPDATE dbo.EM_Events"))
+        self.assertLess(approval.index(gate), approval.index("'EM Approval'"))
+        self.assertIn("EnsureQaApprovalAuthorizationInTransaction", approval)
+        self.assertIn("HasEmSignatureInTransaction", approval)
+        self.assertNotIn("UPDATE dbo.EM_EventPlates", approval)
+        self.assertNotIn("UPDATE dbo.EM_EventSignatures", approval)
+
+    def test_em_approval_rejects_numeric_result_unit_and_has_readonly_qa_inventory(self):
+        guard = source("Services/EmReportEvidenceGuard.cs")
+        self.assertIn("decimal.TryParse(frozenUnit,NumberStyles.Number,CultureInfo.InvariantCulture,out _)", guard)
+        self.assertIn("Frozen EM result unit is a numeric placeholder", guard)
+        inventory = source("tests/em_approved_historical_integrity_inventory.sql")
+        self.assertIn("PharmaLIMS_UAT_20261001", inventory)
+        self.assertIn("IndependentlyCalculatedValue", inventory)
+        self.assertIn("IndependentlyCalculatedInterpretation", inventory)
+        self.assertIn("NumericFrozenUnitRequiresQA", inventory)
+        self.assertIn("EvidenceReference", inventory)
+        self.assertIn("ReconciliationSignedBy", inventory)
+        statements = "\\n".join(line for line in inventory.splitlines()
+                               if not line.lstrip().startswith("--"))
+        for command in ("UPDATE DBO.", "DELETE DBO.", "INSERT DBO.",
+                        "MERGE DBO.", "ALTER TABLE DBO.", "DROP TABLE DBO."):
+            self.assertNotIn(command, statements.upper())
+        self.assertIn("SELECT EventNo,EventID,PlateID", inventory)
+
+    def test_em_report_refreshes_snapshot_after_successful_workflow_signature(self):
+        code = source("EMResultsEntry.xaml.cs")
+        start = code.index("private async Task PerformEMWorkflowActionAsync(")
+        end = code.index("private void SetWorkflowBusyState(", start)
+        action = code[start:end]
+        self.assertLess(action.index("await Task.Run(() => action(meaning, reason))"), action.index("LoadPlates(eventId);"))
+        self.assertIn("CalculateAllStatuses();", action)
+        self.assertIn("RefreshGrid();", action)
+        self.assertIn("RefreshCounters();", action)
+        self.assertIn("_loadedPlateSnapshot = null;", action)
+        self.assertIn("EM workflow signed, but evidence refresh failed.", action)
+        self.assertIn("never bypass the print-time comparison", action)
+
+    def test_em_equipment_managed_by_method_outside_plate_grids(self):
+        markup = source("EMResultsEntry.xaml")
+        code = source("EMResultsEntry.xaml.Part2.cs")
+        transaction = source("EMResultsEntry.xaml.Part3.cs")
+        self.assertIn('x:Name="BtnManageEmEquipment"', markup)
+        self.assertIn('Click="BtnManageEmEquipment_Click"', markup)
+        self.assertIn('x:Name="TxtEmEquipmentUsageSummary"', markup)
+        self.assertNotIn('SelectedValue="{Binding EquipmentID, Mode=TwoWay', markup)
+        self.assertIn("private void BtnManageEmEquipment_Click(", code)
+        self.assertIn("GroupBy(p => p.Method", code)
+        self.assertIn("plate.EquipmentID = chosen[plate.Method", code)
+        self.assertIn("IsEMResultsLockedForEditing()", code)
+        self.assertIn("EmResultCalculator.RequiresSamplingEquipment(method)", code)
+        self.assertIn("LabEquipmentUsageService.PersistAssignmentInTransaction(", transaction)
+        self.assertIn('currentEventNo', code)
+
+    def test_prm_optional_equipment_preserves_validation_and_signed_usage(self):
+        code = source("ProductionRawMaterialResults.xaml.cs") + source(
+            "ProductionRawMaterialResults.xaml.Part2.cs"
+        )
+        # The newer 19 October source records actual equipment use separately.
+        # A blank optional device must not block a microbiology result; an
+        # explicitly selected device still uses the validated signed path.
+        self.assertNotIn("HasRequiredPrmEquipmentRule(", code)
+        self.assertNotIn("Equipment / instrument is required for PRM test", code)
+        self.assertNotIn("DataRow missingEquipmentRow =", code)
+        self.assertIn("LabEquipmentUsageService.PersistAssignmentInTransaction(", code)
+        self.assertNotIn("missingRequiredEquipmentRow", code)
+        self.assertIn('conn, tx, "PRM", _selectedSampleId, testId, equipmentId,', code)
+        self.assertIn("signature.SignedBy, signerRole, signature.Meaning, signature.Reason,", code)
+        usage = source("Services/LabEquipmentUsageService.cs")
+        self.assertIn("if (equipmentId.HasValue)", usage)
+        self.assertIn("FROM dbo.LabEquipmentCompatibilityRules WITH (UPDLOCK,HOLDLOCK)", usage)
+        self.assertIn("LabEquipmentUsageHistory", usage)
+
+    def test_sample_management_separates_legacy_environment_from_live_em(self):
+        source_text = source("SampleManagement.xaml.cs")
+        self.assertIn('Content = "Legacy Environment (historical)", Tag = "Environment"', source_text)
+        self.assertIn("THEN N'LEGACY_EM' ELSE N'WATER' END AS RecordKind", source_text)
+        self.assertIn('GetSelectedRecordKind().Equals("LEGACY_EM"', source_text)
+        self.assertIn("private bool BlockLegacyEnvironmentWorkflow()", source_text)
+        for handler in ("BtnEnterResults_Click", "BtnOpenInvestigation_Click", "BtnViewIssueCoa_Click"):
+            area = source_text.split("private void " + handler, 1)[1].split("private ", 1)[0]
+            self.assertIn("if (BlockLegacyEnvironmentWorkflow())", area)
+            self.assertLess(area.index("BlockLegacyEnvironmentWorkflow()"), area.index("if (IsSelectedEMRecord())"))
+        self.assertIn('OpenWindowByTypeName("PharmaLIMS.SampleDetails"', source_text)
+
+    def test_legacy_environment_remains_read_only_through_details_and_sample_register(self):
+        code = source("SampleManagement.xaml.cs")
+        register = source("Services/SampleReceiptRegisterQuery.cs")
+        register_ui = source("SampleReceiptRegister.xaml.cs")
+        self.assertIn("private bool IsLegacyEMRow(DataRow row)", code)
+        evaluator = code.split("private void UpdateSampleStatuses()", 1)[1].split(
+            "private object TryEvaluateSampleSituation", 1
+        )[0]
+        self.assertIn("IsEMRow(row) || IsPRMRow(row) || IsLegacyEMRow(row)", evaluator)
+        self.assertLess(evaluator.index("IsLegacyEMRow(row)"),
+                        evaluator.index("TryEvaluateSampleSituation(sampleId)"))
+        view = code.split("private void BtnViewDetails_Click(", 1)[1].split(
+            "private void BtnEnterResults_Click(", 1
+        )[0]
+        self.assertIn("if (IsSelectedLegacyEnvironmentRecord())", view)
+        self.assertIn("Historical Environment (read-only)", view)
+        self.assertLess(view.index("IsSelectedLegacyEnvironmentRecord()"),
+                        view.index('OpenWindowByTypeName("PharmaLIMS.SampleDetails"'))
+        next_action = code.split("private string BuildNextAction(", 1)[1].split(
+            "private string EmptyAsAll(", 1
+        )[0]
+        self.assertIn("if (IsLegacyEMRow(row))", next_action)
+        self.assertIn("read-only. Review the original register and reconcile via QA.", next_action)
+        self.assertIn('"Legacy Environment (historical)"', register)
+        self.assertIn('"LEGACY ENVIRONMENT (HISTORICAL)" => "Environment"', register)
+        self.assertIn("THEN N'LEGACY_EM' ELSE N'WATER' END RecordKind", register)
+        self.assertIn("historical LEGACY_EM", register_ui)
+        self.assertIn('if(kind == "LEGACY_EM")', register_ui)
+        self.assertIn('if(kind is not ("PRM" or "EM"))', register_ui)
+        self.assertLess(register_ui.index('if(kind == "LEGACY_EM")'),
+                        register_ui.index('new LaboratoryReceiptDialog(kind'))
+
+    def test_sample_management_sql_search_is_paged_and_exports_are_page_labeled(self):
+        code = source("SampleManagement.xaml.cs")
+        xaml = source("SampleManagement.xaml")
+        self.assertIn("private const int SearchPageSize = 150;", code)
+        self.assertIn("FETCH NEXT @pageTake ROWS ONLY", code)
+        self.assertIn("OFFSET @pageOffset ROWS", code)
+        self.assertIn("RecordKind DESC", code)
+        self.assertIn("Value = SearchPageSize + 1", code)
+        self.assertIn("loadedTable.Rows.RemoveAt(SearchPageSize)", code)
+        self.assertIn("private async void BtnPrevPage_Click(", code)
+        self.assertIn("private async void BtnNextPage_Click(", code)
+        self.assertIn("_searchPageIndex = 0;", code)
+        self.assertIn("if (_loadingSearchPage) return;", code)
+        self.assertIn('Content="Print Page Summary"', xaml)
+        self.assertIn('Content="Print Page Details"', xaml)
+        self.assertIn('Content="Export Page CSV"', xaml)
+        self.assertIn('Click="BtnPrevPage_Click"', xaml)
+        self.assertIn('Click="BtnNextPage_Click"', xaml)
+        self.assertIn("CURRENT SEARCH PAGE ONLY", code)
+        self.assertIn("SearchPage=", code)
+        self.assertIn("Use Sample Register for the complete record.", code)
+        self.assertIn('Click="BtnSampleRegister_Click"', xaml)
+
+    def test_em_sql_reader_supports_multi_plate_parent_rowversions(self):
+        source_text = source("EMResultsEntry.xaml.Part3.cs")
+        reader = source_text.split("private static DataTable ReadEmRows(", 1)[1].split(
+            "private static EmCalculatedResult CalculateLockedPlate", 1
+        )[0]
+        self.assertIn("SqlDataAdapter(command)", reader)
+        self.assertIn("MissingSchemaAction = MissingSchemaAction.Add", reader)
+        self.assertIn("adapter.Fill(result)", reader)
+        self.assertNotIn("result.Load(reader)", reader)
+        self.assertIn('ResultSnapshotGuard.EnsureMatches(_loadedPlateSnapshot, locked', source_text)
+        self.assertIn("ResultSnapshotGuard.EnsureVisibleKeys", source_text)
+        shared_reader = source("DatabaseHelper.EmSourcePlan.cs").split(
+            "internal static DataTable ReadEmPlateSnapshotInTransaction", 1
+        )[1].split("internal static void CancelEmPlanInTransaction", 1)[0]
+        self.assertIn("new SqlDataAdapter(cmd)", shared_reader)
+        self.assertIn("MissingSchemaAction = MissingSchemaAction.Add", shared_reader)
+        self.assertIn("adapter.Fill(table)", shared_reader)
+        self.assertNotIn("table.Load(r)", shared_reader)
 
     def test_legacy_em_result_helper_cannot_regress_locked_status(self):
         code = source("DatabaseHelper.EnvironmentalMonitoring.cs")
@@ -217,7 +404,7 @@ class V294ReleaseHardeningTests(unittest.TestCase):
 
         prm_master = source("ProductionRawMaterialSamples.xaml.cs")
         self.assertIn("approval ? !DatabaseHelper.CanQaApproveResults(Login.CurrentUser)", prm_master)
-        specification_workflow = prm_master[prm_master.index("private void ChangeSpecificationState"):prm_master.index("private static string NormalizeControlledResultType")]
+        specification_workflow = prm_master[prm_master.index("private async void ChangeSpecificationState"):prm_master.index("private static string NormalizeControlledResultType")]
         self.assertIn("EnsureQaApprovalAuthorizationInTransaction", specification_workflow)
         self.assertIn('"approve a PRM specification"', specification_workflow)
 

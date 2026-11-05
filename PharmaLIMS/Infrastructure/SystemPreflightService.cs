@@ -286,6 +286,7 @@ SELECT
 
                     verificationStage = "Critical workflow columns";
                     await CheckCriticalSchemaColumnsAsync(checks).ConfigureAwait(false);
+                    await CheckReviewClosureSchemaAsync(checks).ConfigureAwait(false);
                     verificationStage = "Critical relational controls";
                     await CheckCriticalSchemaControlsAsync(checks).ConfigureAwait(false);
 
@@ -596,7 +597,7 @@ FROM (VALUES
     (N'CultureMediaLots'), (N'MediaPreparations'), (N'MediaQualifications'), (N'CultureMediaSignatures'), (N'CultureMediaPrintHistory'),
     (N'CultureMediaQualificationRequirements'), (N'MediaQualificationRequirementSnapshots'),
     (N'PRM_NumberSequences'), (N'PRM_Samples'), (N'PRM_SampleTests'),
-    (N'PRM_SpecificationTests'), (N'PRM_SpecificationSignatures'), (N'PRM_SpecificationContentHistory'), (N'PRM_TimingMigrationHistory'), (N'PRM_TimingMigrationTestEvidence'), (N'PRM_SpecificationTimingReapprovalHistory'), (N'PRM_TimingGovernanceMigrationState'), (N'PRM_TimingQELegacyLinkCorrections'),
+    (N'PRM_SpecificationTests'), (N'PRM_SpecificationSignatures'), (N'PRM_TimingMigrationHistory'), (N'PRM_TimingMigrationTestEvidence'), (N'PRM_SpecificationTimingReapprovalHistory'), (N'PRM_TimingGovernanceMigrationState'), (N'PRM_TimingQELegacyLinkCorrections'),
     (N'PRM_ElectronicSignatures'), (N'PRM_Certificates'), (N'PRM_CertificateHistory'), (N'PRM_CertificateSnapshots'),
     (N'EMTrendReviewSnapshots'),
     (N'LIMS_SchemaVersions')
@@ -921,6 +922,7 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'LabEquipmentOperationalUses',N'UseDescription'),(N'LabEquipmentOperationalUses',N'EvidenceSource'),
 (N'LabEquipmentOperationalUses',N'SortOrder'),(N'LabEquipmentOperationalUses',N'IsActive'),
 (N'LabEquipmentOperationalUses',N'CreatedBy'),(N'LabEquipmentOperationalUses',N'CreatedAt'),
+(N'WaterResultResourceEvidence',N'EvidenceID'),(N'WaterResultResourceEvidence',N'BatchID'),(N'WaterResultResourceEvidence',N'SampleID'),(N'WaterResultResourceEvidence',N'SampleTestID'),(N'WaterResultResourceEvidence',N'TestID'),(N'WaterResultResourceEvidence',N'ResourceKind'),(N'WaterResultResourceEvidence',N'EquipmentID'),(N'WaterResultResourceEvidence',N'EquipmentCodeSnapshot'),(N'WaterResultResourceEvidence',N'EquipmentNameSnapshot'),(N'WaterResultResourceEvidence',N'KitCode'),(N'WaterResultResourceEvidence',N'KitLot'),(N'WaterResultResourceEvidence',N'KitExpiry'),(N'WaterResultResourceEvidence',N'ResultSnapshot'),(N'WaterResultResourceEvidence',N'SignedBy'),(N'WaterResultResourceEvidence',N'SignedAt'),(N'WaterResultResourceEvidence',N'ExecutionDate'),
 (N'WaterResultExecutionEvidence',N'EvidenceID'),(N'WaterResultExecutionEvidence',N'SampleID'),
 (N'WaterResultExecutionEvidence',N'SampleTestID'),(N'WaterResultExecutionEvidence',N'TestID'),
 (N'WaterResultExecutionEvidence',N'ProcedureReference'),(N'WaterResultExecutionEvidence',N'MethodGuidanceSnapshot'),
@@ -931,6 +933,8 @@ INSERT @Required(TableName,ColumnName) VALUES
 (N'WaterResultExecutionEvidence',N'EquipmentTypeSnapshot'),(N'WaterResultExecutionEvidence',N'SignedBy'),
 (N'WaterResultExecutionEvidence',N'MeaningOfSignature'),(N'WaterResultExecutionEvidence',N'ActionReason'),
 (N'WaterResultExecutionEvidence',N'SignedAt'),
+(N'MediaPreparations',N'WorkflowRowVersion'),
+(N'PRM_SpecificationContentHistory',N'HistoryID'),(N'PRM_SpecificationContentHistory',N'SpecificationNo'),(N'PRM_SpecificationContentHistory',N'SampleCategory'),(N'PRM_SpecificationContentHistory',N'VersionNo'),(N'PRM_SpecificationContentHistory',N'ActionType'),(N'PRM_SpecificationContentHistory',N'OldRowsJson'),(N'PRM_SpecificationContentHistory',N'NewRowsJson'),(N'PRM_SpecificationContentHistory',N'ChangedBy'),(N'PRM_SpecificationContentHistory',N'ChangedAt'),(N'PRM_SpecificationContentHistory',N'ChangeReason'),(N'PRM_SpecificationContentHistory',N'SignatureID'),(N'PRM_SpecificationContentHistory',N'ContentHash'),
 -- EM schedule snapshots / excursions / approved limit snapshots / signatures
 (N'EM_Schedules',N'ScheduleID'),(N'EM_Schedules',N'ApprovalStatus'),(N'EM_Schedules',N'ApprovedPointCount'),
 (N'EM_SchedulePointSnapshots',N'ScheduleID'),(N'EM_SchedulePointSnapshots',N'SnapshotSequence'),
@@ -1018,10 +1022,6 @@ ORDER BY r.TableName,r.ColumnName;" ).ConfigureAwait(false);
         {
             DataTable missing = await _database.ExecuteQueryAsync(@"
 DECLARE @Missing TABLE(ControlName nvarchar(256) NOT NULL);
-
-IF NOT EXISTS(SELECT 1 FROM sys.triggers WHERE parent_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory')
-    AND name=N'TRG_PRM_SpecificationContentHistory_AppendOnly' AND is_disabled=0 AND is_instead_of_trigger=1)
-    INSERT @Missing VALUES(N'TRG_PRM_SpecificationContentHistory_AppendOnly');
 
 /* Review remediation: these must be actual advancing rowversions, not binary(8). */
 INSERT @Missing(ControlName)
@@ -1802,12 +1802,37 @@ IF NOT EXISTS
 )
     INSERT @Missing VALUES(N'Unique key on dbo.EM_GradeLimits(Id)');
 
+/* v307 append-only historical equipment-use reconciliation. */
+IF OBJECT_ID(N'dbo.LabEquipmentUsageReconciliations',N'U') IS NULL
+    INSERT @Missing VALUES(N'dbo.LabEquipmentUsageReconciliations');
+ELSE
+BEGIN
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.triggers
+        WHERE parent_id=OBJECT_ID(N'dbo.LabEquipmentUsageReconciliations')
+          AND name=N'TRG_LabEquipmentUsageReconciliations_AppendOnly_20261029'
+          AND is_disabled=0
+    )
+        INSERT @Missing VALUES(N'TRG_LabEquipmentUsageReconciliations_AppendOnly_20261029');
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id=OBJECT_ID(N'dbo.LabEquipmentUsageReconciliations')
+          AND name=N'CK_LabEquipmentUsageReconciliations_Evidence'
+          AND is_disabled=0 AND is_not_trusted=0
+    )
+        INSERT @Missing VALUES(N'CK_LabEquipmentUsageReconciliations_Evidence');
+END;
+
+
 SELECT ControlName FROM @Missing ORDER BY ControlName;" ).ConfigureAwait(false);
 
             if (missing.Rows.Count == 0)
             {
                 Add(checks, "Database Schema", "PASS", "Critical relational controls",
-                    "Quality Event immutable history plus PRM, Water, Culture Media, EM, and legacy-certificate evidence/quality controls are present, enabled, and trusted.");
+                    "Quality Event immutable history plus PRM, Water, Culture Media, EM, legacy-certificate evidence/quality controls and historical equipment-use reconciliation controls are present, enabled, and trusted.");
             }
             else
             {
@@ -2115,82 +2140,21 @@ ORDER BY CASE
                 (rows.Rows.Count > 20 ? " | Additional records omitted from this summary." : string.Empty));
         }
 
+        private async Task CheckReviewClosureSchemaAsync(List<SystemPreflightCheck> checks)
+        {
+            DataTable findings = await _database.ExecuteQueryAsync(ReviewClosureSchemaContract.Sql).ConfigureAwait(false);
+            Add(checks, "Database Schema", findings.Rows.Count == 0 ? "PASS" : "BLOCKER", "Review closure identity/content controls",
+                findings.Rows.Count == 0 ? "Referenced media identity, preparation concurrency and specification content hash controls are installed." : JoinDetails(findings));
+        }
+
         private async Task CheckEquipmentUsageTraceabilityAsync(List<SystemPreflightCheck> checks)
         {
-            DataTable findings = await _database.ExecuteQueryAsync(@"
-DECLARE @Cutover datetime2(0)=
-(
-    SELECT TOP(1) AppliedAt
-    FROM dbo.LIMS_SchemaVersions
-    WHERE VersionKey=N'20261008_002'
-    ORDER BY AppliedAt DESC
-);
-
-DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
-
-IF @Cutover IS NOT NULL
-BEGIN
-    INSERT @Findings(Details)
-    SELECT N'Water SampleTestID ' + CONVERT(nvarchar(20),st.SampleTestID) +
-           N' has a post-cutover entered result without equipment usage evidence.'
-    FROM dbo.SampleTests st
-    WHERE st.ResultEnteredDate>=@Cutover
-      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue,N''))),N'') IS NOT NULL
-      AND NOT EXISTS
-      (
-          SELECT 1 FROM dbo.LabEquipmentUsage u
-          WHERE u.Module=N'WATER' AND u.ResultRecordID=st.SampleTestID
-      );
-
-    INSERT @Findings(Details)
-    SELECT N'EM plate ' + CONVERT(nvarchar(20),p.Id) +
-           N' has a post-cutover entered result without equipment usage evidence.'
-    FROM dbo.EM_EventPlates p
-    JOIN dbo.EM_Events e ON e.Id=p.EventId
-    WHERE e.ResultsEnteredDate>=@Cutover
-      AND p.TotalCount IS NOT NULL
-      AND NOT EXISTS
-      (
-          SELECT 1 FROM dbo.LabEquipmentUsage u
-          WHERE u.Module=N'EM' AND u.ResultRecordID=p.Id
-      );
-
-    INSERT @Findings(Details)
-    SELECT N'PRM SampleTestID ' + CONVERT(nvarchar(20),st.SampleTestID) +
-           N' has a post-cutover entered result without equipment usage evidence.'
-    FROM dbo.PRM_SampleTests st
-    WHERE st.EnteredDate>=@Cutover
-      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue,N''))),N'') IS NOT NULL
-      AND NOT EXISTS
-      (
-          SELECT 1 FROM dbo.LabEquipmentUsage u
-          WHERE u.Module=N'PRM' AND u.ResultRecordID=st.SampleTestID
-      );
-END;
-
-INSERT @Findings(Details)
-SELECT N'Equipment usage ' + u.Module + N'/' + CONVERT(nvarchar(20),u.ResultRecordID) +
-       N' has no matching immutable signed usage-history evidence.'
-FROM dbo.LabEquipmentUsage u
-WHERE NOT EXISTS
-(
-    SELECT 1
-    FROM dbo.LabEquipmentUsageHistory h
-    WHERE h.Module=u.Module
-      AND h.ResultRecordID=u.ResultRecordID
-      AND h.EquipmentID=u.EquipmentID
-      AND h.ChangeType IN(N'ASSIGN',N'REASSIGN')
-      AND NULLIF(LTRIM(RTRIM(h.SignedBy)),N'') IS NOT NULL
-      AND NULLIF(LTRIM(RTRIM(h.MeaningOfSignature)),N'') IS NOT NULL
-      AND NULLIF(LTRIM(RTRIM(h.ActionReason)),N'') IS NOT NULL
-);
-
-SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
+            DataTable findings = await _database.ExecuteQueryAsync(WaterEvidencePreflightSql.EquipmentUsage).ConfigureAwait(false);
 
             if (findings.Rows.Count == 0)
             {
                 Add(checks, "Laboratory Resources", "PASS", "Equipment usage traceability",
-                    "All post-cutover Water, EM, and PRM result evidence is linked to controlled equipment usage with signed immutable history.");
+                    "Water result resource evidence and all existing equipment usage records have consistent signed history. EM/PRM equipment activities are recorded independently per actual use, not once per test.");
                 return;
             }
 
@@ -2319,64 +2283,7 @@ SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
 
         private async Task CheckWaterLesExecutionEvidenceAsync(List<SystemPreflightCheck> checks)
         {
-            DataTable findings = await _database.ExecuteQueryAsync(@"
-DECLARE @Cutover datetime2(0)=
-(
-    SELECT TOP(1) AppliedAt
-    FROM dbo.LIMS_SchemaVersions
-    WHERE VersionKey=N'20261009_001'
-    ORDER BY AppliedAt DESC
-);
-
-DECLARE @Findings TABLE(Details nvarchar(1000) NOT NULL);
-
-IF @Cutover IS NOT NULL
-BEGIN
-    INSERT @Findings(Details)
-    SELECT N'Water SampleTestID ' + CONVERT(nvarchar(20),st.SampleTestID) +
-           N' (' + ISNULL(st.TestNameSnapshot,N'Unknown test') +
-           N') has a post-LES-cutover result without signed execution evidence.'
-    FROM dbo.SampleTests st
-    WHERE st.TestID IN(2,3)
-      AND st.ResultEnteredDate>=@Cutover
-      AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue,N''))),N'') IS NOT NULL
-      AND NOT EXISTS
-      (
-          SELECT 1
-          FROM dbo.WaterResultExecutionEvidence e
-          WHERE e.SampleTestID=st.SampleTestID
-            AND e.SampleID=st.SampleID
-            AND e.TestID=st.TestID
-            AND NULLIF(LTRIM(RTRIM(e.ProcedureReference)),N'') IS NOT NULL
-            AND NULLIF(LTRIM(RTRIM(e.VerificationReference)),N'') IS NOT NULL
-            AND e.VerificationConfirmed=1
-            AND NULLIF(LTRIM(RTRIM(e.SignedBy)),N'') IS NOT NULL
-            AND NULLIF(LTRIM(RTRIM(e.MeaningOfSignature)),N'') IS NOT NULL
-            AND NULLIF(LTRIM(RTRIM(e.ActionReason)),N'') IS NOT NULL
-      );
-
-    INSERT @Findings(Details)
-    SELECT N'Conductivity LES evidence ' + CONVERT(nvarchar(20),e.EvidenceID) +
-           N' has sample temperature outside 25 C +/- 1 C or no temperature.'
-    FROM dbo.WaterResultExecutionEvidence e
-    WHERE e.TestID=3
-      AND (e.SampleTemperatureC IS NULL OR e.SampleTemperatureC<24 OR e.SampleTemperatureC>26);
-
-    INSERT @Findings(Details)
-    SELECT N'Water LES evidence ' + CONVERT(nvarchar(20),e.EvidenceID) +
-           N' is not tied to the same controlled equipment assignment as the result.'
-    FROM dbo.WaterResultExecutionEvidence e
-    WHERE NOT EXISTS
-    (
-        SELECT 1
-        FROM dbo.LabEquipmentUsage u
-        WHERE u.Module=N'WATER'
-          AND u.ResultRecordID=e.SampleTestID
-          AND u.EquipmentID=e.EquipmentID
-    );
-END;
-
-SELECT Details FROM @Findings ORDER BY Details;").ConfigureAwait(false);
+            DataTable findings = await _database.ExecuteQueryAsync(WaterEvidencePreflightSql.Les).ConfigureAwait(false);
 
             if (findings.Rows.Count == 0)
             {
@@ -2539,6 +2446,11 @@ END").ConfigureAwait(false);
                         packageChecksumMismatches.Add(versionKey);
                 }
 
+                string databaseScope = migration.TryGetProperty("databaseScope", out JsonElement scopeElement)
+                    ? scopeElement.GetString() ?? "Primary"
+                    : "Primary";
+                if (databaseScope.Equals("ActivitySigning", StringComparison.OrdinalIgnoreCase))
+                    continue;
                 if (!recorded.TryGetValue(versionKey, out string? actualHash))
                 {
                     string supersededBy = migration.TryGetProperty("supersededBy", out JsonElement supersededElement)
@@ -2590,7 +2502,7 @@ END").ConfigureAwait(false);
             else
             {
                 Add(checks, "Deployment", "PASS", "Migration checksums",
-                    "Installed migration SQL bytes, packaged manifest hashes, and recorded database ledger checksums agree.");
+                    "Installed migration SQL bytes, packaged manifest hashes, and applicable database ledger checksums agree.");
             }
 
             if (missingKeys.Count > 0)
@@ -2600,7 +2512,7 @@ END").ConfigureAwait(false);
             }
             else
             {
-                Add(checks, "Deployment", "PASS", "Applied migrations", "All manifest migrations are recorded in the database ledger.");
+                Add(checks, "Deployment", "PASS", "Applied migrations", "All migrations applicable to the primary application database are recorded in the database ledger.");
             }
         }
 
@@ -2634,6 +2546,9 @@ FROM
             else
                 Add(checks, "Identity", "BLOCKER", "User identity", JoinDetails(identityFindings));
 
+            bool windowsRuntime = !AppConfig.TrustedSigningEnabled &&
+                await WindowsSigningUatRuntime.IsEnabledAsync(_database).ConfigureAwait(false);
+            // The isolated signing role can inspect readiness flags, never other accounts' verifiers.
             string legacyCredentialQuery = AppConfig.TrustedSigningEnabled ? @"
 IF OBJECT_ID(N'dbo.EQ001_CredentialReadiness',N'V') IS NULL
 BEGIN
@@ -2642,7 +2557,9 @@ BEGIN
 END;
 EXEC(N'SELECT N''Active account pending one-time secure credential migration: '' + Username AS Details
        FROM dbo.EQ001_CredentialReadiness
-       WHERE IsActive=1 AND CredentialInitialized=0;');" : @"
+       WHERE IsActive=1 AND CredentialInitialized=0;');" : windowsRuntime ? @"
+SELECT N'Active account pending one-time secure credential migration: ' + Username AS Details
+FROM dbo.MicroEquipmentSignerEligibility WHERE IsActive=1 AND CredentialInitialized=0;" : @"
 IF OBJECT_ID(N'dbo.Users', N'U') IS NULL
 BEGIN
     SELECT N'Missing dbo.Users.' AS Details;

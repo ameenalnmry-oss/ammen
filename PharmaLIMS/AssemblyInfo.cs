@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 
@@ -18,6 +18,6 @@ using System.Windows;
     ResourceDictionaryLocation.SourceAssembly
 )]
 
-[assembly: AssemblyVersion("2026.10.6.303")]
-[assembly: AssemblyFileVersion("2026.10.6.303")]
-[assembly: AssemblyInformationalVersion("2026.10.6.303")]
+[assembly: AssemblyVersion("2026.10.19.309")]
+[assembly: AssemblyFileVersion("2026.10.19.309")]
+[assembly: AssemblyInformationalVersion("2026.10.19.309")]

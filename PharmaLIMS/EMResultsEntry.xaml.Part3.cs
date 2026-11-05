@@ -11,25 +11,31 @@ namespace PharmaLIMS
 {
     public partial class EMResultsEntry
     {
-        private static string PlateSnapshotSql(bool forUpdate)
+        private void CommitEmResultGridEdits()
         {
-            string hint = forUpdate ? " WITH (UPDLOCK, HOLDLOCK)" : string.Empty;
-            return @"
-SELECT P.Id, P.EventId, P.Method, P.PlateCode, P.SequenceNo, P.TotalCount,
-       P.ColoniesObserved, P.ResultCFU, P.Status, P.FungalCount, P.CorrectedCount,
-       P.ResultRowVersion, P.ResultCalculationVersion,
-       E.ResultRowVersion AS EventRowVersion, E.WorkflowStatus, E.FinalResult,
-       EVID.AlertLimitSnapshot, EVID.ActionLimitSnapshot,
-       EVID.ResultUnitSnapshot, EVID.AirVolumeLitersSnapshot,
-       EVID.NativeSnapshotComplete, EVID.ReconciliationID, EVID.EvidenceSource,
-       EVID.EvidenceComplete, A.Grade
-FROM dbo.EM_EventPlates P" + hint + @"
-INNER JOIN dbo.EM_Events E" + hint + @" ON P.EventId=E.Id
-INNER JOIN dbo.EM_Areas A ON E.AreaId=A.Id
-" + EmLimitEvidenceSql.Joins(forUpdate) + @"
-WHERE P.EventId=@eventId
-ORDER BY P.Id;";
+            foreach (var grid in new[] { dgActiveAirPlates, dgSettlePlates })
+                if (!grid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true) || !grid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true))
+                    throw new InvalidOperationException("Correct the invalid EM cell before this operation.");
         }
+        private static void EnsureEmVisibleEvidenceSaved(DataTable loaded, DataTable locked, int eventId,
+            IEnumerable<(int PlateId, int? Count, string Remarks)> visible, IReadOnlyDictionary<int, int?> equipment)
+        {
+            EmQualityEventEvidenceGuard.EnsureSaved(loaded, locked, eventId, visible);
+            EmQualityEventEvidenceGuard.EnsureEquipmentSaved(locked, equipment);
+        }
+
+        private DataTable CaptureEmWorkflowEvidence(int eventId)
+        {
+            CommitEmResultGridEdits();
+            DataTable original = _loadedPlateSnapshot?.Copy()
+                ?? throw new InvalidOperationException("Reload the EM event before signing its review or approval.");
+            var visible = plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)).ToArray();
+            var equipment = plateItems.ToDictionary(item => item.PlateId, item => item.EquipmentID);
+            EnsureEmVisibleEvidenceSaved(original, original, eventId, visible, equipment);
+            return original;
+        }
+
+        private static string PlateSnapshotSql(bool forUpdate) => DatabaseHelper.GetEmPlateSnapshotSql(forUpdate);
 
         private static DataTable ReadEmRows(
             SqlConnection connection, SqlTransaction transaction, string sql, params SqlParameter[] parameters)
@@ -37,9 +43,17 @@ ORDER BY P.Id;";
             using SqlCommand command = new SqlCommand(sql, connection, transaction);
             command.CommandTimeout = AppConfig.CommandTimeoutSeconds;
             command.Parameters.AddRange(parameters);
-            using SqlDataReader reader = command.ExecuteReader();
+            // The plate snapshot repeats the parent EventRowVersion for every
+            // plate. DataTable.Load infers schema uniqueness from joined SQL
+            // metadata and fails for multi-plate events. Fill with Add (not
+            // AddWithKey) to retain every row while allowing the explicit
+            // ResultSnapshotGuard identity and concurrency checks to run.
             DataTable result = new DataTable();
-            result.Load(reader);
+            using SqlDataAdapter adapter = new SqlDataAdapter(command)
+            {
+                MissingSchemaAction = MissingSchemaAction.Add
+            };
+            adapter.Fill(result);
             return result;
         }
 
@@ -104,7 +118,8 @@ ORDER BY P.Id;";
             DatabaseHelper.EnsureUserPermissionInTransaction(
                 connection, transaction, signature.SignedBy, "CanAccessEM", "access EM results");
 
-            DatabaseHelper.EnsureEMParentPlanActiveInTransaction(connection, transaction, currentEventId);
+            DatabaseHelper.EnsureEmSourcePlanInTransaction(connection, transaction, currentEventId, AppConfig.IsProduction);
+
             DataTable parent = ReadEmRows(connection, transaction, @"
 SELECT Id, WorkflowStatus, FinalResult, ResultRowVersion
 FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
@@ -122,11 +137,6 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
             ResultSnapshotGuard.EnsureVisibleKeys(plateItems.Select(item => item.PlateId), locked, "Id");
             Dictionary<int, DataRow> rows = locked.Rows.Cast<DataRow>().ToDictionary(row => Convert.ToInt32(row["Id"]));
 
-            // Instrument traceability can change even when the count/remarks are unchanged.
-            // Capture before assignment persistence; the fingerprint includes retained equipment history.
-            string evidenceBeforeSave = DatabaseHelper.GetEMInvestigationFingerprintInTransaction(
-                connection, transaction, currentEventId);
-            bool evidenceChanged = false;
             foreach (EMPlateResultItem item in plateItems.OrderBy(item => item.PlateId))
             {
                 DataRow source = rows[item.PlateId];
@@ -139,8 +149,10 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                 object newValue = (object)calculated.Value ?? DBNull.Value;
                 object newRemarks = string.IsNullOrWhiteSpace(item.Remarks) ? DBNull.Value : item.Remarks.Trim();
 
-                if (item.TotalCount.HasValue && !item.EquipmentID.HasValue)
-                    throw new InvalidOperationException("Equipment / instrument is required for plate " + source["PlateCode"] + ".");
+                if (item.TotalCount.HasValue &&
+                    EmResultCalculator.RequiresSamplingEquipment(item.Method) &&
+                    !item.EquipmentID.HasValue)
+                    throw new InvalidOperationException("Controlled sampling instrument is required for plate " + source["PlateCode"] + ".");
 
                 if (item.TotalCount.HasValue)
                 {
@@ -157,7 +169,6 @@ FROM dbo.EM_Events WITH (UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                     source["ResultCalculationVersion"] != DBNull.Value &&
                     Convert.ToInt16(source["ResultCalculationVersion"]) == EmResultCalculator.CalculationVersion;
                 if (unchanged) continue;
-                evidenceChanged = true;
 
                 // OUTPUT INTO supports tables with enabled triggers; the deleted
                 // values are the rows actually replaced, not pre-transaction reads.
@@ -199,12 +210,6 @@ SELECT OldValue,NewValue FROM @Changes;",
                     Convert.ToString(delta.Rows[0]["NewValue"]) + evidence,
                     signature.Reason, signature.SignedBy, "ResultCFU", null, currentEventNo, "EM");
             }
-
-            if (evidenceChanged || !string.Equals(evidenceBeforeSave,
-                DatabaseHelper.GetEMInvestigationFingerprintInTransaction(connection, transaction, currentEventId),
-                StringComparison.Ordinal))
-                DatabaseHelper.InvalidateEMInvestigationEvidenceInTransaction(
-                    connection, transaction, currentEventId, currentEventNo, signature.SignedBy);
 
             // Derive the event summary from the authoritative complete post-write set.
             DataTable saved = ReadEmRows(connection, transaction, PlateSnapshotSql(true),

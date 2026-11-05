@@ -225,15 +225,15 @@
 
                     <Button Content="Sample Register"
                             Height="34" Margin="0,0,0,7" Click="BtnSampleRegister_Click" />
-                    <Button Content="Print Summary"
+                    <Button Content="Print Page Summary"
                             Height="34"
                             Margin="0,0,0,7"
                             Click="BtnPrintSummary_Click" />
-                    <Button Content="Print Details"
+                    <Button Content="Print Page Details"
                             Height="34"
                             Margin="0,0,0,7"
                             Click="BtnPrintDetails_Click" />
-                    <Button Content="Export CSV"
+                    <Button Content="Export Page CSV"
                             Height="34"
                             Margin="0,0,0,14"
                             Click="BtnExportCsv_Click" />
@@ -263,14 +263,20 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="lblStatus"
                            Grid.Column="0"
                            Text="Ready"
                            VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,12,0">
+                    <Button x:Name="btnPrevPage" Content="Previous" Click="BtnPrevPage_Click" Width="74" IsEnabled="False" />
+                    <TextBlock x:Name="lblPaging" Text="Page 1" Margin="10,0" VerticalAlignment="Center" />
+                    <Button x:Name="btnNextPage" Content="Next" Click="BtnNextPage_Click" Width="56" IsEnabled="False" />
+                </StackPanel>
                 <TextBlock x:Name="lblCounts"
-                           Grid.Column="1"
-                           Text="Samples: 0"
+                           Grid.Column="2"
+                           Text="Samples on page: 0"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center" />
             </Grid>

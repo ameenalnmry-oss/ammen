@@ -1,4 +1,4 @@
-﻿<Window x:Class="PharmaLIMS.MainWindow"
+<Window x:Class="PharmaLIMS.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="PharmaLIMS - Integrated Pharmaceutical Laboratory Platform"
@@ -141,6 +141,10 @@
                             <Border Width="30" Height="30" CornerRadius="7" Background="#1E5FA8"><TextBlock Text="+" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="Register Sample" FontWeight="SemiBold"/><TextBlock Text="Water or EM event" FontSize="10" Foreground="#8FB0C3"/></StackPanel>
                         </Grid>
+                    </Button>
+
+                    <Button x:Name="BtnControlledCoaCancellation" Style="{StaticResource NavButton}" Click="BtnControlledCoaCancellation_Click" Visibility="Collapsed">
+                        <TextBlock Text="Cancel COA (Controlled)" FontWeight="SemiBold"/>
                     </Button>
 
                     <Button x:Name="BtnResultsEntry" Style="{StaticResource NavButton}" Click="BtnResultsEntry_Click">

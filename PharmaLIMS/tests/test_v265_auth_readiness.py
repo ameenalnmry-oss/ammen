@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -38,11 +38,11 @@ class V265AuthenticationReadinessTests(unittest.TestCase):
     def test_startup_runs_only_authentication_compatibility_before_enabling_login(self):
         app = source("App.xaml.cs")
         self.assertIn("AuthenticationLoginCompatibilityMigrationKey", app)
-        self.assertIn("ApplyControlledMigrationAsync", app)
+        self.assertIn("VerifyControlledMigrationAsync", app)
         self.assertIn("SetStartupBusy(true", app)
         self.assertIn("SetStartupBusy(false", app)
-        self.assertLess(app.index("SetStartupBusy(true"), app.index("ApplyControlledMigrationAsync"))
-        self.assertLess(app.index("ApplyControlledMigrationAsync"), app.index("SetStartupBusy(false"))
+        self.assertLess(app.index("SetStartupBusy(true"), app.index("VerifyControlledMigrationAsync"))
+        self.assertLess(app.index("VerifyControlledMigrationAsync"), app.index("SetStartupBusy(false"))
         startup = app.split("protected override async void OnStartup", 1)[1].split("private static string GetStartupErrorMessage", 1)[0]
         self.assertNotIn("ApplyRequiredUpdatesAsync", startup)
 

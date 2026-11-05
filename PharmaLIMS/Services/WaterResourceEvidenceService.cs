@@ -145,8 +145,14 @@ WHERE b.rn=1 ORDER BY e.EvidenceID;",
                 if (!primaryId.HasValue)
                     throw new InvalidOperationException("An approved instrument or controlled test kit is required.");
                 var compatible = WaterTestResourcePolicy.FilterEquipment(name, available);
-                if (!compatible.Any(e => e.IsAvailable && e.EquipmentID == primaryId.Value))
-                    throw new InvalidOperationException("Primary instrument is unavailable or incompatible.");
+                var selected = available.FirstOrDefault(e => e.EquipmentID == primaryId.Value);
+                if (selected is null)
+                    throw new InvalidOperationException("Selected primary instrument is no longer registered. Refresh equipment and select a valid instrument.");
+                if (!compatible.Any(e => e.EquipmentID == primaryId.Value))
+                    throw new InvalidOperationException("Primary instrument " + selected.EquipmentCode + " is incompatible with " + name + ".");
+                if (!selected.IsAvailable)
+                    throw new InvalidOperationException("Primary instrument " + selected.EquipmentCode + " is blocked: " +
+                        selected.ReadinessLabel + ". Equipment calibration/qualification status must be reconciled through the controlled equipment record before saving results.");
             }
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var code in extras)

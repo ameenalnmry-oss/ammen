@@ -53,27 +53,6 @@ namespace PharmaLIMS
                 CheckLinkedDeviation();
             }
 
-            if (currentQualityEventId > 0)
-            {
-                bool currentEvidence = false;
-                try
-                {
-                    DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
-                    {
-                        DatabaseHelper.EnsureEMParentPlanActiveInTransaction(connection, transaction, currentEventId);
-                        currentEvidence = DatabaseHelper.HasCurrentEMInvestigationEvidenceInTransaction(
-                            connection, transaction, currentEventId, currentQualityEventId);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(UserFacingError.SafeMessage(ex, "EM investigation validation"),
-                        "Quality Event", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                if (!currentEvidence) currentQualityEventId = 0;
-            }
-
             if (currentQualityEventId <= 0)
             {
                 if (!CreateEMQualityEventFromCurrentResults())
@@ -139,7 +118,7 @@ namespace PharmaLIMS
                 {
                     DatabaseHelper.EnsureUserPermissionInTransaction(conn, tx, currentUser, "CanEnterResults", "create an EM Quality Event");
                     DatabaseHelper.EnsureUserPermissionInTransaction(conn, tx, currentUser, "CanAccessEM", "access EM evidence");
-                    DatabaseHelper.EnsureEMParentPlanActiveInTransaction(conn, tx, currentEventId);
+                    DatabaseHelper.EnsureEmSourcePlanInTransaction(conn, tx, currentEventId, AppConfig.IsProduction);
                     DataTable parent = ReadEmRows(conn, tx, @"SELECT Id, EventNo FROM dbo.EM_Events WITH(UPDLOCK,HOLDLOCK) WHERE Id=@eventId;",
                         new SqlParameter("@eventId", currentEventId));
                     if (parent.Rows.Count != 1) throw new DBConcurrencyException("The EM event no longer exists. Reload before creating its investigation.");
@@ -149,19 +128,17 @@ namespace PharmaLIMS
                     EmQualityEventEvidenceGuard.EnsureSaved(_loadedPlateSnapshot, locked, currentEventId,
                         plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)));
                     List<EMPlateResultItem> savedEvidence = BuildSavedQualityEventEvidence(locked);
+                    if (!savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase) || item.Status.Equals("Alert", StringComparison.OrdinalIgnoreCase)))
+                        throw new InvalidOperationException("No saved, assessable EM excursion exists. No Quality Event was committed.");
                     DataTable existing = FindLinkedQualityEvent(conn, tx);
-                    bool hasExcursion = savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase) || item.Status.Equals("Alert", StringComparison.OrdinalIgnoreCase));
-                    if (!hasExcursion && existing.Rows.Count == 0)
-                        throw new InvalidOperationException("No saved EM excursion or earlier investigation requires assessment.");
-                    if (existing.Rows.Count > 0 && DatabaseHelper.HasCurrentEMInvestigationEvidenceInTransaction(
-                        conn, tx, currentEventId, Convert.ToInt32(existing.Rows[0]["QualityEventId"], CultureInfo.InvariantCulture)))
+                    if (existing.Rows.Count > 0)
                     {
                         createdQualityEventId = Convert.ToInt32(existing.Rows[0]["QualityEventId"], CultureInfo.InvariantCulture);
                         createdQualityEventNo = Convert.ToString(existing.Rows[0]["QualityEventNo"], CultureInfo.InvariantCulture) ?? string.Empty;
                         return;
                     }
                     bool hasOos = savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase));
-                    string eventType = hasOos ? "OOS" : hasExcursion ? "Alert" : "Result Amendment";
+                    string eventType = hasOos ? "OOS" : "Alert";
                     string severity = hasOos ? "Major" : "Minor";
                     string profile = GetCurrentEMInvestigationProfile(savedEvidence);
                     string eventNumber = GenerateEMQualityEventNumber();
@@ -229,8 +206,6 @@ namespace PharmaLIMS
                     if (affectedResultCount <= 0)
                         throw new InvalidOperationException("No EM ALERT/ACTION/OOS result was linked to the Quality Event. The Quality Event was not committed.");
 
-                    DatabaseHelper.CaptureEMInvestigationEvidenceInTransaction(
-                        conn, tx, currentEventId, createdQualityEventId, currentUser);
                     InsertEMQualityEventAction(
                         createdQualityEventId,
                         "System Opened",
@@ -323,6 +298,7 @@ namespace PharmaLIMS
         private string BuildEMQualityEventDescription(string eventType, string profile, IEnumerable<EMPlateResultItem> evidence)
         {
             List<string> affected = evidence
+                .Where(p => string.Equals(p.Status, "OOS", StringComparison.OrdinalIgnoreCase) || string.Equals(p.Status, "Alert", StringComparison.OrdinalIgnoreCase))
                 .Select(p => p.PlateCode + " (" + p.Method + ": " + FirstNonEmpty(p.ResultCFU, p.TotalCount?.ToString(CultureInfo.InvariantCulture)) + " " + GetReportUnitDisplay(p) + ", " + p.Status + ")")
                 .ToList();
 
@@ -341,6 +317,10 @@ namespace PharmaLIMS
             int inserted = 0;
             foreach (EMPlateResultItem item in evidence)
             {
+                if (!string.Equals(item.Status, "OOS", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(item.Status, "Alert", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 List<string> columns = new List<string>();
                 List<string> values = new List<string>();
                 List<SqlParameter> pars = new List<SqlParameter>();
@@ -450,8 +430,8 @@ namespace PharmaLIMS
                     SELECT TOP 50
                         E.EventNo,
                         E.EventDate,
-                        A.AreaCode,
-                        A.Grade,
+                        COALESCE(NULLIF(E.AreaCodeSnapshot,N''),A.AreaCode) AS AreaCode,
+                        COALESCE(NULLIF(E.GradeSnapshot,N''),A.Grade) AS Grade,
                         COALESCE(NULLIF(LTRIM(RTRIM(E.WorkflowStatus)), ''), 'Pending') AS WorkflowStatus,
                         COALESCE(NULLIF(LTRIM(RTRIM(E.FinalResult)), ''), 'Pending') AS ResultStatus,
                         ISNULL(P.PlanNo,N'') AS PlanNo
@@ -603,10 +583,12 @@ namespace PharmaLIMS
                             (SELECT TOP 1 S.NegativeControlResult FROM EM_PlanSamples S WHERE S.PlanID=E.PlanID AND S.IsNegativeControl=1 ORDER BY S.PlanSampleID)) AS NegativeControlResult,
                         ISNULL(P.PlanNo,N'') AS PlanNo,
 
-                        A.AreaCode,
-                        A.AreaName,
-                        A.AreaGroup,
-                        A.Grade
+                        COALESCE(NULLIF(E.AreaCodeSnapshot,N''),A.AreaCode) AS AreaCode,
+                        COALESCE(NULLIF(E.AreaNameSnapshot,N''),A.AreaName) AS AreaName,
+                        CASE WHEN NULLIF(E.AreaCodeSnapshot,N'') IS NOT NULL AND NULLIF(E.AreaNameSnapshot,N'') IS NOT NULL AND NULLIF(E.GradeSnapshot,N'') IS NOT NULL
+                          THEN COALESCE(NULLIF(E.AreaSnapshotSource,N''),N'Frozen identity; source not recorded')
+                          ELSE N'Legacy current-area fallback (historical identity unverified)' END AS AreaContextSource,
+                        COALESCE(NULLIF(E.GradeSnapshot,N''),A.Grade) AS Grade
                     FROM EM_Events E
                     INNER JOIN EM_Areas A ON E.AreaId = A.Id
                     LEFT JOIN EM_Plans P ON P.PlanID=E.PlanID
@@ -641,7 +623,8 @@ namespace PharmaLIMS
                 lblEventNo.Text = currentEventNo;
                 lblPlanNo.Text = string.IsNullOrWhiteSpace(currentPlanNo) ? "N/A" : currentPlanNo;
                 lblEventDate.Text = row.GetSafeDateTime("EventDate")?.ToString("yyyy-MM-dd") ?? "";
-                lblArea.Text = $"{row.GetSafeString("AreaCode")} - {row.GetSafeString("AreaName")} - {row.GetSafeString("AreaGroup")}";
+                lblArea.Text = $"{row.GetSafeString("AreaCode")} - {row.GetSafeString("AreaName")}";
+                currentAreaContextSource = row.GetSafeString("AreaContextSource");
                 lblGrade.Text = row.GetSafeString("Grade");
                 lblMediaUsed.Text = row.GetSafeString("MediaUsed");
                 lblMediaLotNo.Text = row.GetSafeString("MediaLotNo");
@@ -711,8 +694,7 @@ namespace PharmaLIMS
 
             DataTable dt = DatabaseHelper.ExecuteQuery(platesQuery, pars);
             ReloadAvailableEquipmentChoices();
-            Dictionary<int, int?> equipmentAssignments =
-                LabEquipmentUsageService.LoadCurrentAssignments(_equipmentDatabase, "EM", eventId);
+
 
             foreach (DataRow row in dt.Rows)
             {
@@ -752,9 +734,7 @@ namespace PharmaLIMS
                     HasLimitSnapshot = hasAlertSnapshot && hasActionSnapshot && !string.IsNullOrWhiteSpace(frozenUnit) && hasAirVolumeSnapshot,
                     LimitReconciliationId = row["ReconciliationID"] == DBNull.Value ? null : row.GetSafeInt("ReconciliationID"),
                     LimitEvidenceSource = row.GetSafeString("EvidenceSource"),
-                    EquipmentID = equipmentAssignments.TryGetValue(row.GetSafeInt("Id"), out int? assignedEquipment)
-                        ? assignedEquipment
-                        : null,
+                    EquipmentID = row["EquipmentID"] == DBNull.Value ? null : row.GetSafeInt("EquipmentID"),
                     TotalCount = EmResultCalculator.ReadStoredCount(row["TotalCount"]),
                     AirVolumeLiters = effectiveAirVolume,
                     ResultCFU = row.GetSafeString("ResultCFU"),
@@ -782,12 +762,171 @@ namespace PharmaLIMS
 
             _loadedPlateSnapshot = dt.Copy();
             _loadedPlateSnapshot.AcceptChanges();
+            UpdateEmEquipmentSummary();
 
             if (plateItems.Count == 0)
             {
                 MessageBox.Show("No plates found for this EM event.", "No Plates",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
+        }
+
+        private void UpdateEmEquipmentSummary()
+        {
+            if (TxtEmEquipmentUsageSummary == null) return;
+            if (plateItems.Count == 0)
+            {
+                TxtEmEquipmentUsageSummary.Text = "No EM plate equipment has been loaded.";
+                return;
+            }
+
+            var descriptions = plateItems
+                .GroupBy(item => item.Method ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .Select(group =>
+                {
+                    int?[] assignments = group.Select(p => p.EquipmentID).Distinct().ToArray();
+                    string label = assignments.Length > 1 ? "Multiple instruments recorded" :
+                        !assignments[0].HasValue ? "No sampling instrument recorded" :
+                        AvailableEquipmentChoices.FirstOrDefault(eq => eq.EquipmentID == assignments[0].Value)?.EquipmentCode
+                            ?? "Instrument #" + assignments[0].Value.ToString(CultureInfo.InvariantCulture);
+                    return group.Key + " (" + group.Count().ToString(CultureInfo.InvariantCulture) + " plates): " + label;
+                });
+            TxtEmEquipmentUsageSummary.Text = string.Join("   |   ", descriptions);
+        }
+
+        // Select a controlled sampling instrument once for each EM method, not
+        // once per plate. The existing signed plate-level assignment/history
+        // remains the source of truth after Save Results.
+        private void BtnManageEmEquipment_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentEventId <= 0 || plateItems.Count == 0)
+            {
+                MessageBox.Show("Load an EM event first.", "EM Equipment",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (!currentCanEditResults || IsEMResultsLockedForEditing())
+            {
+                MessageBox.Show("EM equipment assignments are locked after submission for review.",
+                    "EM Equipment", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            CommitEmResultGridEdits();
+            ReloadAvailableEquipmentChoices();
+
+            var groups = plateItems.GroupBy(p => p.Method ?? string.Empty,
+                StringComparer.OrdinalIgnoreCase).OrderBy(group => group.Key).ToList();
+            var selections = new List<(string Method, ComboBox Picker, int?[] Existing)>();
+
+            var fields = new StackPanel();
+            fields.Children.Add(new TextBlock
+            {
+                Text = "Choose an instrument once per sampling method. This applies to all matching plates only when Save Results is signed.",
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 14),
+                Foreground = Brushes.DarkSlateGray
+            });
+            fields.Children.Add(new TextBlock
+            {
+                Text = "Manual direct-count methods do not require a sampling instrument. Incubators and other equipment actually used remain documented in their controlled EM records.",
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 14),
+                Foreground = Brushes.DarkSlateGray
+            });
+
+            foreach (var group in groups)
+            {
+                bool required = EmResultCalculator.RequiresSamplingEquipment(group.Key);
+                int?[] existing = group.Select(p => p.EquipmentID).Distinct().ToArray();
+                fields.Children.Add(new TextBlock
+                {
+                    Text = group.Key + " - " + group.Count().ToString(CultureInfo.InvariantCulture) +
+                        " plates" + (required ? " (Required)" : " (Optional)") +
+                        (existing.Length > 1 ? " - multiple existing assignments" : ""),
+                    FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 9, 0, 5)
+                });
+                var picker = new ComboBox { Height = 36, Margin = new Thickness(0, 0, 0, 8),
+                    IsTextSearchEnabled = true };
+                var empty = new ComboBoxItem
+                {
+                    Content = required ? "-- Select controlled sampling instrument --" :
+                        "-- No sampling instrument used --",
+                    Tag = null
+                };
+                picker.Items.Add(empty);
+                foreach (LabEquipmentChoice eq in AvailableEquipmentChoices)
+                {
+                    if (required &&
+                        !eq.EquipmentType.Contains("Air Sampler", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    var choice = new ComboBoxItem
+                    {
+                        Content = eq.DisplayName, Tag = eq.EquipmentID,
+                        IsEnabled = eq.IsAvailable,
+                        ToolTip = eq.IsAvailable ? null : eq.ReadinessLabel
+                    };
+                    picker.Items.Add(choice);
+                    if (existing.Length == 1 && existing[0] == eq.EquipmentID)
+                        picker.SelectedItem = choice;
+                }
+                if (picker.SelectedItem == null)
+                    picker.SelectedItem = empty;
+                fields.Children.Add(picker);
+                selections.Add((group.Key, picker, existing));
+            }
+
+            var confirm = new Button { Content = "Apply to Matching Plates", Width = 205,
+                Height = 38, IsDefault = true, Margin = new Thickness(8, 0, 0, 0) };
+            var cancel = new Button { Content = "Cancel", Width = 95,
+                Height = 38, IsCancel = true };
+            var actions = new StackPanel { Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 15, 0, 0) };
+            actions.Children.Add(cancel);
+            actions.Children.Add(confirm);
+
+            var dock = new DockPanel { Margin = new Thickness(18) };
+            DockPanel.SetDock(actions, Dock.Bottom);
+            dock.Children.Add(actions);
+            dock.Children.Add(new ScrollViewer { Content = fields,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
+            var dialog = new Window
+            {
+                Title = "EM Equipment Used - " + currentEventNo, Owner = this,
+                Width = 690, Height = 520, MinWidth = 550, MinHeight = 350,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Content = dock, ShowInTaskbar = false
+            };
+            cancel.Click += (_, _) => dialog.DialogResult = false;
+            confirm.Click += (_, _) =>
+            {
+                var chosen = new Dictionary<string, int?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var (method, picker, _) in selections)
+                {
+                    int? id = (picker.SelectedItem as ComboBoxItem)?.Tag is int equipmentId
+                        ? equipmentId : null;
+                    if (EmResultCalculator.RequiresSamplingEquipment(method) && !id.HasValue)
+                    {
+                        MessageBox.Show("Choose a controlled air sampler for " + method + ".",
+                            "EM Equipment Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                    chosen.Add(method, id);
+                }
+
+                int changes = plateItems.Count(p => p.EquipmentID != chosen[p.Method ?? string.Empty]);
+                if (changes > 0 && MessageBox.Show(
+                    "Apply these selections to " + changes.ToString(CultureInfo.InvariantCulture) +
+                    " plate assignment(s) in this event? Existing assignments will change only after a signed Save Results. The audit trail will record each changed plate.",
+                    "Confirm EM Equipment Assignments", MessageBoxButton.YesNo,
+                    MessageBoxImage.Question) != MessageBoxResult.Yes)
+                    return;
+
+                foreach (EMPlateResultItem plate in plateItems)
+                    plate.EquipmentID = chosen[plate.Method ?? string.Empty];
+                UpdateEmEquipmentSummary();
+                dialog.DialogResult = true;
+            };
+            dialog.ShowDialog();
         }
 
         private bool IsActiveAirSampling(string method)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "SOURCE_MANIFEST_SHA256.txt"
-EXCLUDED_PARTS = {".git", ".vs", "bin", "obj", "artifacts", "__pycache__"}
+EXCLUDED_PARTS = {".git", ".vs", "bin", "obj", "artifacts", "__pycache__", ".pytest_cache"}
 EXCLUDED_SUFFIXES = {".pyc", ".user", ".suo"}
 EXCLUDED_LOCAL_SETTINGS = {
     "appsettings.Production.json",

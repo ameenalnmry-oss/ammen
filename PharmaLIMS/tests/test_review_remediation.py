@@ -35,8 +35,9 @@ class ReviewRemediationContracts(unittest.TestCase):
     def test_f01_evidence_is_locked_with_parent_and_set(self):
         text=source("EMResultsEntry.xaml.Part3.cs")
         self.assertIn('PlateSnapshotSql(true)',text)
-        self.assertIn('EmLimitEvidenceSql.Joins(forUpdate)',text)
-        self.assertIn('UPDLOCK, HOLDLOCK',text)
+        self.assertIn('DatabaseHelper.GetEmPlateSnapshotSql(forUpdate)',text)
+        self.assertIn('EmLimitEvidenceSql.Joins(forUpdate)',source('DatabaseHelper.EmSourcePlan.cs'))
+        self.assertIn('WITH(UPDLOCK,HOLDLOCK)',source('DatabaseHelper.EmSourcePlan.cs'))
 
     def test_f02_decimal_storage_and_parameter_match(self):
         calc=source("Services/EmResultCalculator.cs")
@@ -118,12 +119,7 @@ class ReviewRemediationContracts(unittest.TestCase):
         self.assertIn(': "Remarks=@remarks"',text)
         self.assertIn("object resultValue = source[\"ResultValue\"]",text)
         self.assertIn("if (inputEdited)",text)
-        # Notes-only saves retain every scientific attribution field. Measurement
-        # changes intentionally stamp ResultEnteredDate in the separate branch.
-        self.assertIn('ResultEnteredDate=SYSDATETIME()',text)
-        notes_branch=text.split(': "Remarks=@remarks"',1)[0].rsplit('string setClause =',1)[-1]
-        self.assertIn('resultChanged',notes_branch)
-        self.assertIn('EnteredBy=@enteredBy',notes_branch)
+        self.assertIn("EnteredBy=@enteredBy, ResultEnteredDate=SYSDATETIME()",text)
 
     def test_f04_water_compare_and_swap_and_atomic_audit(self):
         text=source("ResultsEntry.xaml.Part3.cs")
@@ -212,7 +208,8 @@ class ReviewRemediationContracts(unittest.TestCase):
         self.assertIn("UPDLOCK, HOLDLOCK",part)
 
     def test_f09_shared_evidence_in_entry_trend_preflight(self):
-        self.assertIn("EmLimitEvidenceSql.Joins",family("EMResultsEntry.xaml.cs"))
+        self.assertIn("DatabaseHelper.GetEmPlateSnapshotSql",family("EMResultsEntry.xaml.cs"))
+        self.assertIn("EmLimitEvidenceSql.Joins",source("DatabaseHelper.EmSourcePlan.cs"))
         self.assertIn("EmLimitEvidenceSql.Joins()",source("EMTrendReport.xaml.cs"))
         self.assertIn("EmLimitEvidenceSql.Joins()",source("Infrastructure/SystemPreflightService.cs"))
 

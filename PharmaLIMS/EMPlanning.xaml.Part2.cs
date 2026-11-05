@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
 using System;
@@ -550,11 +550,11 @@ VALUES(@Plan,@Area,@Method,@Location,@Code,@Negative,@EmployeeID,@EmployeeName,@
                 AreaName = r["AreaName"].ToString() ?? "";
                 Grade = r.Table.Columns.Contains("Grade") ? r["Grade"].ToString() ?? "" : "";
                 Method = r["Method"].ToString() ?? "";
-                EmployeeID = r["EmployeeID"].ToString() ?? "";
-                EmployeeName = r["EmployeeName"].ToString() ?? "";
                 SamplingLocation = r["SamplingLocation"].ToString() ?? "";
                 SampleCode = r["SampleCode"].ToString() ?? "";
                 IsNegativeControl = Convert.ToBoolean(r["IsNegativeControl"], CultureInfo.InvariantCulture);
+                EmployeeID = r["EmployeeID"].ToString() ?? "";
+                EmployeeName = r["EmployeeName"].ToString() ?? "";
                 MediaUsed = r["MediaUsed"].ToString() ?? "";
                 MediaLotNo = r["MediaLotNo"].ToString() ?? "";
                 MediaPreparationID = r.Table.Columns.Contains("MediaPreparationID") && r["MediaPreparationID"] != DBNull.Value ? Convert.ToInt32(r["MediaPreparationID"], CultureInfo.InvariantCulture) : null;
@@ -605,11 +605,11 @@ VALUES(@Plan,@Area,@Method,@Location,@Code,@Negative,@EmployeeID,@EmployeeName,@
             public string AreaName { get; }
             public string Grade { get; }
             public string Method { get; }
-            public string EmployeeID { get; }
-            public string EmployeeName { get; }
             public string SamplingLocation { get; }
             public string SampleCode { get; }
             public bool IsNegativeControl { get; }
+            public string EmployeeID { get; }
+            public string EmployeeName { get; }
             public string MediaUsed { get; }
             public string MediaLotNo { get; }
             public int? MediaPreparationID { get; }

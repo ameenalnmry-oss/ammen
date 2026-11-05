@@ -73,6 +73,10 @@ internal static class Program
             Environment.SetEnvironmentVariable("PHARMALIMS_CONNECTION_STRING", databaseConnectionString);
             Environment.SetEnvironmentVariable("PHARMALIMS_APPLY_STARTUP_DATABASE_UPDATES", "false");
 
+            await ProvisionDisposableTrustedEquipmentSignerPrincipalAsync(
+                databaseConnectionString,
+                databaseName).ConfigureAwait(false);
+
             DatabaseConnection database = new();
             StartupDatabaseMigrator migrator = new(database);
             migrator.ProgressChanged += message => Console.WriteLine("[MIGRATION] " + message);
@@ -151,6 +155,82 @@ END;", 60);
                 Console.Error.WriteLine("Runtime-smoke database cleanup warning: " + cleanupEx.Message);
             }
         }
+    }
+
+    private static async Task ProvisionDisposableTrustedEquipmentSignerPrincipalAsync(
+        string connectionString,
+        string databaseName)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+                databaseName,
+                "^PharmaLIMS_RuntimeSmoke_[0-9a-f]{12}$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+        {
+            throw new InvalidOperationException(
+                "Disposable runtime-smoke trusted-signer provisioning is restricted to generated PharmaLIMS_RuntimeSmoke databases.");
+        }
+
+        const string sql = @"
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+IF DB_NAME() NOT LIKE N'PharmaLIMS_RuntimeSmoke[_]%'
+    THROW 56874, 'Runtime-smoke trusted-signer provisioning refused outside a disposable runtime-smoke database.', 1;
+
+IF DATABASE_PRINCIPAL_ID(N'PharmaLIMS_TrustedEquipmentSigner') IS NULL
+BEGIN
+    DECLARE @login sysname = ORIGINAL_LOGIN();
+    DECLARE @loginSid varbinary(85) = SUSER_SID(@login);
+    DECLARE @create nvarchar(max);
+    DECLARE @existingDatabasePrincipal sysname;
+
+    SELECT TOP (1)
+        @existingDatabasePrincipal = dp.name
+    FROM sys.database_principals AS dp
+    WHERE dp.sid = @loginSid;
+
+    IF @existingDatabasePrincipal IS NOT NULL
+    BEGIN
+        IF ISNULL(IS_SRVROLEMEMBER(N'sysadmin'), 0) = 1
+        BEGIN
+            CREATE USER [PharmaLIMS_TrustedEquipmentSigner] WITHOUT LOGIN;
+        END
+        ELSE
+        BEGIN
+            THROW 56875,
+                'Runtime-smoke login is already mapped to another database principal.',
+                1;
+        END
+    END
+    ELSE IF EXISTS(
+        SELECT 1
+        FROM sys.server_principals
+        WHERE sid = @loginSid
+          AND name = @login)
+    BEGIN
+        SET @create =
+            N'CREATE USER [PharmaLIMS_TrustedEquipmentSigner] FOR LOGIN ' +
+            QUOTENAME(@login) + N';';
+        EXEC sys.sp_executesql @create;
+    END
+    ELSE IF ISNULL(IS_SRVROLEMEMBER(N'sysadmin'), 0) = 1
+    BEGIN
+        CREATE USER [PharmaLIMS_TrustedEquipmentSigner] WITHOUT LOGIN;
+    END
+    ELSE
+    BEGIN
+        THROW 56876,
+            'Runtime-smoke trusted-signer provisioning requires a mapped login or sysadmin test connection.',
+            1;
+    END
+END;
+
+IF USER_ID(N'PharmaLIMS_TrustedEquipmentSigner') IS NULL
+    THROW 56877, 'Runtime-smoke trusted-signer database principal was not provisioned.', 1;
+";
+
+        await ExecuteAsync(connectionString, sql, 120).ConfigureAwait(false);
+        Console.WriteLine("Provisioned disposable runtime-smoke trusted equipment signer database principal.");
     }
 
     private static async Task<string> WaitForInteractiveLoginAsync(

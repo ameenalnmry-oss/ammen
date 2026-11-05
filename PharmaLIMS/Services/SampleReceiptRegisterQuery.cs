@@ -6,15 +6,17 @@ namespace PharmaLIMS.Services;
 
 internal static class SampleReceiptRegisterQuery
 {
-    internal static readonly string[] Types = { "All", "Purified Water", "Potable Water", "Environmental Monitoring", "Raw Material", "Primary Packaging", "Production / In-Process", "Finished Product", "Stability" };
+    internal static readonly string[] Types = { "All", "Purified Water", "Potable Water", "Environmental Monitoring", "Legacy Environment (historical)", "Raw Material", "Primary Packaging", "Production / In-Process", "Finished Product", "Stability" };
     internal static string NormalizeType(string value) => value.Trim().ToUpperInvariant() switch
-    { "PW" or "PURIFIED WATER" => "Purified Water", "PTW" or "POTABLE WATER" => "Potable Water", _ => value.Trim() };
+    { "PW" or "PURIFIED WATER" => "Purified Water", "PTW" or "POTABLE WATER" => "Potable Water",
+      "LEGACY ENVIRONMENT (HISTORICAL)" => "Environment", _ => value.Trim() };
 
     // One source record per row. Tests and plates are aggregated in correlated subqueries,
     // never joined into the register grain. Missing laboratory receipt stays NULL.
     internal const string Query = @"
 WITH RegisterRows AS (
- SELECT 'WATER' RecordKind, s.SampleID, s.SampleNumber,
+ SELECT CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(s.SampleType,N''))))=N'ENVIRONMENT'
+             THEN N'LEGACY_EM' ELSE N'WATER' END RecordKind, s.SampleID, s.SampleNumber,
  CASE UPPER(LTRIM(RTRIM(s.SampleType))) WHEN 'PW' THEN 'Purified Water' WHEN 'PURIFIED WATER' THEN 'Purified Water'
  WHEN 'PTW' THEN 'Potable Water' WHEN 'POTABLE WATER' THEN 'Potable Water' ELSE s.SampleType END SampleType,
  COALESCE(NULLIF(s.PointCodeSnapshot,N''),wp.PointCode,sp.PointCode,N'') + N' | ' +

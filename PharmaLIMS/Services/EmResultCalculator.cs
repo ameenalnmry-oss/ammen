@@ -25,6 +25,14 @@ namespace PharmaLIMS.Services
             new[] { "Settle Plate", "Contact Plate", "Surface Swab", "Personnel Monitoring" }
                 .Any(value => string.Equals(method?.Trim(), value, StringComparison.OrdinalIgnoreCase));
 
+        // Active Air requires a controlled sampling instrument. Direct-count EM
+        // collection methods are manual and do not require an instrument at the
+        // result-entry stage. Incubation and other actually-used resources remain
+        // documented through their own controlled workflow/equipment records.
+        // Unknown methods fail closed and cannot skip instrument verification.
+        internal static bool RequiresSamplingEquipment(string? method) =>
+            !IsDirectCountMethod(method);
+
         internal static bool TryReadStoredCount(object? raw, out int? count)
         {
             count = null;

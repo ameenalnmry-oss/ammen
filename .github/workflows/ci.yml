@@ -6,6 +6,7 @@ on:
       - main
       - master
       - codex-review
+      - eq001-r9-ameen-qualification
 
   pull_request:
     branches:
@@ -714,7 +715,7 @@ jobs:
     name: EQ001 Windows WPF SQL UAT
     # This job publishes its own host and builds the real WPF fixture; it can run
     # independently. Both validations must pass for EQ001 acceptance.
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/eq001-r9-ameen-qualification')
     runs-on: windows-2022
     timeout-minutes: 45
     defaults:
@@ -736,3 +737,43 @@ jobs:
           path: PharmaLIMS/artifacts/eq001-windows-uat/
           if-no-files-found: warn
           retention-days: 30
+
+  r9-merge-regressions:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/eq001-r9-ameen-qualification'
+    name: R9 actual SQL gate regression (${{ matrix.regression }})
+    runs-on: windows-2022
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        regression: [SchemaReadiness, EmLifecycle]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.x'
+      - name: Start disposable runner LocalDB
+        run: |
+          $ErrorActionPreference='Stop'
+          $instances=@(sqllocaldb info)
+          if($instances -notcontains 'MSSQLLocalDB'){sqllocaldb create MSSQLLocalDB;if($LASTEXITCODE -ne 0){throw 'LocalDB creation failed.'}}
+          sqllocaldb start MSSQLLocalDB
+          if($LASTEXITCODE -ne 0){throw 'LocalDB startup failed.'}
+      - name: Execute actual gate and frozen failing witnesses on disposable SQL
+        working-directory: PharmaLIMS
+        run: |
+          $ErrorActionPreference='Stop'
+          $settings=Join-Path $env:RUNNER_TEMP 'r9-localdb-test-settings.json'
+          @{MasterConnectionString='Server=(localdb)\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Encrypt=False;TrustServerCertificate=False;'}|ConvertTo-Json|Set-Content -LiteralPath $settings -Encoding UTF8
+          $env:EQ001_SQL_TEST_SETTINGS=$settings
+          $env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING=$null
+          $env:PHARMALIMS_CREATE_CLEAN_UAT=$null
+          $env:PHARMALIMS_WINDOWS_RUNTIME_PROBE_DATABASE=$null
+          $artifactRoot=Join-Path $env:RUNNER_TEMP 'r9-sql-gate-artifacts'
+          dotnet run --project tests/PharmaLIMS.${{ matrix.regression }}Regression/PharmaLIMS.${{ matrix.regression }}Regression.csproj --configuration Release "-p:ArtifactsPath=$artifactRoot" -- $PWD
+          if($LASTEXITCODE -ne 0){throw 'Actual SQL gate regression failed. No site database was targeted.'}

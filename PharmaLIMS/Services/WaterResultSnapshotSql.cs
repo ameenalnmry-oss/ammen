@@ -1,4 +1,4 @@
-namespace PharmaLIMS.Services
+﻿namespace PharmaLIMS.Services
 {
     internal static class WaterResultSnapshotSql
     {

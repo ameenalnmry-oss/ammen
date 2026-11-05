@@ -155,6 +155,59 @@ namespace PharmaLIMS.Services
             return true;
         }
 
+        /// <summary>
+        /// Canonical password reauthentication for trusted host actions that must
+        /// not be counted as a workspace login. Uses the exact same credential
+        /// verifier and compare-and-swap success/failure accounting as Login.
+        /// </summary>
+        public async Task<User?> ReauthenticateForTrustedActionAsync(
+            string username,
+            string password,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
+                return null;
+
+            username = username.Trim();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            User? user = await _userRepository.GetByUsernameAsync(
+                username, cancellationToken).ConfigureAwait(false);
+
+            if (user == null || !user.IsActive || IsLockedNow(user) ||
+                user.MustChangePassword || user.PasswordChangedAt is null)
+            {
+                return null;
+            }
+
+            PasswordVerificationResult verification = await Task.Run(
+                () => VerifyPassword(password, user),
+                cancellationToken).ConfigureAwait(false);
+
+            if (verification == PasswordVerificationResult.Invalid)
+            {
+                await _userRepository.RegisterAuthenticationFailureAsync(
+                    user, cancellationToken).ConfigureAwait(false);
+                return null;
+            }
+
+            if (verification == PasswordVerificationResult.ValidLegacy && AppConfig.IsProduction)
+                return null;
+
+            bool committed = await FinalizeVerifiedUserAsync(
+                user,
+                password,
+                verification,
+                isLogin: false,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!committed)
+                return null;
+
+            user.ClearSensitivePasswordData();
+            return user;
+        }
+
         public async Task<bool> ChangeCurrentUserPasswordAsync(
             string currentPassword,
             string newPassword,
@@ -163,6 +216,13 @@ namespace PharmaLIMS.Services
             if (_currentUser == null || string.IsNullOrEmpty(currentPassword))
                 return false;
 
+            // Apply the exact same password policy before crossing the trusted pipe so
+            // an operator receives a specific validation message instead of an opaque
+            // service-level Denied response. The trusted host repeats the validation.
+            PasswordSecurity.ValidateNewPassword(newPassword, _currentUser.Username);
+            if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
+                throw new InvalidOperationException("The new password must be different from the current password.");
+
             if (_useTrustedTransport && AppConfig.TrustedSigningEnabled)
             {
                 User? changed = await TrustedApplicationSession.AuthenticateAsync("ChangePassword", _currentUser.Username, currentPassword, newPassword, cancellationToken);
@@ -170,9 +230,6 @@ namespace PharmaLIMS.Services
                 _currentUser = changed;
                 return true;
             }
-            PasswordSecurity.ValidateNewPassword(newPassword, _currentUser.Username);
-            if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
-                throw new InvalidOperationException("The new password must be different from the current password.");
 
             User? freshUser = await _userRepository.GetByUsernameAsync(_currentUser.Username, cancellationToken).ConfigureAwait(false);
             if (freshUser == null || !freshUser.IsActive || IsLockedNow(freshUser))

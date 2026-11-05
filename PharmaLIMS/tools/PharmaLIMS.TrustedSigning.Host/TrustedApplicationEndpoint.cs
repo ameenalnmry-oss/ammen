@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-internal sealed class TrustedApplicationEndpoint(string connectionString, bool enablePrmUat = false, bool enableWaterUat = false, bool enableWaterAnalysisUat = false, bool enablePrmRegistrationUat = false) : ITrustedApplicationEndpoint
+internal sealed class TrustedApplicationEndpoint(string connectionString, bool enablePrmUat = false, bool enableWaterUat = false, bool enableWaterAnalysisUat = false, bool enablePrmRegistrationUat = false, bool enableEquipmentDraftUat = false, bool enableEquipmentLinkUat = false, bool enableEquipmentConfirmUat = false) : ITrustedApplicationEndpoint
 {
     private sealed record Ticket(string Sid,string Username,DateTimeOffset Expires,byte[] Version);
     private readonly ConcurrentDictionary<string,Ticket> _tickets = new();
@@ -22,10 +22,12 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
                 return new(request.RequestId,false,null,"InvalidRequest");
             var database = new DatabaseConnection(connectionString);
             var repository = new UserRepository(database);
-            if(request.Action is "Login" or "Reauthenticate" or "ChangePassword")
+            if(request.Action is "Login" or "Reauthenticate" or "ActivityReauthenticate" or "ChangePassword")
             {
                 var auth = new AuthService(repository, useTrustedTransport:false);
-                User? user = await auth.AuthenticateAsync(request.Username,request.Password,cancellationToken);
+                User? user = request.Action=="ActivityReauthenticate"
+                    ? await auth.ReauthenticateForTrustedActionAsync(request.Username,request.Password,cancellationToken)
+                    : await auth.AuthenticateAsync(request.Username,request.Password,cancellationToken);
                 if(user is null)
                 {
                     var state = await repository.GetByUsernameAsync(request.Username,cancellationToken);
@@ -37,7 +39,8 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
                     if(!await auth.ChangeCurrentUserPasswordAsync(request.Password,request.NewPassword,cancellationToken))return new(request.RequestId,false,null,"CredentialsRejected");
                     user=auth.GetCurrentUser()!;
                 }
-                if(request.Action=="Reauthenticate" && user.MustChangePassword)return new(request.RequestId,false,null,"Inactive");
+                if((request.Action is "Reauthenticate" or "ActivityReauthenticate") && user.MustChangePassword)return new(request.RequestId,false,null,"Inactive");
+                if(request.Action=="ActivityReauthenticate" && user.PasswordChangedAt is null)return new(request.RequestId,false,null,"CredentialNotInitialized");
                 string? ticket=null;
                 if(request.Action=="Reauthenticate")
                 {
@@ -48,6 +51,12 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
                 user.ClearSensitivePasswordData();
                 return new(request.RequestId,true,user.Username,"",JsonSerializer.Serialize(user),ticket);
             }
+            bool equipmentConfirm=request.Action=="EquipmentConfirm";
+            if(equipmentConfirm && !enableEquipmentConfirmUat) return new(request.RequestId,false,null,"EquipmentConfirmDisabled");
+            bool equipmentLink=request.Action=="EquipmentLink";
+            if(equipmentLink && !enableEquipmentLinkUat) return new(request.RequestId,false,null,"EquipmentLinkDisabled");
+            bool equipmentDraft=request.Action=="EquipmentDraft";
+            if(equipmentDraft && !enableEquipmentDraftUat) return new(request.RequestId,false,null,"EquipmentDraftDisabled");
             bool prm=request.Action is "PrmSaveDraft" or "PrmReview" or "PrmApprove";
             bool water=request.Action is "WaterRegister" or "WaterResolve" or "WaterCancel" or "WaterLabel";
             bool prmRegistration=request.Action is "PrmRegister" or "PrmResolve" or "PrmCancel";
@@ -56,12 +65,30 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
             if(workflow && !enableWaterAnalysisUat) return new(request.RequestId,false,null,"WaterWorkflowDisabled");
             if(water && !enableWaterUat) return new(request.RequestId,false,null,"WaterDisabled");
             if(prm && !enablePrmUat) return new(request.RequestId,false,null,"Denied");
-            if(!prm && !water && !workflow && !prmRegistration && request.Action is not ("CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser"))return new(request.RequestId,false,null,"InvalidRequest");
+            if(!prm && !water && !workflow && !prmRegistration && !equipmentDraft && !equipmentLink && !equipmentConfirm && request.Action is not ("CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser"))return new(request.RequestId,false,null,"InvalidRequest");
             if(!_tickets.TryRemove(request.Ticket,out var proof) || proof.Sid!=sid || !proof.Username.Equals(request.Username,StringComparison.OrdinalIgnoreCase) || proof.Expires<DateTimeOffset.UtcNow)
                 return new(request.RequestId,false,null,"Denied");
             var actor=await repository.GetByUsernameAsync(proof.Username,cancellationToken);
-            if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || (!prm && !water && !workflow && !prmRegistration && !actor.CanManageUsers) || ((water || prmRegistration) && !actor.CanRegisterSamples) || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
+            if(actor is null || !actor.IsActive || actor.IsLocked || actor.MustChangePassword || (!prm && !water && !workflow && !prmRegistration && !equipmentDraft && !equipmentLink && !equipmentConfirm && !actor.CanManageUsers) || ((water || prmRegistration) && !actor.CanRegisterSamples) || ((equipmentDraft || equipmentLink || equipmentConfirm) && !actor.CanEnterResults) || !actor.AuthenticationRowVersion.SequenceEqual(proof.Version))return new(request.RequestId,false,null,"Denied");
             using var authorizedAuditActor = TrustedAuditActorContext.Enter(actor.Username);
+            if(equipmentConfirm)
+            {
+                EquipmentConfirmReceipt receipt=await new TrustedEquipmentConfirmStore(connectionString).ExecuteAsync(
+                    request with { Username=proof.Username },proof.Version,proof.Sid,cancellationToken);
+                return new(request.RequestId,true,proof.Username,"",JsonSerializer.Serialize(receipt));
+            }
+            if(equipmentLink)
+            {
+                EquipmentLinkReceipt receipt=await new TrustedEquipmentLinkStore(connectionString).ExecuteAsync(
+                    request with { Username=proof.Username },proof.Version,proof.Sid,cancellationToken);
+                return new(request.RequestId,true,proof.Username,"",JsonSerializer.Serialize(receipt));
+            }
+            if(equipmentDraft)
+            {
+                EquipmentDraftReceipt receipt=await new TrustedEquipmentDraftStore(connectionString).ExecuteAsync(
+                    request with { Username=proof.Username },proof.Version,proof.Sid,cancellationToken);
+                return new(request.RequestId,true,proof.Username,"",JsonSerializer.Serialize(receipt));
+            }
             if(prmRegistration)
             {
                 var committed=await new TrustedPrmRegistrationStore(connectionString).ExecuteAsync(
@@ -99,9 +126,35 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
         }
         catch(ArgumentException){return new(request.RequestId,false,null,"InvalidRequest");}
         catch(JsonException){return new(request.RequestId,false,null,"InvalidRequest");}
+        catch(InvalidOperationException ex) when(IsUserAdministrationAction(request.Action))
+        {
+            string code=ClassifyUserAdministrationInvalidOperation(ex.Message);
+            ApplicationLogger.Warning(
+                $"Trusted user administration rejected. Action='{request.Action}', Request='{request.RequestId:N}', Category='{code}'.");
+            return new(request.RequestId,false,null,code);
+        }
+        catch(UnauthorizedAccessException ex) when(IsUserAdministrationAction(request.Action))
+        {
+            string code=ClassifyUserAdministrationAuthorization(ex.Message);
+            ApplicationLogger.Warning(
+                $"Trusted user administration authorization rejected. Action='{request.Action}', Request='{request.RequestId:N}', Category='{code}'.");
+            return new(request.RequestId,false,null,code);
+        }
         catch(InvalidOperationException){return new(request.RequestId,false,null,"Denied");}
         catch(UnauthorizedAccessException){return new(request.RequestId,false,null,"Denied");}
         catch(System.Data.DBConcurrencyException){return new(request.RequestId,false,null,request.Action.StartsWith("WaterWorkflow",StringComparison.Ordinal)?"WaterWorkflowSnapshotChanged":"PrmSnapshotChanged");}
+        catch(SqlException ex) when(ex.Number is >=57301 and <=57412)
+        {
+            ApplicationLogger.Error("Trusted equipment workflow rejected; request " +
+                request.RequestId.ToString("N") + ".", SafeSqlError(ex));
+            return new(request.RequestId,false,null,"EquipmentWorkflowStateRejected");
+        }
+        catch(SqlException ex) when(ex.Number is >=57201 and <=57212)
+        {
+            ApplicationLogger.Error("Trusted equipment draft rejected; request " +
+                request.RequestId.ToString("N") + ".", SafeSqlError(ex));
+            return new(request.RequestId,false,null,"EquipmentDraftStateRejected");
+        }
         catch(SqlException ex) when(ex.Number is >=57000 and <=57049)
         {
             ApplicationLogger.Error("Trusted Water workflow rejected; request "+request.RequestId.ToString("N")+".",SafeSqlError(ex));
@@ -121,6 +174,9 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
         }
         catch(SqlException ex)
         {
+            if(request.Action.StartsWith("Equipment",StringComparison.Ordinal))
+                ApplicationLogger.Error("Trusted equipment store unavailable; request " +
+                    request.RequestId.ToString("N") + ".",SafeSqlError(ex));
             if(request.Action.StartsWith("Prm",StringComparison.Ordinal))
                 ApplicationLogger.Error("Trusted PRM store failed; request " + request.RequestId.ToString("N") + ".",ex);
             if(request.Action.StartsWith("WaterWorkflow",StringComparison.Ordinal))
@@ -129,6 +185,44 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
                 ApplicationLogger.Error("Trusted Water store failed; request " + request.RequestId.ToString("N") + ".",ex);
             return new(request.RequestId,false,null,"StoreUnavailable");
         }
+    }
+
+    private static bool IsUserAdministrationAction(string action) =>
+        action is "CreateUser" or "UpdateUser" or "ResetPassword" or "UnlockUser";
+
+    private static string ClassifyUserAdministrationInvalidOperation(string message)
+    {
+        string value=message??string.Empty;
+        if(value.Contains("changed after it was loaded",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("changed after it was loaded",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("Refresh before",StringComparison.OrdinalIgnoreCase))
+            return "AdminTargetChanged";
+        if(value.Contains("own account",StringComparison.OrdinalIgnoreCase))
+            return "AdminSelfResetDenied";
+        if(value.Contains("password",StringComparison.OrdinalIgnoreCase))
+            return "AdminPasswordPolicyRejected";
+        if(value.Contains("justification",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("reason",StringComparison.OrdinalIgnoreCase))
+            return "AdminReasonRejected";
+        if(value.Contains("audit actor",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("authenticated user account",StringComparison.OrdinalIgnoreCase))
+            return "AdminAuditActorRejected";
+        return "AdminStateRejected";
+    }
+
+    private static string ClassifyUserAdministrationAuthorization(string message)
+    {
+        string value=message??string.Empty;
+        if(value.Contains("signature",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("signer",StringComparison.OrdinalIgnoreCase))
+            return "AdminSignerMismatch";
+        if(value.Contains("permission",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("User Management",StringComparison.OrdinalIgnoreCase) ||
+           value.Contains("authenticated user",StringComparison.OrdinalIgnoreCase))
+            return "AdminPermissionDenied";
+        if(value.Contains("audit actor",StringComparison.OrdinalIgnoreCase))
+            return "AdminAuditActorRejected";
+        return "AdminPermissionDenied";
     }
 
     // SQL diagnostics can contain quoted row values. Keep only nonclinical provider codes.

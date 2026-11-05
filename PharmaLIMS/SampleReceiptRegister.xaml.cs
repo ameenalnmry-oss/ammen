@@ -63,6 +63,8 @@ public partial class SampleReceiptRegister : Window
             if(RegisterGrid.SelectedItem is not DataRowView row) throw new InvalidOperationException("Select one PRM sample or EM event from the loaded register.");
             if(!row.Row.IsNull("ReceivedDateTime")) throw new InvalidOperationException("This record already has laboratory receipt evidence.");
             string kind=Convert.ToString(row["RecordKind"],CultureInfo.InvariantCulture) ?? "";
+            if(kind == "LEGACY_EM")
+                throw new InvalidOperationException("Historical Environment records are read-only. Do not create a new EM or Water laboratory receipt for an archived legacy record; use controlled QA reconciliation.");
             if(kind is not ("PRM" or "EM")) throw new InvalidOperationException("Water receipt is captured during water registration.");
             var dialog=new LaboratoryReceiptDialog(kind,Convert.ToInt32(row["SampleID"],CultureInfo.InvariantCulture),
                 Convert.ToString(row["SampleNumber"],CultureInfo.InvariantCulture) ?? ""){Owner=this};
@@ -86,7 +88,7 @@ public partial class SampleReceiptRegister : Window
             if (dialog.ShowDialog(this)!=true) return;
             DateTime generated=DateTime.Now;
             var tables=SampleReceiptRegisterData.Tables(loaded);
-            List<string> summary=new() {"Total source records: "+loaded.Rows.Count,"Dates legend: S = Sampled; R = Laboratory received; G = Registered. All timestamps include date and time.","One water / PRM sample or EM event per register row. EM methods and plates appear in the Tests column.",
+            List<string> summary=new() {"Total source records: "+loaded.Rows.Count,"Dates legend: S = Sampled; R = Laboratory received; G = Registered. All timestamps include date and time.","One source record per row: water, PRM, current EM, or historical LEGACY_EM. Historical Environment records remain distinct from current EM events.",
                 "Date basis is stated in the scope. Lab receipt date is shown only when explicitly documented. Raw-material GRN receipt is not treated as laboratory receipt.",
                 "Dates are shown as stored in the source system; no timezone conversion or inferred timestamps. Cancelled / rejected records retain their status."};
             foreach (var table in tables) summary.Add(table.Title);

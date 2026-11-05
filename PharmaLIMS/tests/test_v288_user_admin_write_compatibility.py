@@ -11,7 +11,7 @@ def text(path):
 class V288UserAdministrationWriteCompatibilityTests(unittest.TestCase):
     def test_release_identity_and_controlled_migration(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
+        self.assertEqual("2026.10.19.309", manifest["applicationVersion"])
         self.assertEqual(92, sum(m["versionKey"] <= "20261009_001" for m in manifest["migrations"]))
         entry = next(x for x in manifest["migrations"] if x["versionKey"] == "20260917_000")
         path = ROOT / "Database" / entry["file"]
@@ -42,7 +42,7 @@ class V288UserAdministrationWriteCompatibilityTests(unittest.TestCase):
     def test_development_applies_and_production_only_verifies_new_bounded_migration(self):
         app = text("App.xaml.cs")
         branch = app.split("if (AppConfig.IsDevelopment)", 1)[1].split("loginWindow.SetStartupBusy(false)", 1)[0]
-        self.assertIn("ApplyControlledMigrationAsync", branch)
+        self.assertNotIn("ApplyControlledMigrationAsync", branch)
         self.assertIn("VerifyControlledMigrationAsync", branch)
         self.assertGreaterEqual(branch.count("UserAdministrationWriteCompatibilityMigrationKey"), 2)
         self.assertNotIn("ApplyRequiredUpdatesAsync", app)

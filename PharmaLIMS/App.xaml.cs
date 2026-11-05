@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Repositories;
 using PharmaLIMS.Services;
@@ -95,19 +95,19 @@ namespace PharmaLIMS
 
                 // Production startup is verification-only. Runtime processes must never mutate
                 // the validated database schema merely because a workstation started.
-                // A Debug/Development build automatically reconciles ONLY the four controlled
+                // Development startup verifies ONLY the four controlled
                 // authentication/user-administration prerequisite migrations needed before Login and User Management can operate safely.
                 // This bounded path is intentionally separate from broader Database Maintenance:
                 // it does not apply unrelated migrations and cannot grant roles/permissions.
                 if (AppConfig.IsDevelopment)
                 {
-                    await startupMigrator.ApplyControlledMigrationAsync(
+                    await startupMigrator.VerifyControlledMigrationAsync(
                         StartupDatabaseMigrator.AuthenticationLoginCompatibilityMigrationKey);
-                    await startupMigrator.ApplyControlledMigrationAsync(
+                    await startupMigrator.VerifyControlledMigrationAsync(
                         StartupDatabaseMigrator.UserAdministrationSecurityMigrationKey);
-                    await startupMigrator.ApplyControlledMigrationAsync(
+                    await startupMigrator.VerifyControlledMigrationAsync(
                         StartupDatabaseMigrator.UserAdministrationWriteCompatibilityMigrationKey);
-                    await startupMigrator.ApplyControlledMigrationAsync(
+                    await startupMigrator.VerifyControlledMigrationAsync(
                         StartupDatabaseMigrator.UserAdministrationSignatureEvidenceMigrationKey);
                 }
                 else
@@ -124,7 +124,7 @@ namespace PharmaLIMS
 
                 ApplicationLogger.Information(
                     "Authentication and user-administration security schema verified without uncontrolled startup DDL. " +
-                    "Production startup is verify-only; broader migrations remain controlled deployment/maintenance actions. Development auto-reconciles authentication prerequisites only.");
+                    "Production startup is verify-only; broader migrations remain controlled deployment/maintenance actions. Development startup verifies authentication prerequisites only.");
 
                 StartSessionTimeoutMonitor();
 

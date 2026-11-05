@@ -24,6 +24,8 @@ internal static class PrimaryPackagingSmoke
         Require(html.Contains("CERTIFICATE OF ANALYSIS") && html.Contains("PRIMARY PACKAGING") && html.Contains("Primary Packaging Microbiological Certificate of Analysis"), "packaging COA titles");
         Require(html.Contains("Fixture bottle") && html.Contains("PP-BOTTLE-01") && html.Contains("PP-LOT-01") && html.Contains("Fixture supplier"), "packaging traceability");
         Require(!html.Contains("WRONG-PRODUCT") && !html.Contains("WRONG-BATCH"), "product fields do not replace material identity");
+        Require(!AppConfig.IsDevelopment || html.Contains("UAT / NOT FOR GMP RELEASE"), "debug certificate visibly identifies UAT");
+        Require(AppConfig.IsDevelopment || !html.Contains("UAT / NOT FOR GMP RELEASE"), "release certificate has no development marker");
         Console.WriteLine("PASS Primary Packaging: independent certificate/specification categories, material identity, lot, titles and controlled investigation checklist.");
     }
     private static void VerifyWorkflowReset()

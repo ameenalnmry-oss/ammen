@@ -1,7 +1,7 @@
 {
   "application": "PharmaLIMS",
-  "applicationVersion": "2026.10.6.303",
-  "generatedAtUtc": "2026-09-23T19:26:23Z",
+  "applicationVersion": "2026.10.19.309",
+  "generatedAtUtc": "2026-10-31T10:56:00Z",
   "baselineThrough": "20260722_003",
   "freshInstallBaseline": {
     "versionKey": "BASELINE_20260823_001",
@@ -225,41 +225,6 @@
       "sha256": "4f928d03b4ffff8e4dad3228f4cd7985ec95ccc8015ce95e6760d8f4ad2b3187"
     },
     {
-      "versionKey": "20260825_005",
-      "description": "20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline",
-      "file": "Migrations/20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline.sql",
-      "sha256": "ffca92962d9f74ad19195b84544b6becb561510151576091f9b8cc39eb009325",
-      "supersededBy": "20260826_001"
-    },
-    {
-      "versionKey": "20260825_004",
-      "description": "20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite",
-      "file": "Migrations/20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite.sql",
-      "sha256": "2ff1e6b1ddc91b639d9d5d4e94501242c07661601b4c6116b9230cc70436c14c",
-      "supersededBy": "20260826_001"
-    },
-    {
-      "versionKey": "20260825_002",
-      "description": "20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite",
-      "file": "Migrations/20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite.sql",
-      "sha256": "59c2d6ae5110c3ba31c9c368961469c80cbc35b294522b0f767293feeae15fe7",
-      "supersededBy": "20260826_001"
-    },
-    {
-      "versionKey": "20260825_006",
-      "description": "20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge",
-      "file": "Migrations/20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge.sql",
-      "sha256": "0069ddea78fd1938299173119cd0affb5116cd892d78530a0b8a56fc8fd4ab52",
-      "supersededBy": "20260826_001"
-    },
-    {
-      "versionKey": "20260825_003",
-      "description": "20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite",
-      "file": "Migrations/20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite.sql",
-      "sha256": "361d9354732817b94636883b160e9e3a15abc2b11af0c4fe9ad302e0e997da98",
-      "supersededBy": "20260826_001"
-    },
-    {
       "versionKey": "20260824_003",
       "description": "20260824_003_PRM_Quality_Event_Schema_Reconciliation",
       "file": "Migrations/20260824_003_PRM_Quality_Event_Schema_Reconciliation.sql",
@@ -271,6 +236,41 @@
       "description": "20260825_001_PRM_Analysis_Lifecycle_Reconciliation",
       "file": "Migrations/20260825_001_PRM_Analysis_Lifecycle_Reconciliation.sql",
       "sha256": "e6dfdbfbea26550cd1aed84cbf8a14aab4ebcaf2ad412911987c2e3e666f04f0"
+    },
+    {
+      "versionKey": "20260825_002",
+      "description": "20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite",
+      "file": "Migrations/20260825_002_PRM_Quality_Event_Legacy_Compatibility_Prerequisite.sql",
+      "sha256": "59c2d6ae5110c3ba31c9c368961469c80cbc35b294522b0f767293feeae15fe7",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_003",
+      "description": "20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite",
+      "file": "Migrations/20260825_003_PRM_Quality_Event_Legacy_Structure_Prerequisite.sql",
+      "sha256": "361d9354732817b94636883b160e9e3a15abc2b11af0c4fe9ad302e0e997da98",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_004",
+      "description": "20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite",
+      "file": "Migrations/20260825_004_PRM_Quality_Event_Affected_Result_Structure_Prerequisite.sql",
+      "sha256": "2ff1e6b1ddc91b639d9d5d4e94501242c07661601b4c6116b9230cc70436c14c",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_005",
+      "description": "20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline",
+      "file": "Migrations/20260825_005_PRM_Quality_Event_Minimal_Identity_Baseline.sql",
+      "sha256": "ffca92962d9f74ad19195b84544b6becb561510151576091f9b8cc39eb009325",
+      "supersededBy": "20260826_001"
+    },
+    {
+      "versionKey": "20260825_006",
+      "description": "20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge",
+      "file": "Migrations/20260825_006_PRM_Quality_Event_Runtime_Compatibility_Bridge.sql",
+      "sha256": "0069ddea78fd1938299173119cd0affb5116cd892d78530a0b8a56fc8fd4ab52",
+      "supersededBy": "20260826_001"
     },
     {
       "versionKey": "20260825_007",
@@ -583,10 +583,85 @@
       "sha256": "4f246f168f8ce835f7eb83f4d0969049b7540783c65a7c7c3f7ea235cfa7bde8"
     },
     {
+      "versionKey": "20261010_001",
+      "description": "Full specification content/authorship evidence, PRM investigation history, preparation concurrency and frozen media identity; authoritative Water kit execution date",
+      "file": "Migrations/20261010_001_Review_Content_And_Identity_Protection.sql",
+      "sha256": "db9aa55419e798cc0790fadeb8f49e1c2fbd0d857f9dbe6921cb8bb9f973b547"
+    },
+    {
+      "versionKey": "20261010_002",
+      "description": "Microbiology equipment activity ledger",
+      "file": "Migrations/20261010_002_Micro_Equipment_Activity_Ledger.sql",
+      "sha256": "3115438b20551dbb63562711ffe097ebadd4fa64798832df870019d3d33f9e91"
+    },
+    {
+      "versionKey": "20261010_003",
+      "description": "Water visual method evidence",
+      "file": "Migrations/20261010_003_Water_Visual_Method_Evidence.sql",
+      "sha256": "c26a61e54e130fd9ed881de0e13a4335ede70e432060e91f4c55e37200b30f35"
+    },
+    {
+      "versionKey": "20261011_001",
+      "description": "Recorded UAT lifecycle details",
+      "file": "Migrations/20261011_001_Micro_Equipment_Lifecycle_Details.sql",
+      "sha256": "ba4ed6a4eb0bfe1cecab2934ea0a89feede720a944081b9a62238fb8601ba603"
+    },
+    {
+      "versionKey": "20261011_002",
+      "description": "Micro equipment structured calibration and cleaning evidence",
+      "file": "Migrations/20261011_002_Micro_Equipment_Structured_Evidence.sql",
+      "sha256": "7312f34caabef98e4e69c9b918c8004bbfec9e386a68e5f3c0669030e91bd2bb"
+    },
+    {
+      "versionKey": "20261011_003",
+      "description": "Updated microbiology equipment scope guard",
+      "file": "Migrations/20261011_003_Micro_Equipment_Scope_Guard.sql",
+      "sha256": "13459559b18303a464d94d819c993011b3dde3485cdeee997d025f49bdee6573"
+    },
+    {
+      "versionKey": "20261014_001",
+      "description": "Controlled microbiology equipment signed stage transition",
+      "file": "Migrations/20261014_001_Micro_Equipment_Signed_Status_Guard.sql",
+      "sha256": "c2ca7d582606b610534f1b029ab903052e17207f24c7cf577e8fa600ccb1a1cd"
+    },
+    {
+      "versionKey": "20261017_001",
+      "description": "Trusted equipment signing origin and immutable signed-content integrity (no permission cutover)",
+      "file": "Migrations/20261017_001_Equipment_Signing_Integrity.sql",
+      "sha256": "42dc0045474d9c2c022eb29498d8b35a70df000869419c2ebdada61cbd91eebf"
+    },
+    {
       "versionKey": "20261028_001",
       "description": "Append-only PRM draft content and signing history without rewriting existing specifications",
       "file": "Migrations/20261028_001_PRM_Specification_Content_History.sql",
       "sha256": "7a70fa90887105e3c86c6b9353ce4b511330a82badf64164d5bfb92c02105b43"
+    },
+    {
+      "versionKey": "20261029_001",
+      "description": "Historical equipment-use reconciliation workflow (append-only signed evidence; no result rewrite)",
+      "file": "Migrations/20261029_001_Historical_Equipment_Usage_Reconciliation.sql",
+      "sha256": "c065b5fe31c81923a48cb8f9b54373bec2f5f3b140b4b13f1edf9fdd41d71b44"
+    },
+    {
+      "versionKey": "20261030_001",
+      "description": "Least-privilege trusted equipment activity reauthentication bridge",
+      "file": "Migrations/20261030_001_Trusted_Activity_Authentication_Bridge.sql",
+      "sha256": "367e7b40dc65ee15326f010353fac736baac483f20f085bdd249d9931c2422e6",
+      "databaseScope": "ActivitySigning"
+    },
+    {
+      "versionKey": "20261030_002",
+      "description": "Trusted activity snapshot bridge for split-database signing",
+      "file": "Migrations/20261030_002_Trusted_Activity_Snapshot_Bridge.sql",
+      "sha256": "e73b2bdc6d0268da8094bf2fa1438eb1ff5b0b601de452b789387fa0e288723f",
+      "databaseScope": "ActivitySigning"
+    },
+    {
+      "versionKey": "20261031_001",
+      "description": "Split-database activity signing uses primary EQ001 identity authority; isolated DB retains local authorization and signed evidence",
+      "file": "Migrations/20261031_001_Activity_Signing_Primary_Identity_Authority.sql",
+      "sha256": "3fb2b5c67a6fd61cd19f33b8445bc896332208a2bdd9061c339dc0df2849a943",
+      "databaseScope": "ActivitySigning"
     }
   ]
 }

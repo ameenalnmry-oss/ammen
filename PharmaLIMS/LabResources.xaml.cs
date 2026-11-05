@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -573,13 +574,18 @@ WHERE EquipmentID=@EquipmentID;",
             }
         }
 
-        private void BtnCreateActivityDraft_Click(object sender, RoutedEventArgs e)
+        private bool _equipmentDraftBusy;
+
+        private async void BtnCreateActivityDraft_Click(object sender, RoutedEventArgs e)
         {
+            if (_equipmentDraftBusy) return;
             if (!_selectedEquipmentId.HasValue)
             {
                 MessageBox.Show("Select and save an equipment record first.", "Activity draft");
                 return;
             }
+            int equipmentId = _selectedEquipmentId.Value;
+            string actor = Login.CurrentUser;
             string type = (CboActivityType.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
             string method = TxtActivityMethod.Text.Trim();
             if (string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(method))
@@ -587,24 +593,94 @@ WHERE EquipmentID=@EquipmentID;",
                 MessageBox.Show("Choose activity type and provide an approved method / SOP reference.", "Activity draft");
                 return;
             }
+            var target = new SqlConnectionStringBuilder(AppConfig.ConnectionString);
+            bool isolatedUat = string.Equals(target.InitialCatalog, "EQ001_UAT_AMEEN_20261024",
+                StringComparison.Ordinal);
+            if (!isolatedUat)
+            {
+                try
+                {
+                    long legacyId = 0;
+                    _database.ExecuteInTransaction((connection, transaction) =>
+                        legacyId = MicroEquipmentActivityService.CreateDraft(connection, transaction,
+                            equipmentId, type, actor, method));
+                    TxtActivityId.Text = legacyId.ToString(CultureInfo.InvariantCulture);
+                    LoadEquipmentActivityHistory(equipmentId);
+                    LblStatus.Text = $"Activity draft {legacyId} created. Actual use remains unconfirmed.";
+                    TxtActivityMethod.Clear();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(UserFacingError.SafeMessage(ex, "Create equipment activity draft"),
+                        "Activity draft", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                return;
+            }
+
+            _equipmentDraftBusy = true;
+            PendingEquipmentDraft? pending = null;
             try
             {
-                long activityId = 0;
-                _database.ExecuteInTransaction((connection, transaction) =>
+                EquipmentDraftContract.ValidateTarget(AppConfig.ConnectionString);
+                var recovery = new EquipmentDraftRecovery();
+                pending = recovery.Load(actor, equipmentId);
+                var current = new EquipmentDraftRequest(equipmentId, type, method);
+                string canonical = EquipmentDraftContract.CanonicalPayload(current);
+                if (pending is not null &&
+                    !string.Equals(pending.CanonicalPayload, canonical, StringComparison.Ordinal))
+                    throw new InvalidOperationException(
+                        "An unresolved equipment draft exists. Restore its original activity type and SOP reference before retrying; do not create another request.");
+
+                var signature = App.ServiceProvider?.GetRequiredService<ElectronicSignature>()
+                    ?? throw new InvalidOperationException("Electronic-signature service is unavailable.");
+                signature.Configure(equipmentId.ToString(CultureInfo.InvariantCulture), actor,
+                    "Create Equipment Activity Draft", true);
+                signature.Owner = this;
+                if (signature.ShowDialog() != true || !signature.IsConfirmed)
                 {
-                    activityId = Services.MicroEquipmentActivityService.CreateDraft(connection, transaction,
-                        _selectedEquipmentId.Value, type, Login.CurrentUser, method);
-                });
-                TxtActivityId.Text = activityId.ToString(CultureInfo.InvariantCulture);
-                LoadEquipmentActivityHistory(_selectedEquipmentId.Value);
-                LblStatus.Text = $"Activity draft {activityId} created. No actual use or approval has been recorded.";
+                    TrustedApplicationSession.Clear();
+                    return;
+                }
+                if (!string.Equals(signature.SignedBy, actor, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(Login.CurrentUser, actor, StringComparison.OrdinalIgnoreCase) ||
+                    _selectedEquipmentId != equipmentId ||
+                    !string.Equals((CboActivityType.SelectedItem as ComboBoxItem)?.Content?.ToString(), type, StringComparison.Ordinal) ||
+                    !string.Equals(TxtActivityMethod.Text.Trim(), method, StringComparison.Ordinal))
+                    throw new UnauthorizedAccessException("Equipment, input or active account changed during signing.");
+                if (pending is not null &&
+                    (!string.Equals(pending.OriginalReason, signature.Reason, StringComparison.Ordinal) ||
+                     !string.Equals(pending.OriginalMeaning, signature.Meaning, StringComparison.Ordinal)))
+                    throw new InvalidOperationException(
+                        "The saved equipment request must retain its original signature reason and meaning.");
+                pending ??= recovery.SaveNew(actor, current, signature.Reason, signature.Meaning);
+                EquipmentDraftReceipt receipt = await TrustedApplicationSession.EquipmentDraftAsync(
+                    pending.RequestId, pending.Payload, actor,
+                    pending.OriginalReason, pending.OriginalMeaning);
+                try { recovery.Complete(actor, equipmentId, pending.RequestId); }
+                catch (Exception ex)
+                {
+                    ApplicationLogger.Error("Committed equipment draft recovery cleanup failed: " +
+                        pending.RequestId, ex);
+                    MessageBox.Show(this,
+                        "Equipment draft committed, but its local recovery record remains. Retrying the same request will return the original receipt.",
+                        "Equipment Draft Recovery", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                TxtActivityId.Text = receipt.ActivityId.ToString(CultureInfo.InvariantCulture);
+                LoadEquipmentActivityHistory(equipmentId);
+                LblStatus.Text = $"Trusted activity draft {receipt.ActivityId} recorded. Actual equipment use remains unconfirmed.";
                 TxtActivityMethod.Clear();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(UserFacingError.SafeMessage(ex, "Create equipment activity draft"),
-                    "Activity draft", MessageBoxButton.OK, MessageBoxImage.Warning);
+                TrustedApplicationSession.Clear();
+                ApplicationLogger.Error("Trusted equipment draft was not confirmed" +
+                    (pending is null ? "." : "; request " + pending.RequestId + ". Recovery retained."), ex);
+                MessageBox.Show(this, UserFacingError.SafeMessage(ex, "Create equipment activity draft") +
+                    (pending is null ? "" :
+                    "\n\nThe original request is retained. Select the same equipment, activity and method, then reauthenticate to retry with the same RequestId: " + pending.RequestId),
+                    "Equipment Draft", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+            finally { _equipmentDraftBusy = false; }
         }
 
         // The picker is a read-only view of registered source records, never a usage
@@ -689,7 +765,9 @@ ORDER BY SampleID DESC;",
                 TxtSourceParentId.Text = Convert.ToString(row["SourceID"], CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
-        private void BtnLinkActivity_Click(object sender, RoutedEventArgs e)
+        private bool _equipmentLinkBusy;
+
+        private async void BtnLinkActivity_Click(object sender, RoutedEventArgs e)
         {
             if (!long.TryParse(TxtActivityId.Text.Trim(), out long activityId) || activityId <= 0)
             {
@@ -728,26 +806,101 @@ ORDER BY SampleID DESC;",
                     "An optional Test/Plate ID can be used with ONE sample only.", "Activity Link");
                 return;
             }
+            if (_equipmentLinkBusy) return;
+            _equipmentLinkBusy = true;
+            PendingEquipmentLink? pending = null;
             try
             {
-                _database.ExecuteInTransaction((connection, transaction) =>
+                string actor = Login.CurrentUser;
+                var target = new SqlConnectionStringBuilder(AppConfig.ConnectionString);
+                if (!string.Equals(target.InitialCatalog, "EQ001_UAT_AMEEN_20261024",
+                    StringComparison.Ordinal))
                 {
-                    foreach (int parentId in parents)
-                        Services.MicroEquipmentActivityService.AddLink(connection, transaction,
-                            activityId, module, parentId, resultId, Login.CurrentUser);
-                });
+                    _database.ExecuteInTransaction((connection, transaction) =>
+                    {
+                        foreach (int parentId in parents)
+                            MicroEquipmentActivityService.AddLink(connection, transaction,
+                                activityId, module, parentId, resultId, actor);
+                    });
+                }
+                else
+                {
+                    EquipmentDraftContract.ValidateTarget(AppConfig.ConnectionString);
+                    var recovery = new EquipmentLinkRecovery();
+                    pending = recovery.Load(actor, activityId);
+                    var requested = new EquipmentLinkRequest(activityId, module,
+                        parents.Distinct().OrderBy(x => x).ToArray(), resultId);
+                    string canonical = EquipmentLinkContract.CanonicalPayload(requested);
+                    if (pending is not null &&
+                        !string.Equals(pending.CanonicalPayload, canonical, StringComparison.Ordinal))
+                        throw new InvalidOperationException(
+                            "A previous equipment link request remains unresolved. Restore the original selected samples and optional test before retrying.");
+                    var signature = App.ServiceProvider?.GetRequiredService<ElectronicSignature>()
+                        ?? throw new InvalidOperationException("Electronic signature service is unavailable.");
+                    signature.Configure(activityId.ToString(CultureInfo.InvariantCulture), actor,
+                        "Link Equipment Draft to Registered Samples", true);
+                    signature.Owner = this;
+                    if (signature.ShowDialog() != true || !signature.IsConfirmed)
+                    {
+                        TrustedApplicationSession.Clear();
+                        return;
+                    }
+                    if (!string.Equals(signature.SignedBy, actor, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(Login.CurrentUser, actor, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(TxtActivityId.Text.Trim(), activityId.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal) ||
+                        (CboSourceModule.SelectedItem as ComboBoxItem)?.Content?.ToString() != module)
+                        throw new UnauthorizedAccessException("Activity, module or current signer changed during linking.");
+                    var actualParents = LstAvailableSamples.SelectedItems.Cast<object>()
+                        .OfType<DataRowView>()
+                        .Select(row => Convert.ToInt32(row["SourceID"], CultureInfo.InvariantCulture))
+                        .ToList();
+                    if (actualParents.Count == 0 &&
+                        int.TryParse(TxtSourceParentId.Text.Trim(), out int manual) && manual > 0)
+                        actualParents.Add(manual);
+                    var after = new EquipmentLinkRequest(activityId, module,
+                        actualParents.Distinct().OrderBy(x => x).ToArray(),
+                        string.IsNullOrWhiteSpace(TxtSourceResultId.Text)
+                            ? null : int.TryParse(TxtSourceResultId.Text, out int rid) ? rid : -1);
+                    if (!string.Equals(canonical, EquipmentLinkContract.CanonicalPayload(after), StringComparison.Ordinal))
+                        throw new DBConcurrencyException("Equipment link selection changed during signing. No request dispatched.");
+                    if (pending is not null &&
+                        (!string.Equals(pending.OriginalReason, signature.Reason, StringComparison.Ordinal) ||
+                         !string.Equals(pending.OriginalMeaning, signature.Meaning, StringComparison.Ordinal)))
+                        throw new InvalidOperationException("Recovery requires the original signature reason and meaning.");
+                    pending ??= recovery.SaveNew(actor, requested, signature.Reason, signature.Meaning);
+                    EquipmentLinkReceipt receipt = await TrustedApplicationSession.EquipmentLinkAsync(
+                        pending.RequestId, pending.Payload, actor,
+                        pending.OriginalReason, pending.OriginalMeaning);
+                    try { recovery.Complete(actor, activityId, pending.RequestId); }
+                    catch (Exception ex)
+                    {
+                        ApplicationLogger.Error("Equipment link committed but cleanup failed; request " +
+                            pending.RequestId, ex);
+                        MessageBox.Show(this,
+                            "The link was committed, but its original recovery request remains. Do not create a new request.",
+                            "Equipment Link Recovery", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
                 if (_selectedEquipmentId.HasValue) LoadEquipmentActivityHistory(_selectedEquipmentId.Value);
                 LblStatus.Text = $"Activity {activityId} linked to {parents.Count} verified {module} sample/event(s). " +
                     "No equipment use is confirmed until Confirm Actual Use.";
             }
             catch (Exception ex)
             {
-                MessageBox.Show(UserFacingError.SafeMessage(ex, "Link equipment activity"), "Activity Link",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                TrustedApplicationSession.Clear();
+                ApplicationLogger.Error("Equipment link not confirmed" +
+                    (pending is null ? "" : "; original request " + pending.RequestId + " preserved"), ex);
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Link equipment activity") +
+                    (pending is null ? "" : "\nOriginal request " + pending.RequestId +
+                     " retained. Restore the same selection and reauthenticate to retry."),
+                    "Activity Link", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+            finally { _equipmentLinkBusy = false; }
         }
 
-        private void BtnConfirmActualUse_Click(object sender, RoutedEventArgs e)
+        private bool _equipmentConfirmBusy;
+
+        private async void BtnConfirmActualUse_Click(object sender, RoutedEventArgs e)
         {
             if (!long.TryParse(TxtActivityId.Text.Trim(), out long activityId) || activityId <= 0 ||
                 !DateTimeOffset.TryParse(DpActualUseStart.Text.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var started) ||
@@ -755,6 +908,99 @@ ORDER BY SampleID DESC;",
                 ended < started)
             {
                 MessageBox.Show("Enter a valid activity ID, start and end timestamps with correct offsets.", "Confirm Actual Use");
+                return;
+            }
+            if (_equipmentConfirmBusy) return;
+            if (string.Equals(new SqlConnectionStringBuilder(AppConfig.ConnectionString).InitialCatalog,
+                "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal))
+            {
+                _equipmentConfirmBusy = true;
+                PendingEquipmentConfirm? pending = null;
+                try
+                {
+                    EquipmentDraftContract.ValidateTarget(AppConfig.ConnectionString);
+                    string actor = Login.CurrentUser;
+                    var recovery = new EquipmentConfirmRecovery();
+                    pending = recovery.Load(actor, activityId);
+                    EquipmentConfirmRequest input;
+                    if (pending is not null)
+                    {
+                        input = pending.Payload;
+                    }
+                    else
+                    {
+                        DataTable baseline = await _database.ExecuteQueryAsync(@"
+SELECT ActivityID,VersionToken FROM dbo.MicroEquipmentActivities
+WHERE ActivityID=@Activity AND ActivityType=N'Use' AND ActivityStatus=N'Draft'
+  AND PerformedBy=@Actor;",
+                            new[]
+                            {
+                                new SqlParameter("@Activity", SqlDbType.BigInt) { Value=activityId },
+                                new SqlParameter("@Actor", SqlDbType.NVarChar,100) { Value=actor }
+                            });
+                        if (baseline.Rows.Count != 1)
+                            throw new InvalidOperationException(
+                                "Draft use activity is absent, changed, or owned by another performer.");
+                        input = new EquipmentConfirmRequest(activityId,
+                            (byte[])baseline.Rows[0]["VersionToken"], started, ended);
+                    }
+                    string canonical = EquipmentConfirmContract.CanonicalPayload(input);
+                    if (pending is not null && (input.Started != started || input.Ended != ended))
+                        throw new InvalidOperationException(
+                            "An unresolved use confirmation exists. Restore the original timestamps before recovery.");
+                    var signature = App.ServiceProvider?.GetRequiredService<ElectronicSignature>()
+                        ?? throw new InvalidOperationException("Electronic signature service is unavailable.");
+                    signature.Configure(activityId.ToString(CultureInfo.InvariantCulture), actor,
+                        "Confirm Actual Equipment Use", true);
+                    signature.Owner = this;
+                    if (signature.ShowDialog() != true || !signature.IsConfirmed)
+                    {
+                        TrustedApplicationSession.Clear();
+                        return;
+                    }
+                    if (!string.Equals(signature.SignedBy, actor, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(Login.CurrentUser, actor, StringComparison.OrdinalIgnoreCase) ||
+                        !long.TryParse(TxtActivityId.Text.Trim(), out long currentActivity) ||
+                        currentActivity != activityId ||
+                        !DateTimeOffset.TryParse(DpActualUseStart.Text.Trim(), CultureInfo.InvariantCulture,
+                            DateTimeStyles.None, out var currentStarted) || currentStarted != started ||
+                        !DateTimeOffset.TryParse(DpActualUseEnd.Text.Trim(), CultureInfo.InvariantCulture,
+                            DateTimeStyles.None, out var currentEnded) || currentEnded != ended)
+                        throw new UnauthorizedAccessException(
+                            "Equipment activity, timing or current signer changed during signing.");
+                    if (pending is not null &&
+                        (!string.Equals(pending.OriginalReason, signature.Reason, StringComparison.Ordinal) ||
+                         !string.Equals(pending.OriginalMeaning, signature.Meaning, StringComparison.Ordinal)))
+                        throw new InvalidOperationException("Recovery requires the original signature context.");
+                    if (!string.Equals(canonical, EquipmentConfirmContract.CanonicalPayload(input), StringComparison.Ordinal))
+                        throw new DBConcurrencyException("Equipment confirmation evidence changed before dispatch.");
+                    pending ??= recovery.SaveNew(actor, input, signature.Reason, signature.Meaning);
+                    EquipmentConfirmReceipt receipt = await TrustedApplicationSession.EquipmentConfirmAsync(
+                        pending.RequestId, pending.Payload, actor,
+                        pending.OriginalReason, pending.OriginalMeaning);
+                    try { recovery.Complete(actor, activityId, pending.RequestId); }
+                    catch (Exception cleanupError)
+                    {
+                        ApplicationLogger.Error("Equipment confirmation committed; recovery cleanup failed: " +
+                            pending.RequestId, cleanupError);
+                        MessageBox.Show(this,
+                            "Use confirmation committed, but its recovery record remains. Do not create another request.",
+                            "Equipment Use Recovery", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    if (_selectedEquipmentId.HasValue) LoadEquipmentActivityHistory(_selectedEquipmentId.Value);
+                    LblStatus.Text = $"Use activity {receipt.ActivityId} submitted. Review and approval remain pending.";
+                }
+                catch (Exception ex)
+                {
+                    TrustedApplicationSession.Clear();
+                    ApplicationLogger.Error("Trusted use confirmation not confirmed" +
+                        (pending is null ? "." : "; original request " + pending.RequestId + " retained."), ex);
+                    MessageBox.Show(this, UserFacingError.SafeMessage(ex, "Confirm actual equipment use") +
+                        (pending is null ? "" : "\nOriginal request " + pending.RequestId +
+                         " retained. Restore original times and reauthenticate before retrying."),
+                        "Confirm Actual Use", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                finally { _equipmentConfirmBusy = false; }
                 return;
             }
             try
@@ -783,6 +1029,77 @@ WHERE ActivityID=@Activity AND ActivityType=N'Use' AND ActivityStatus=N'Draft'
             }
         }
 
+        private string BuildControlledEquipmentExecutionJson(string activityType)
+        {
+            if (activityType is "Cleaning" or "Sanitization")
+            {
+                string agent = TxtCleaningAgent.Text.Trim();
+                string cleaningOutcome = (CboCleaningOutcome.SelectedItem as ComboBoxItem)?.Content?.ToString()?.ToUpperInvariant() ?? "";
+                if (string.IsNullOrWhiteSpace(agent) || agent.Length > 90 ||
+                    agent.Contains(';') || cleaningOutcome is not ("PASS" or "FAIL"))
+                    throw new InvalidOperationException("Enter a valid cleaning agent/lot and verification outcome.");
+                return JsonSerializer.Serialize(new { Type = activityType, Agent = agent, Outcome = cleaningOutcome });
+            }
+            if (activityType != "Calibration") return "{}";
+
+            static decimal ParseExact(string value)
+            {
+                if (!decimal.TryParse(value.Trim(), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                    CultureInfo.InvariantCulture, out decimal parsed) ||
+                    decimal.Round(parsed, 6) != parsed || Math.Abs(parsed) >= 1000000000000m)
+                    throw new InvalidOperationException("Calibration values must use up to 6 decimals and remain within the approved numeric range.");
+                return parsed;
+            }
+            bool range = !string.IsNullOrWhiteSpace(TxtCalibrationMinimum.Text) ||
+                         !string.IsNullOrWhiteSpace(TxtCalibrationMaximum.Text);
+            if (range && (!string.IsNullOrWhiteSpace(TxtCalibrationReference.Text) ||
+                          !string.IsNullOrWhiteSpace(TxtCalibrationTolerance.Text)))
+                throw new InvalidOperationException("Select either calibration range or reference/tolerance, not both.");
+            decimal observed = ParseExact(TxtCalibrationObserved.Text);
+            decimal? minimum = range ? ParseExact(TxtCalibrationMinimum.Text) : null;
+            decimal? maximum = range ? ParseExact(TxtCalibrationMaximum.Text) : null;
+            decimal? reference = range ? null : ParseExact(TxtCalibrationReference.Text);
+            decimal? tolerance = range ? null : ParseExact(TxtCalibrationTolerance.Text);
+            if (range && minimum > maximum || !range && tolerance < 0)
+                throw new InvalidOperationException("Calibration minimum/maximum or tolerance is invalid.");
+
+            decimal first = range ? minimum!.Value : reference!.Value;
+            decimal third = range ? maximum!.Value : tolerance!.Value;
+            var points = new List<Dictionary<string, decimal>>
+            {
+                new() { ["First"] = first, ["Observed"] = observed, ["Third"] = third }
+            };
+            string[] lines = TxtCalibrationAdditionalPoints.Text.Split(
+                new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length > 99)
+                throw new InvalidOperationException("Calibration allows at most 100 points.");
+            foreach (string line in lines)
+            {
+                string[] parts = line.Trim().Split(',');
+                if (parts.Length != 3)
+                    throw new InvalidOperationException("Calibration point requires three comma-separated readings.");
+                decimal a = ParseExact(parts[0]), b = ParseExact(parts[1]), c = ParseExact(parts[2]);
+                if (range && a > c || !range && c < 0)
+                    throw new InvalidOperationException("Invalid calibration range or tolerance at a measurement point.");
+                points.Add(new Dictionary<string, decimal> { ["First"] = a, ["Observed"] = b, ["Third"] = c });
+            }
+            string outcome = range
+                ? observed >= minimum && observed <= maximum ? "PASS" : "FAIL"
+                : Math.Abs(observed - reference!.Value) <= tolerance!.Value ? "PASS" : "FAIL";
+            return JsonSerializer.Serialize(new
+            {
+                Type = activityType,
+                Mode = range ? "Range" : "Tolerance",
+                Reference = reference,
+                Observed = observed,
+                Tolerance = tolerance,
+                Minimum = minimum,
+                Maximum = maximum,
+                Outcome = outcome,
+                Points = points
+            });
+        }
+
         private void BtnSubmitNonUseExecution_Click(object sender, RoutedEventArgs e)
         {
             if (!long.TryParse(TxtActivityId.Text.Trim(), out long activityId) || activityId <= 0 ||
@@ -792,6 +1109,14 @@ WHERE ActivityID=@Activity AND ActivityType=N'Use' AND ActivityStatus=N'Draft'
             {
                 MessageBox.Show("Enter a valid activity ID, execution description, and actual start/end times with offsets.",
                     "Submit Equipment Execution", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (string.Equals(new SqlConnectionStringBuilder(AppConfig.ConnectionString).InitialCatalog,
+                "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal))
+            {
+                MessageBox.Show(this,
+                    "EQ-001 non-use execution is not activated: the signed evidence, structured calibration and cleaning workflow must pass trusted-service UAT first. No record was changed.",
+                    "Controlled Equipment Execution", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             try
@@ -849,9 +1174,17 @@ AND PerformedBy=@Actor;", connection, transaction);
                         evidence = "AgentLot=" + agent + "; Outcome=" + outcome.ToUpperInvariant() + "; Notes=" + evidence;
                     }
                     if (evidence.Length > 500) throw new InvalidOperationException("Execution evidence exceeds 500 characters.");
+                    // The isolated EQ-001 client has no direct UPDATE/INSERT rights.
+                    // Save status, structured evidence, calibration points and audit
+                    // together through the strictly scoped OWNER-executed procedure.
+                    bool scopedUat = string.Equals(
+                        new SqlConnectionStringBuilder(connection.ConnectionString).InitialCatalog,
+                        "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal);
+                    string? structuredJson = scopedUat ? BuildControlledEquipmentExecutionJson(activityType) : null;
                     Services.MicroEquipmentActivityService.SubmitNonUseExecution(
                         connection, transaction, activityId, token, Login.CurrentUser,
-                        started, ended, evidence);
+                        started, ended, evidence, structuredJson);
+                    if (scopedUat) return;
                     if (activityType is "Calibration" or "Cleaning" or "Sanitization")
                     {
                         using var structured = new SqlCommand(@"
@@ -983,26 +1316,35 @@ VALUES(@Activity,@Point,@Reference,@Observed,@Tolerance,@Minimum,@Maximum);",con
             {
                 int equipmentId = _selectedEquipmentId.Value;
                 string username = user.Username;
-                DataTable row = await _database.ExecuteQueryAsync(
-                    "SELECT VersionToken FROM dbo.MicroEquipmentActivities WHERE ActivityID=@Activity AND EquipmentID=@Equipment AND ActivityStatus=@Prior;",
-                    new[] {
-                        new SqlParameter("@Activity", SqlDbType.BigInt) { Value = id },
-                        new SqlParameter("@Equipment", SqlDbType.Int) { Value = equipmentId },
-                        new SqlParameter("@Prior", SqlDbType.NVarChar, 30) { Value = stage == "Reviewed" ? "Submitted" : "Reviewed" }
-                    }, commandTimeoutSeconds:10);
+                var signingClient = TrustedEquipmentSigningClient.CreateActivityFromConfiguration();
+                var snapshotRequest = new ActivitySnapshotRequest(Guid.NewGuid(), id, equipmentId, stage);
+                ActivitySnapshot snapshot =
+                    await signingClient.ReadActivitySnapshotAsync(snapshotRequest, username).ConfigureAwait(true);
+
                 if (!IsLoaded || _selectedEquipmentId != equipmentId ||
                     !string.Equals(_authService?.GetCurrentUser()?.Username, username, StringComparison.OrdinalIgnoreCase))
                     throw new UnauthorizedAccessException("Selection or authenticated account changed. Reload before signing.");
-                if (row.Rows.Count != 1 || row.Rows[0]["VersionToken"] is not byte[] version || version.Length != 8)
+
+                string prior = stage == "Reviewed" ? "Submitted" : "Reviewed";
+                if (snapshot.ActivityId != id || snapshot.EquipmentId != equipmentId ||
+                    !string.Equals(snapshot.ActivityStatus, prior, StringComparison.Ordinal) ||
+                    snapshot.VersionToken is not { Length: 8 })
                     throw new InvalidOperationException("Activity stage or version changed. Reload before signing.");
-                var databaseName = new SqlConnectionStringBuilder(AppConfig.ConnectionString).InitialCatalog;
+
                 var request = new ActivitySigningRequest(Guid.NewGuid(), id, stage, TxtActivitySignatureReason.Text.Trim(),
-                    DateTimeOffset.UtcNow, version, databaseName);
-                var dialog = new TrustedEquipmentSignature(request, username, TrustedEquipmentSigningClient.CreateFromConfiguration()) { Owner = this };
+                    DateTimeOffset.UtcNow, snapshot.VersionToken, snapshot.DatabaseName);
+                var dialog = new TrustedEquipmentSignature(request, username, signingClient) { Owner = this };
                 if (dialog.ShowDialog() != true || !dialog.IsConfirmed) return;
                 await LoadEquipmentActivityHistoryAsync(equipmentId);
                 LblStatus.Text = "Activity " + id + " stage signed by the trusted service: " + stage + ".";
                 TxtActivitySignatureReason.Clear();
+            }
+            catch (TrustedSigningRejectedException exception) when (exception.ErrorCode == "Denied")
+            {
+                ApplicationLogger.Error("Trusted equipment activity signing denied. No signature was created.", exception);
+                MessageBox.Show(this,
+                    "The trusted service denied this activity signature. Verify that the current Windows account is bound to the active PharmaLIMS user and that the activity is available in the configured signing database. No signature was created.",
+                    "Equipment Activity Signature", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception exception)
             {

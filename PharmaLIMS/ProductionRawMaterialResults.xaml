@@ -243,7 +243,8 @@
                                        Grid.Row="1"
                                        Margin="0,8,0,0"
                                        HorizontalAlignment="Left">
-                                <Button x:Name="BtnStartAnalysis" Content="Start Analysis" Background="#0F766E" Style="{StaticResource ActionButton}" Click="BtnStartAnalysis_Click"/>
+                                <Button x:Name="BtnRecordLabReceipt" Content="Record Lab Receipt" Background="#475569" Style="{StaticResource ActionButton}" Click="BtnRecordLabReceipt_Click" ToolTip="First record and electronically sign the actual accepted laboratory receipt. This cannot be generated automatically." />
+                                <Button x:Name="BtnStartAnalysis" Content="Start Analysis" Background="#0F766E" Style="{StaticResource ActionButton}" Click="BtnStartAnalysis_Click" ToolTip="Requires an accepted, signed laboratory receipt. Result entry becomes available after signed Analysis Start and the specified minimum elapsed time."/>
                                 <Button x:Name="BtnTimingReconciliation" Content="QA Timing Reconciliation" Background="#9A3412" Style="{StaticResource ActionButton}" Click="BtnTimingReconciliation_Click" ToolTip="Enabled only when migration identifies legacy PRM timing evidence that requires controlled re-entry and QA reconciliation."/>
                                 <Button x:Name="BtnSaveResults" Content="Save Results" Background="#16A34A" Style="{StaticResource ActionButton}" Click="BtnSaveResults_Click"/>
                                 <Button x:Name="BtnSubmitReview" Content="Submit Review" Background="#EA580C" Style="{StaticResource ActionButton}" Click="BtnSubmitReview_Click"/>
@@ -323,14 +324,15 @@
                             </Grid>
                         </Border>
 
-                        <Border Grid.Row="2" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,10">
+                        <Border x:Name="PrmSpecificationNoticePanel" Grid.Row="2" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,10">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="Tests are loaded only from the approved specification master linked to the sample. Edit Result and Remarks, then Save Results."
-                                           Foreground="#1E3A8A" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtSpecificationSourceNotice"
+                                           Text="Select a sample to see the linked specification and test origin."
+                                           TextWrapping="Wrap" Foreground="#1E3A8A" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                 <Button x:Name="BtnReloadTests" Grid.Column="1" Content="Load Approved Tests" Background="#2563EB" Style="{StaticResource ActionButton}" Click="BtnReloadTests_Click"/>
                             </Grid>
                         </Border>
@@ -358,7 +360,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Test" Binding="{Binding TestName}" Width="2*" MinWidth="180" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Specification" Binding="{Binding SpecificationText}" Width="2.2*" MinWidth="180" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Result" Binding="{Binding ResultValue, UpdateSourceTrigger=PropertyChanged}" Width="1*" MinWidth="90"/>
+                                <DataGridTextColumn Header="Result" Binding="{Binding ResultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="1*" MinWidth="90"/>
                                 <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="0.8*" MinWidth="70" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Type" Binding="{Binding ResultType}" Width="1*" MinWidth="95" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="Min h" Binding="{Binding MinimumElapsedHours, StringFormat=0.##}" Width="0.7*" MinWidth="65" IsReadOnly="True"/>

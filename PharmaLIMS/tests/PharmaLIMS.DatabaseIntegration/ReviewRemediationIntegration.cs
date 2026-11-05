@@ -19,6 +19,7 @@ internal static class ReviewRemediationIntegration
         await SampleRegisterIntegration.VerifyAsync(connection);
         await LaboratoryReceiptIntegration.VerifyAsync(connection);
         await V303ReviewClosureIntegration.VerifyAsync(connection, projectRoot);
+        await ReviewGapClosureIntegration.VerifyAsync(connection);
         await SampleEvidenceDashboardIntegration.VerifyAsync(connection);
         await VerifyAuthenticationAsync(connection);
         await Merge262Integration.VerifyAsync(connectionString);

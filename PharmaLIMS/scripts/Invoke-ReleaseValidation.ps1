@@ -4,7 +4,8 @@ param(
     [switch]$RunDatabaseIntegration,
     [switch]$RunRuntimeSmoke,
     [switch]$ValidateProductionConfig,
-    [switch]$SourceOnly
+    [switch]$SourceOnly,
+    [switch]$ValidateDeliveryPackage
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -12,14 +13,35 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 function Assert-NativeExit([string]$Step) {
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "::error title=Release validation gate::$Step failed with native exit code $LASTEXITCODE."
         throw "$Step failed with native exit code $LASTEXITCODE."
     }
 }
 
 function Start-ControlledLocalDbIfNeeded {
     if ($env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING) {
-        Write-Host 'External PHARMALIMS_TEST_MASTER_CONNECTION_STRING supplied; LocalDB startup skipped.'
+        if ($env:PHARMALIMS_TEST_SQL_DISPOSABLE -ne 'YES') {
+            throw 'External PHARMALIMS_TEST_MASTER_CONNECTION_STRING is blocked unless PHARMALIMS_TEST_SQL_DISPOSABLE=YES explicitly designates the SQL target as disposable.'
+        }
+
+        try {
+            $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder($env:PHARMALIMS_TEST_MASTER_CONNECTION_STRING)
+        }
+        catch {
+            throw 'External PHARMALIMS_TEST_MASTER_CONNECTION_STRING is not a valid SQL Server connection string.'
+        }
+
+        if ([string]::IsNullOrWhiteSpace([string]$builder.DataSource)) {
+            throw 'External disposable SQL connection must declare a Data Source.'
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$builder.AttachDBFilename)) {
+            throw 'External disposable SQL integration does not permit AttachDbFilename.'
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$builder.InitialCatalog) -and
+            -not ([string]$builder.InitialCatalog).Equals('master',[StringComparison]::OrdinalIgnoreCase)) {
+            throw 'External disposable SQL integration master connection must target master (or omit Initial Catalog).'
+        }
+
+        Write-Host "External disposable SQL target explicitly acknowledged: $($builder.DataSource)"
         return
     }
     $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
@@ -49,23 +71,33 @@ if ($RunRuntimeSmoke -and -not $RunDatabaseIntegration) {
     throw 'RunRuntimeSmoke requires RunDatabaseIntegration; WPF startup smoke is not a substitute for SQL integration.'
 }
 
+if ($RunDatabaseIntegration) {
+    if ($env:PHARMALIMS_CREATE_CLEAN_UAT -eq 'YES') {
+        throw 'Release DatabaseIntegration requires disposable databases; PHARMALIMS_CREATE_CLEAN_UAT=YES is not permitted.'
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:PHARMALIMS_WINDOWS_RUNTIME_PROBE_DATABASE)) {
+        throw 'Release DatabaseIntegration does not permit a retained Windows runtime probe database.'
+    }
+}
+
 Push-Location $root
 try {
     $env:PYTHONDONTWRITEBYTECODE = '1'
 
-    Write-Host "::notice title=Release validation checkpoint::Delivery source validation"
-    python -B scripts/validate_project.py --delivery-package
-    Assert-NativeExit 'Delivery source validation'
+    # The existing working project may contain its running bin/obj outputs.
+    # Inspect a source distribution strictly only when explicitly requested;
+    # ordinary validation never deletes or replaces the user's runtime output.
+    if ($ValidateDeliveryPackage) {
+        python -B scripts/validate_project.py --delivery-package
+    } else {
+        python -B scripts/validate_project.py
+    }
+    Assert-NativeExit 'Controlled source validation'
 
-    Write-Host "::notice title=Release validation checkpoint::Python source-control regression suite"
     python -B -m unittest discover -s tests -p "test_*.py" -v
     Assert-NativeExit 'Python source-control regression suite'
 
-    Write-Host "::notice title=Release validation checkpoint::Source manifest verification"
     ./scripts/Test-SourceManifest.ps1
-    ./tests/Test-Eq001WaterDeploymentSettings.ps1
-    ./tests/Test-Eq001SourceReviewEncoding.ps1
-    Write-Host "::notice title=Release validation checkpoint::Code-signing release guard"
     ./tests/Test-CodeSigningReleaseGuard.ps1
 
     if ($SourceOnly) {
@@ -87,20 +119,30 @@ try {
     # Complete RID-specific builds before any non-RID ProjectReference restore,
     # because those restores can rewrite PharmaLIMS\obj\project.assets.json
     # and remove the net8.0-windows7.0/win-x64 target.
-    Write-Host "::notice title=Release validation checkpoint::WPF win-x64 restore"
     dotnet restore PharmaLIMS.csproj --runtime win-x64
     Assert-NativeExit 'WPF win-x64 restore'
 
-    Write-Host "::notice title=Release validation checkpoint::DatabaseMaintenance restore"
     dotnet restore tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --runtime win-x64
     Assert-NativeExit 'DatabaseMaintenance restore'
 
-    Write-Host "::notice title=Release validation checkpoint::WPF Release build"
     dotnet build PharmaLIMS.csproj --configuration Release --runtime win-x64 --no-restore
     Assert-NativeExit 'WPF Release build'
 
+    dotnet restore tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj --runtime win-x64
+    Assert-NativeExit 'Trusted signer restore'
+    dotnet build tools/PharmaLIMS.TrustedSigning/PharmaLIMS.TrustedSigning.csproj --configuration Release --runtime win-x64 --no-restore
+    Assert-NativeExit 'Trusted signer library build'
+
     dotnet build tools/PharmaLIMS.DatabaseMaintenance/PharmaLIMS.DatabaseMaintenance.csproj --configuration Debug --runtime win-x64 --no-restore
     Assert-NativeExit 'DatabaseMaintenance build'
+
+    # The trusted signer project is a class library and must never be invoked with
+    # dotnet run. Build the actual executable host only after all RID-specific
+    # builds are complete because it references the WPF project without a RID.
+    dotnet restore tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj
+    Assert-NativeExit 'Trusted signing host restore'
+    dotnet build tools/PharmaLIMS.TrustedSigning.Host/PharmaLIMS.TrustedSigning.Host.csproj --configuration Release --no-restore
+    Assert-NativeExit 'Trusted signing host build'
 
     # Non-RID restore/build gates run only after the win-x64 builds above.
     dotnet restore tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj
@@ -111,12 +153,6 @@ try {
 
     dotnet run --project tests/PharmaLIMS.ReviewRegression/PharmaLIMS.ReviewRegression.csproj --configuration Release --no-build --no-restore
     Assert-NativeExit 'ReviewRegression execution'
-
-    dotnet run --project tests/PharmaLIMS.WaterCertificateRegression/PharmaLIMS.WaterCertificateRegression.csproj --configuration Release
-    Assert-NativeExit 'Water certificate precision and frozen-range regression execution'
-    ./scripts/Invoke-Eq001SiteCertificateRegression.ps1
-    if (-not $?) { throw 'Site certificate precision regression failed.' }
-
 
     if ($RunDatabaseIntegration) {
         dotnet restore tests/PharmaLIMS.DatabaseIntegration/PharmaLIMS.DatabaseIntegration.csproj

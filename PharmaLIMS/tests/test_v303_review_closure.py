@@ -86,6 +86,71 @@ class V303ReviewClosureTests(unittest.TestCase):
         self.assertIn("TryGetRequiredPresence", source("ProductionRawMaterialSamples.xaml.cs"))
         self.assertIn("bottle", source("Services/PrmNumericSpecificationEvaluator.cs"))
 
+    def test_laboratory_receipt_validates_real_sampling_chronology_before_signature(self):
+        code = source("LaboratoryReceiptDialog.xaml.cs")
+        view = source("LaboratoryReceiptDialog.xaml")
+        self.assertIn('x:Name="SamplingChronology"', view)
+        self.assertIn('new[] { "H:mm", "HH:mm" }', code)
+        self.assertIn('FROM dbo.PRM_Samples WHERE SampleID=@SourceID AND SampleNumber=@SourceNumber;', code)
+        self.assertIn('FROM dbo.EM_Events WHERE Id=@SourceID AND EventNo=@SourceNumber;', code)
+        self.assertIn('SYSDATETIME() AS ServerNow', code)
+        self.assertIn('received < chronology.Sampled || received > chronology.ServerNow', code)
+        self.assertLess(code.index('if (received < chronology.Sampled'),
+                        code.index('var signature=new ElectronicSignature'))
+        self.assertIn('LaboratoryReceiptSql.Insert', code)
+        self.assertIn('request controlled correction of the sample record', code)
+
+    def test_prm_result_edit_checks_sql_timing_without_resetting_active_row(self):
+        xaml = source("ProductionRawMaterialResults.xaml")
+        code = source("ProductionRawMaterialResults.xaml.cs")
+        handler = body("ProductionRawMaterialResults.xaml.cs",
+                       "private void DgResults_BeginningEdit(",
+                       "private void BtnReloadTests_Click(")
+        self.assertIn('BeginningEdit="DgResults_BeginningEdit"', xaml)
+        self.assertIn('Binding="{Binding ResultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"', xaml)
+        self.assertIn("ReadCurrentResultTimingStatus(rowView.Row)", handler)
+        self.assertNotIn("AddPrmTimingDisplayColumns(_resultsTable)", handler)
+        self.assertNotIn("AcceptChanges()", handler.split("string timingStatus;", 1)[1].split("if (timingStatus.Equals", 1)[0])
+        self.assertIn('timingStatus.Equals("Eligible"', handler)
+        self.assertIn("e.Cancel = true;", handler)
+        self.assertIn("BtnSaveResults.IsEnabled = editable;", code)
+        self.assertIn("DgResults.IsReadOnly = !editable;", code)
+
+    def test_prm_results_expose_signed_receipt_before_analysis_and_refresh_eligibility(self):
+        xaml = source("ProductionRawMaterialResults.xaml")
+        code = source("ProductionRawMaterialResults.xaml.cs")
+        self.assertIn('x:Name="BtnRecordLabReceipt"', xaml)
+        self.assertIn('Click="BtnRecordLabReceipt_Click"', xaml)
+        partial = source("ProductionRawMaterialResults.xaml.Part2.cs")
+        self.assertIn("private void BtnRecordLabReceipt_Click(", partial)
+        receipt_ui = body("ProductionRawMaterialResults.xaml.Part2.cs",
+                          "private void BtnRecordLabReceipt_Click(", "private void BtnStartAnalysis_Click(")
+        self.assertIn('new LaboratoryReceiptDialog("PRM", _selectedSampleId', receipt_ui)
+        self.assertIn("if (receipt.ShowDialog() == true)", receipt_ui)
+        self.assertIn("Login.CanRegisterSamples", receipt_ui)
+        self.assertIn('GetCurrentSampleStatus().Equals("Registered"', receipt_ui)
+        self.assertIn("LoadSelectedSample(_selectedSampleId)", receipt_ui)
+        start = body("ProductionRawMaterialResults.xaml.Part2.cs",
+                     "private void BtnStartAnalysis_Click(", "private bool VerifyAcceptedReceiptForAnalysisStart(")
+        self.assertIn("LoadResultsForSample();", start)
+        self.assertLess(start.index("TryRecordPrmAnalysisStart(false)"), start.index("LoadResultsForSample();"))
+        workflow = body("ProductionRawMaterialResults.xaml.cs",
+                        "private void UpdateWorkflowControls(", "private ")
+        self.assertIn("BtnRecordLabReceipt.IsEnabled", workflow)
+        timing_guard = body("ProductionRawMaterialResults.xaml.cs",
+                            "private bool TryRecordPrmAnalysisStart(", "private ")
+        preflight = body("ProductionRawMaterialResults.xaml.Part2.cs",
+                         "private bool VerifyAcceptedReceiptForAnalysisStart(", "private ")
+        self.assertIn("SELECT TOP (1) ReceiptID", preflight)
+        self.assertIn("ReceiptDecision=N'Accepted'", preflight)
+        self.assertIn("if (!VerifyAcceptedReceiptForAnalysisStart()) return false;", timing_guard)
+        self.assertIn('RequestPrmSignature("PRM Analysis Start")', timing_guard)
+        self.assertIn("LaboratoryReceiptSql.GuardPrmAnalysisStart", timing_guard)
+        self.assertLess(timing_guard.index("VerifyAcceptedReceiptForAnalysisStart()"),
+                        timing_guard.index('RequestPrmSignature("PRM Analysis Start")'))
+        self.assertLess(timing_guard.index("LaboratoryReceiptSql.GuardPrmAnalysisStart"),
+                        timing_guard.index("analysisStartedAt = databaseNow"))
+
     def test_new_prm_analysis_receipt_guard_precedes_timestamp_write(self):
         code = body("ProductionRawMaterialResults.xaml.cs", "private bool TryRecordPrmAnalysisStart", "private")
         self.assertLess(code.index("LaboratoryReceiptSql.GuardPrmAnalysisStart"), code.index("analysisStartedAt = databaseNow"))
@@ -109,7 +174,7 @@ class V303ReviewClosureTests(unittest.TestCase):
 
     def test_version_and_historical_migration_identity_remain_controlled(self):
         manifest = json.loads(source("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
+        self.assertEqual("2026.10.19.309", manifest["applicationVersion"])
         self.assertIn("20260908_000", source("Infrastructure/SystemPreflightService.cs"))
 
 

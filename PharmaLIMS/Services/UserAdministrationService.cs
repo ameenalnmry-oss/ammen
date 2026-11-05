@@ -300,15 +300,26 @@ WHERE UserID = @UserID
             byte[] expectedVersion,
             CancellationToken cancellationToken = default)
         {
-            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled) { await TrustedApplicationSession.AdminAsync("ResetPassword", null, userId, expectedVersion, newPassword, performedBy, reason, signatureMeaning, cancellationToken); return; }
-
             if (userId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(userId));
+
+            // Validate the safe, non-secret request shape before crossing the trusted
+            // transport. The trusted host repeats all authorization and target-bound
+            // checks. This prevents ordinary policy errors from being collapsed into
+            // an opaque service-level Denied response.
             PasswordSecurity.ValidateNewPassword(newPassword);
             string actor = RequireActor(performedBy);
             string auditReason = RequireReason(reason);
             string meaning = RequireSignatureMeaning(signatureMeaning);
             string signer = RequireSignedActor(signedBy, actor);
+
+            if (_useTrustedTransport && AppConfig.TrustedSigningEnabled)
+            {
+                await TrustedApplicationSession.AdminAsync(
+                    "ResetPassword", null, userId, expectedVersion, newPassword,
+                    actor, auditReason, meaning, cancellationToken).ConfigureAwait(false);
+                return;
+            }
 
             string salt = PasswordSecurity.GenerateSaltBase64();
             string hash = PasswordSecurity.HashToBase64(newPassword, salt);

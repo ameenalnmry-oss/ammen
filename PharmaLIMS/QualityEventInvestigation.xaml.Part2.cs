@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
@@ -1677,6 +1677,7 @@ namespace PharmaLIMS
 
         private sealed class QualityEventLoadData
         {
+            public string EvidenceVersion { get; set; } = string.Empty;
             public DataTable Header { get; init; } = new DataTable();
             public DataTable AffectedResults { get; init; } = new DataTable();
             public DataTable Actions { get; init; } = new DataTable();

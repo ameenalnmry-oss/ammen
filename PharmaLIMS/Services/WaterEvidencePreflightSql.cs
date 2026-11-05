@@ -57,7 +57,26 @@ BEGIN
               WHERE active.SampleID=s.SampleID AND ISNULL(active.IsCancelled,0)=0
           )
     )
-    AND ((st.ResultEnteredDate<@ResourceCutover AND NOT EXISTS(SELECT 1 FROM dbo.LabEquipmentUsage u WHERE u.Module=N'WATER' AND u.ParentRecordID=st.SampleID AND u.ResultRecordID=st.SampleTestID))
+    AND ((st.ResultEnteredDate<@ResourceCutover
+      AND NOT EXISTS(SELECT 1 FROM dbo.LabEquipmentUsage u WHERE u.Module=N'WATER' AND u.ParentRecordID=st.SampleID AND u.ResultRecordID=st.SampleTestID)
+      AND NOT EXISTS
+      (
+          SELECT 1
+          FROM dbo.LabEquipmentUsageReconciliations r
+          WHERE r.Module=N'WATER'
+            AND r.ParentRecordID=st.SampleID
+            AND r.ResultRecordID=st.SampleTestID
+            AND r.GapType=N'MISSING_HISTORICAL_ASSIGNMENT'
+            AND NULLIF(LTRIM(RTRIM(r.SignedBy)),N'') IS NOT NULL
+            AND NULLIF(LTRIM(RTRIM(r.MeaningOfSignature)),N'') IS NOT NULL
+            AND NULLIF(LTRIM(RTRIM(r.ActionReason)),N'') IS NOT NULL
+            AND NULLIF(LTRIM(RTRIM(r.EvidenceReference)),N'') IS NOT NULL
+            AND NOT EXISTS
+            (
+                SELECT 1 FROM dbo.LabEquipmentUsageReconciliations newer
+                WHERE newer.SupersedesReconciliationID=r.ReconciliationID
+            )
+      ))
     OR (st.ResultEnteredDate>=@ResourceCutover AND
       (primaryResource.EvidenceID IS NULL OR NOT
        ((primaryResource.ResourceKind=N'NO_INSTRUMENT' AND name.TestName=N'TURBIDITY'
@@ -98,6 +117,25 @@ WHERE NOT EXISTS
       AND NULLIF(LTRIM(RTRIM(h.SignedBy)),N'') IS NOT NULL
       AND NULLIF(LTRIM(RTRIM(h.MeaningOfSignature)),N'') IS NOT NULL
       AND NULLIF(LTRIM(RTRIM(h.ActionReason)),N'') IS NOT NULL
+)
+AND NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.LabEquipmentUsageReconciliations r
+    WHERE r.Module=u.Module
+      AND r.ParentRecordID=u.ParentRecordID
+      AND r.ResultRecordID=u.ResultRecordID
+      AND r.EquipmentID=u.EquipmentID
+      AND r.GapType=N'MISSING_SIGNED_HISTORY'
+      AND NULLIF(LTRIM(RTRIM(r.SignedBy)),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(r.MeaningOfSignature)),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(r.ActionReason)),N'') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(r.EvidenceReference)),N'') IS NOT NULL
+      AND NOT EXISTS
+      (
+          SELECT 1 FROM dbo.LabEquipmentUsageReconciliations newer
+          WHERE newer.SupersedesReconciliationID=r.ReconciliationID
+      )
 );
 
 INSERT @Findings(Details)

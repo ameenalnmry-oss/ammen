@@ -1,4 +1,4 @@
-﻿<Window x:Class="PharmaLIMS.ProductionRawMaterialSamples"
+<Window x:Class="PharmaLIMS.ProductionRawMaterialSamples"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:infra="clr-namespace:PharmaLIMS.Infrastructure"
@@ -104,7 +104,7 @@
             </Grid>
         </Border>
 
-        <ScrollViewer x:Name="MainContentScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="MainContentScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="22">
 
                 <Border x:Name="PnlTypeSelection" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="20" Padding="24" Margin="0,0,0,18">
@@ -139,7 +139,7 @@
                                         <TextBlock Text="PP" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <TextBlock Text="Primary Packaging" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,16,0,4"/>
-                                    <TextBlock Text="Product-contact bottles, caps, films and foils with independent specifications." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
+                                    <TextBlock Text="One approved general inspection profile for Primary Packaging; item-specific exceptions only when required." FontSize="12" Foreground="#475569" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Button>
 
@@ -183,7 +183,7 @@
                                 <TextBox x:Name="TxtSampleNo" IsReadOnly="True" Background="#F1F5F9" Style="{StaticResource InputStyle}"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,18,0">
-                                <TextBlock Text="Sample Date / Time *" Style="{StaticResource LabelStyle}"/>
+                                <TextBlock Text="Actual Sampling Date / Time *" Style="{StaticResource LabelStyle}"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -196,7 +196,7 @@
                                     <TextBox x:Name="TxtSampleTime"
                                              Grid.Column="1"
                                              Style="{StaticResource InputStyle}"
-                                             ToolTip="24-hour sampling time, e.g. 18:30"
+                                             ToolTip="Enter the actual sampling/collection time (24-hour, e.g. 08:15). Do not use the registration time unless sampling occurred then."
                                              MaxLength="5"
                                              HorizontalContentAlignment="Center"/>
                                 </Grid>
@@ -548,7 +548,7 @@
                                     <TextBlock x:Name="TxtProfileGuidance"
                                                Text="Enter the item/product code and stage, then select an approved profile."
                                                Foreground="#64748B" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                    <Button Grid.Column="1" Content="Create Profile for This Scope"
+                                    <Button x:Name="BtnCreateProfileForScope" Grid.Column="1" Content="Create Profile for This Scope"
                                             Background="#7C3AED" Style="{StaticResource PrimaryButton}"
                                             ToolTip="Open Specification Master with the current category, item code, and production stage."
                                             Click="BtnCreateProfileForScope_Click"/>
@@ -596,7 +596,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,14,0">
                                 <TextBlock Text="Sample Category *" Style="{StaticResource LabelStyle}"/>
-                                <ComboBox x:Name="CmbMasterCategory" Style="{StaticResource ComboStyle}">
+                                <ComboBox x:Name="CmbMasterCategory" Style="{StaticResource ComboStyle}" SelectionChanged="CmbMasterCategory_SelectionChanged">
                                     <ComboBoxItem Content="Raw Material"/><ComboBoxItem Content="Primary Packaging"/><ComboBoxItem Content="Production / In-Process"/><ComboBoxItem Content="Finished Product"/><ComboBoxItem Content="Stability"/>
                                 </ComboBox>
                             </StackPanel>
@@ -621,8 +621,8 @@
                                 <ColumnDefinition Width="2.9*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,14,0">
-                                <TextBlock Text="Material / Product Code *" Style="{StaticResource LabelStyle}"/>
-                                <TextBox x:Name="TxtMasterItemCode" Style="{StaticResource InputStyle}" ToolTip="Exact controlled material or product code for this inspection profile."/>
+                                <TextBlock Text="Material / Product Code / * for General Profile" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="TxtMasterItemCode" Style="{StaticResource InputStyle}" ToolTip="Use * for a single approved general Primary Packaging profile; exact codes are reserved for justified item-specific exceptions." />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,14,0">
                                 <TextBlock Text="Production Stage (required for In-Process)" Style="{StaticResource LabelStyle}"/>
@@ -633,14 +633,14 @@
                                     <ComboBoxItem Content="After Coating"/>
                                 </ComboBox>
                             </StackPanel>
-                            <TextBlock Grid.Column="2" Text="Use exact item/stage scope for item-specific profiles. The wildcard * is reserved for a formally reviewed and approved reusable standard profile; it is never approved automatically by deployment." Foreground="#64748B" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtMasterScopeGuidance" Grid.Column="2" Text="Use exact item scope for item-specific profiles. The wildcard * is reserved for a formally reviewed and approved reusable standard profile; it is never approved automatically by deployment." Foreground="#64748B" TextWrapping="Wrap" VerticalAlignment="Center"/>
                         </Grid>
 
                         <TextBlock x:Name="TxtMasterState" Text="New Draft" FontWeight="Bold" Foreground="#7C3AED" Margin="0,0,0,10"/>
                         <DataGrid x:Name="DgSpecificationTests"
                                   Height="300"
-                                  MinWidth="1375"
-                                  HorizontalAlignment="Left"
+                                  MinWidth="0"
+                                  HorizontalAlignment="Stretch"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="True"
                                   CanUserDeleteRows="True"
@@ -656,6 +656,7 @@
                                 <DataGridTextColumn Header="Code" Binding="{Binding TestCode, UpdateSourceTrigger=PropertyChanged}" Width="125" MinWidth="110"/>
                                 <DataGridTextColumn Header="Test Name" Binding="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" Width="220" MinWidth="180"/>
                                 <DataGridTextColumn Header="Specification / Acceptance Criteria" Binding="{Binding SpecificationText, UpdateSourceTrigger=PropertyChanged}" Width="480" MinWidth="360"/>
+                                <DataGridTextColumn Header="Numeric Limit" Binding="{Binding SpecificationLimit, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" Width="130" MinWidth="110"/>
                                 <DataGridTextColumn Header="Unit" Binding="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" Width="120" MinWidth="100"/>
                                 <DataGridTextColumn Header="Result Type" Binding="{Binding ResultType, UpdateSourceTrigger=PropertyChanged}" Width="150" MinWidth="130"/>
                                 <DataGridCheckBoxColumn Header="Required" Binding="{Binding RequiredTest}" Width="95" MinWidth="90"/>
@@ -711,7 +712,7 @@
         </ScrollViewer>
 
         <Border Grid.Row="2" Background="#EEF2F7" Padding="10">
-            <TextBlock x:Name="TxtStatus" Text="Ready." FontSize="12" Foreground="#334155"/>
+            <TextBlock x:Name="TxtStatus" Text="Ready." FontSize="12" Foreground="#334155" TextWrapping="Wrap" MaxHeight="72" TextTrimming="CharacterEllipsis"/>
         </Border>
     </Grid>
 </Window>

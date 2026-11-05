@@ -304,6 +304,7 @@ ORDER BY q.MediaQualificationID DESC;",
             CultureMediaQuery.LoadPreparations => @"
 SELECT
     p.MediaPreparationID,
+    p.WorkflowRowVersion,
     p.MediaPreparationNo,
     p.MediaID,
     p.MediaLotID,

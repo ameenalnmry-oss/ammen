@@ -5,8 +5,9 @@
   <TextBlock Text="LABORATORY RECEIPT" FontSize="23" FontWeight="Bold" Foreground="#143752"/>
   <TextBlock x:Name="Identity" Margin="0,12" TextWrapping="Wrap"/>
   <TextBlock Text="Use this action only for a sample you personally received and accepted for laboratory testing. Follow the approved procedure for unsuitable samples." TextWrapping="Wrap"/>
-  <TextBlock Text="Actual laboratory receipt date and time (24-hour, server local time)" Margin="0,18,0,6"/>
-  <WrapPanel><DatePicker x:Name="ReceiptDate" Width="170"/><TextBox x:Name="ReceiptTime" Width="90" Margin="12,0" MaxLength="5" ToolTip="HH:mm"/></WrapPanel>
+  <TextBlock x:Name="SamplingChronology" Text="Loading sampling time from SQL Server..." TextWrapping="Wrap" Foreground="#A15313" FontWeight="SemiBold" Margin="0,18,0,0"/>
+  <TextBlock Text="Actual laboratory receipt date and time (24-hour, server local time)" Margin="0,10,0,6"/>
+  <WrapPanel><DatePicker x:Name="ReceiptDate" Width="170"/><TextBox x:Name="ReceiptTime" Width="90" Margin="12,0" MaxLength="5" ToolTip="24-hour time: 8:10 or 08:10"/></WrapPanel>
   <TextBlock x:Name="Receiver" Margin="0,16,0,8"/>
   <TextBlock Text="Receipt decision: Accepted for laboratory testing" FontWeight="SemiBold"/>
   <CheckBox x:Name="Confirmed" Margin="0,18" Content="I confirm the identity and condition were checked against the approved procedure."/>

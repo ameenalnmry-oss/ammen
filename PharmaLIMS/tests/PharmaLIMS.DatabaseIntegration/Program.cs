@@ -7,8 +7,21 @@ using System.Text.Json;
 
 internal static class Program
 {
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
+        bool passwordChangeOnly = args.Length == 1 && args[0] == "--password-change-audit-only";
+        bool windowsRuntimeProbe = args.Length == 1 && args[0] == "--prepare-windows-runtime-probe";
+        string probeName = Environment.GetEnvironmentVariable("PHARMALIMS_WINDOWS_RUNTIME_PROBE_DATABASE") ?? string.Empty;
+        if (windowsRuntimeProbe && !System.Text.RegularExpressions.Regex.IsMatch(probeName, "^PharmaLIMS_Integration_[0-9a-f]{12}$"))
+        {
+            Console.Error.WriteLine("A disposable Windows runtime probe database name is required.");
+            return 2;
+        }
+        if (args.Length != 0 && !passwordChangeOnly && !windowsRuntimeProbe)
+        {
+            Console.Error.WriteLine("Unknown integration-test argument.");
+            return 2;
+        }
         string? projectRoot = FindProjectRoot();
         if (projectRoot == null)
         {
@@ -19,7 +32,16 @@ internal static class Program
         string manifestPath = Path.Combine(projectRoot, "Database", "MigrationManifest.json");
         string masterConnectionString = Environment.GetEnvironmentVariable("PHARMALIMS_TEST_MASTER_CONNECTION_STRING")
             ?? "Server=(localdb)\\MSSQLLocalDB;Integrated Security=true;Encrypt=false;TrustServerCertificate=true;Connection Timeout=15;";
-        string databaseName = "PharmaLIMS_Integration_" + Guid.NewGuid().ToString("N")[..12];
+        bool retainCleanUat = Environment.GetEnvironmentVariable("PHARMALIMS_CREATE_CLEAN_UAT") == "YES";
+        if ((passwordChangeOnly || windowsRuntimeProbe) && retainCleanUat)
+        {
+            Console.Error.WriteLine("Password-change regression requires a disposable integration database.");
+            return 2;
+        }
+        bool cleanUatReady = false;
+        bool windowsProbeReady = false;
+        bool databaseCreated = false;
+        string databaseName = windowsRuntimeProbe ? probeName : retainCleanUat ? "PharmaLIMS_UAT_CLEAN_20261013" : "PharmaLIMS_Integration_" + Guid.NewGuid().ToString("N")[..12];
         string databaseConnectionString = new SqlConnectionStringBuilder(masterConnectionString)
         {
             InitialCatalog = databaseName
@@ -28,6 +50,7 @@ internal static class Program
         try
         {
             await ExecuteAsync(masterConnectionString, $"CREATE DATABASE [{databaseName}];");
+            databaseCreated = true;
             Console.WriteLine($"Created temporary SQL integration database {databaseName}.");
 
             using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath));
@@ -42,6 +65,11 @@ internal static class Program
                 baseline.GetProperty("description").GetString() ?? baseline.GetProperty("versionKey").GetString()!,
                 baseline.GetProperty("sha256").GetString()!,
                 applicationVersion);
+
+            if (!retainCleanUat && !windowsRuntimeProbe)
+            {
+                await ProvisionDisposableTrustedEquipmentSignerPrincipalAsync(databaseConnectionString, databaseName);
+            }
 
             foreach (JsonElement migration in root.GetProperty("migrations").EnumerateArray())
             {
@@ -68,7 +96,29 @@ internal static class Program
                     applicationVersion);
             }
 
+            if (retainCleanUat)
+            {
+                await VerifySchemaAsync(databaseConnectionString);
+                cleanUatReady = true;
+                Console.WriteLine("CLEAN UAT READY: " + databaseName + " (retained; no synthetic results or certificates).");
+                return 0;
+            }
+
+            if (windowsRuntimeProbe)
+            {
+                await VerifySchemaAsync(databaseConnectionString);
+                windowsProbeReady = true;
+                Console.WriteLine("WINDOWS RUNTIME PROBE SCHEMA READY: " + databaseName + " (disposable; caller must drop after real Windows-token tests).");
+                return 0;
+            }
+
+            await PasswordChangeAuditIntegration.VerifyAsync(databaseConnectionString);
+            if (passwordChangeOnly)
+                return 0;
+
             await VerifySchemaAsync(databaseConnectionString);
+            await VerifyMicroEquipmentRangeSchemaAsync(databaseConnectionString);
+            await EquipmentSigningIntegrityIntegration.VerifyAsync(databaseConnectionString);
             await VerifyUserAdministrationSignatureEvidenceSchemaAsync(databaseConnectionString);
             await VerifyComplianceProtectionTamperDetectionAsync(databaseConnectionString);
             await VerifyPrmIssuedCertificateEvidenceProtectionAsync(databaseConnectionString);
@@ -102,6 +152,7 @@ internal static class Program
         }
         finally
         {
+            if (databaseCreated && (!retainCleanUat || !cleanUatReady) && (!windowsRuntimeProbe || !windowsProbeReady))
             try
             {
                 await ExecuteAsync(masterConnectionString, $@"
@@ -302,6 +353,89 @@ WHEN NOT MATCHED THEN INSERT
         await command.ExecuteNonQueryAsync();
     }
 
+
+    private static async Task ProvisionDisposableTrustedEquipmentSignerPrincipalAsync(
+        string connectionString,
+        string databaseName)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+                databaseName,
+                "^PharmaLIMS_Integration_[0-9a-f]{12}$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+        {
+            throw new InvalidOperationException(
+                "Disposable trusted-signer provisioning is restricted to generated PharmaLIMS_Integration databases.");
+        }
+
+        const string sql = @"
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+IF DB_NAME() NOT LIKE N'PharmaLIMS_Integration[_]%'
+    THROW 56870, 'Disposable trusted-signer provisioning refused outside an integration database.', 1;
+
+IF DATABASE_PRINCIPAL_ID(N'PharmaLIMS_TrustedEquipmentSigner') IS NULL
+BEGIN
+    DECLARE @login sysname = ORIGINAL_LOGIN();
+    DECLARE @loginSid varbinary(85) = SUSER_SID(@login);
+    DECLARE @create nvarchar(max);
+    DECLARE @existingDatabasePrincipal sysname;
+
+    SELECT TOP (1)
+        @existingDatabasePrincipal = dp.name
+    FROM sys.database_principals AS dp
+    WHERE dp.sid = @loginSid;
+
+    IF @existingDatabasePrincipal IS NOT NULL
+    BEGIN
+        -- A login can only map to one database principal. The login that creates
+        -- the disposable database is commonly already mapped as dbo, so creating
+        -- a second user for that login would fail with SQL Server error 15063.
+        IF ISNULL(IS_SRVROLEMEMBER(N'sysadmin'), 0) = 1
+        BEGIN
+            CREATE USER [PharmaLIMS_TrustedEquipmentSigner] WITHOUT LOGIN;
+        END
+        ELSE
+        BEGIN
+            THROW 56873,
+                'Disposable trusted-signer login is already mapped to another database principal.',
+                1;
+        END
+    END
+    ELSE IF EXISTS(
+        SELECT 1
+        FROM sys.server_principals
+        WHERE sid = @loginSid
+          AND name = @login)
+    BEGIN
+        SET @create =
+            N'CREATE USER [PharmaLIMS_TrustedEquipmentSigner] FOR LOGIN ' +
+            QUOTENAME(@login) + N';';
+        EXEC sys.sp_executesql @create;
+    END
+    ELSE IF ISNULL(IS_SRVROLEMEMBER(N'sysadmin'), 0) = 1
+    BEGIN
+        -- Disposable schema integration may run under a sysadmin-authenticated
+        -- Windows group without a dedicated server-login row for the caller.
+        -- The no-login user exists only so controlled migrations can bind
+        -- grants; trusted-origin procedures still require a Windows user
+        -- mapped to ORIGINAL_LOGIN(), or the existing sysadmin test bypass.
+        CREATE USER [PharmaLIMS_TrustedEquipmentSigner] WITHOUT LOGIN;
+    END
+    ELSE
+    BEGIN
+        THROW 56872, 'Disposable trusted-signer provisioning requires a mapped login or sysadmin test connection.', 1;
+    END
+END;
+
+IF USER_ID(N'PharmaLIMS_TrustedEquipmentSigner') IS NULL
+    THROW 56871, 'Disposable trusted-signer database principal was not provisioned.', 1;
+";
+
+        await ExecuteAsync(connectionString, sql, timeoutSeconds: 120);
+        Console.WriteLine("Provisioned disposable trusted equipment signer database principal.");
+    }
+
     private static async Task ApplyControlledFileAsync(
         string projectRoot,
         string connectionString,
@@ -412,7 +546,43 @@ IF COL_LENGTH(N'dbo.QualityEventAffectedResults', N'EvidenceSchemaVersion') IS N
         }
 
         string sql = System.Text.Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
-        await ExecuteAsync(connectionString, sql, timeoutSeconds: 300);
+        await ExecuteControlledSqlScriptAsync(connectionString, sql, timeoutSeconds: 300);
+    }
+
+    private static async Task ExecuteControlledSqlScriptAsync(string connectionString, string sql, int timeoutSeconds)
+    {
+        await using SqlConnection connection = new(connectionString);
+        await connection.OpenAsync();
+
+        foreach (string batch in SplitControlledSqlBatches(sql))
+        {
+            await using SqlCommand command = new(batch, connection) { CommandTimeout = timeoutSeconds };
+            await command.ExecuteNonQueryAsync();
+        }
+    }
+
+    private static IEnumerable<string> SplitControlledSqlBatches(string sql)
+    {
+        using var reader = new System.IO.StringReader(sql);
+        var batch = new System.Text.StringBuilder();
+        string? line;
+
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (line.Trim().Equals("GO", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(batch.ToString()))
+                    yield return batch.ToString();
+
+                batch.Clear();
+                continue;
+            }
+
+            batch.AppendLine(line);
+        }
+
+        if (!string.IsNullOrWhiteSpace(batch.ToString()))
+            yield return batch.ToString();
     }
 
     private static void VerifyPrmNumericInterpretationEngine()
@@ -816,18 +986,9 @@ SELECT @SampleID;", writerConnection))
 
     private static async Task<DataTable> LoadPrmResultSnapshotAsync(SqlConnection connection, int sampleId)
     {
-        await using SqlCommand command = new(@"
-SELECT
-    SampleTestID, SampleID, TestName, SpecificationText, Unit, ResultValue, ResultType, TestCode,
-    SpecificationLimit, ISNULL(RequiredTest,1) AS RequiredTest, MinimumElapsedHours, Interpretation,
-    Remarks, EnteredBy, EnteredDate, ISNULL(SortOrder,SampleTestID) AS SortOrder
-FROM dbo.PRM_SampleTests
-WHERE SampleID=@SampleID
-ORDER BY ISNULL(SortOrder,SampleTestID),SampleTestID;", connection) { CommandTimeout = 60 };
-        command.Parameters.Add("@SampleID", SqlDbType.Int).Value = sampleId;
-        await using SqlDataReader reader = await command.ExecuteReaderAsync();
-        DataTable table = new();
-        table.Load(reader);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+        DataTable table = PrmSampleResultStateService.LoadLockedResults(connection, transaction, sampleId);
+        await transaction.CommitAsync();
         return table;
     }
 
@@ -1000,6 +1161,70 @@ SELECT ObjectName FROM @Missing ORDER BY ObjectName;";
 
         if (missing.Count > 0)
             throw new InvalidOperationException("Fresh database schema is incomplete: " + string.Join(", ", missing));
+    }
+
+    private static async Task VerifyMicroEquipmentRangeSchemaAsync(string cs)
+    {
+        const string sql = @"
+IF OBJECT_ID(N'dbo.MicroEquipmentCalibrationPoints',N'U') IS NULL
+ OR OBJECT_ID(N'dbo.MicroEquipmentStructuredEvidence',N'U') IS NULL
+ THROW 56801,'Missing equipment calibration evidence tables.',1;
+DECLARE @t TABLE (MinimumValue decimal(18,6), Reading decimal(18,6), MaximumValue decimal(18,6), Expected nvarchar(4));
+INSERT @t VALUES (20,20,25,N'PASS'),(20,25,25,N'PASS'),(20,19.999999,25,N'FAIL'),
+                 (20,25.000001,25,N'FAIL'),(-20,-19,-18,N'PASS');
+IF EXISTS (SELECT 1 FROM @t WHERE
+  CASE WHEN Reading BETWEEN MinimumValue AND MaximumValue THEN N'PASS' ELSE N'FAIL' END<>Expected)
+ THROW 56802,'Manual normal-range boundary calculation failed.',1;
+IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.MicroEquipmentCalibrationPoints') AND name=N'NormalMinimum')
+ OR NOT EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.MicroEquipmentStructuredEvidence') AND name=N'NormalMaximum')
+ THROW 56803,'Manual range columns are missing.',1;
+IF NOT EXISTS(SELECT 1 FROM sys.triggers WHERE name=N'TRG_MicroEquipmentCalibrationPoints_AppendOnly')
+ THROW 56804,'Append-only protection is missing.',1;";
+        await ExecuteAsync(cs, sql);
+        const string roundTrip = @"
+BEGIN TRANSACTION;
+BEGIN TRY
+ DECLARE @Equipment int,@Activity bigint;
+ INSERT dbo.LabEquipment(EquipmentCode,EquipmentName,EquipmentType,Department,CreatedBy)
+ VALUES(N'MIC-EQ-999',N'Integration Range Device',N'Incubator',N'Microbiology',N'integration_performer');
+ SET @Equipment=CONVERT(int,SCOPE_IDENTITY());
+ INSERT dbo.MicroEquipmentActivities(EquipmentID,ActivityType,ActivityStatus,PerformedBy,
+   ActualStartAt,ActualEndAt,MethodReference,EquipmentCodeSnapshot,EquipmentNameSnapshot)
+ VALUES(@Equipment,N'Calibration',N'Submitted',N'integration_performer',
+   SYSDATETIMEOFFSET(),SYSDATETIMEOFFSET(),N'MANUAL-RANGE-TEST',N'MIC-EQ-999',N'Integration Range Device');
+ SET @Activity=CONVERT(bigint,SCOPE_IDENTITY());
+ INSERT dbo.MicroEquipmentStructuredEvidence(ActivityID,EvidenceType,ObservedValue,
+   NormalMinimum,NormalMaximum,Outcome,RecordedBy)
+ VALUES(@Activity,N'Calibration',22.5,20,25,N'PASS',N'integration_performer');
+ INSERT dbo.MicroEquipmentCalibrationPoints(ActivityID,PointNo,ObservedValue,NormalMinimum,NormalMaximum)
+ VALUES(@Activity,1,22.5,20,25),(@Activity,2,26,20,25);
+ IF (SELECT Outcome FROM dbo.MicroEquipmentCalibrationPoints WHERE ActivityID=@Activity AND PointNo=1)<>N'PASS'
+   OR (SELECT Outcome FROM dbo.MicroEquipmentCalibrationPoints WHERE ActivityID=@Activity AND PointNo=2)<>N'FAIL'
+   THROW 56805,'Persisted manual-range PASS/FAIL mismatch.',1;
+ IF NOT EXISTS (SELECT 1 FROM dbo.MicroEquipmentCalibrationPoints WHERE ActivityID=@Activity AND Outcome=N'FAIL')
+    OR NOT EXISTS (SELECT 1 FROM dbo.MicroEquipmentStructuredEvidence WHERE ActivityID=@Activity AND Outcome=N'PASS')
+   THROW 56807,'Mixed-result fixture is invalid.',1;
+ IF EXISTS (SELECT 1 FROM dbo.MicroEquipmentStructuredEvidence se
+            WHERE se.ActivityID=@Activity AND se.Outcome=N'PASS'
+            AND NOT EXISTS (SELECT 1 FROM dbo.MicroEquipmentCalibrationPoints p
+                            WHERE p.ActivityID=se.ActivityID AND p.Outcome<>N'PASS'))
+   THROW 56808,'Failed calibration point incorrectly qualified for approval.',1;
+ DECLARE @Blocked bit=0;
+ BEGIN TRY
+  UPDATE dbo.MicroEquipmentCalibrationPoints SET ObservedValue=23 WHERE ActivityID=@Activity;
+ END TRY
+ BEGIN CATCH
+  SET @Blocked=1;
+ END CATCH;
+ IF @Blocked=0 THROW 56806,'Append-only point tamper was not blocked.',1;
+ ROLLBACK TRANSACTION;
+END TRY
+BEGIN CATCH
+ IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;
+ THROW;
+END CATCH;";
+        await ExecuteAsync(cs, roundTrip);
+        Console.WriteLine("Micro equipment manual-range persisted PASS/FAIL and tamper protection PASS.");
     }
 
     private static async Task VerifyV225LegacyTestsActiveContractAsync(

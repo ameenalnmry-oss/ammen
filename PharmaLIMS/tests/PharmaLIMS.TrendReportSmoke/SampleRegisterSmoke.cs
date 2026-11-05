@@ -9,6 +9,7 @@ internal static class SampleRegisterSmoke
         static void Require(bool condition,string message) { if (!condition) throw new InvalidOperationException("Sample register: "+message); }
         Require(SampleReceiptRegisterQuery.NormalizeType("pw")=="Purified Water","PW alias");
         Require(SampleReceiptRegisterQuery.NormalizeType(" PTW ")=="Potable Water","PTW alias");
+        Require(SampleReceiptRegisterQuery.NormalizeType("Legacy Environment (historical)")=="Environment","legacy EM alias");
         var parameters=SampleReceiptRegisterQuery.Parameters("All",new DateTime(2026,9,1),new DateTime(2026,9,30),false);
         Require((DateTime)parameters[2].Value==new DateTime(2026,10,1),"inclusive date end");
         try { SampleReceiptRegisterQuery.ValidateDates(new DateTime(2026,9,30),new DateTime(2026,9,1)); throw new Exception("reversed dates accepted"); } catch (InvalidOperationException) {}
@@ -19,8 +20,8 @@ internal static class SampleRegisterSmoke
         foreach (string type in SampleReceiptRegisterQuery.Types.Skip(1))
         for (int i=0;i<15;i++)
         {
-            DataRow row=source.NewRow(); row["RecordKind"]=type.Contains("Water") ? "WATER" : type=="Environmental Monitoring" ? "EM" : "PRM";
-            row["SampleID"]=++id; row["SampleType"]=type; row["SampleNumber"]="REGISTER-TEST-"+id.ToString("D3");
+            DataRow row=source.NewRow(); row["RecordKind"]=type.Contains("Water") ? "WATER" : type=="Environmental Monitoring" ? "EM" : type.StartsWith("Legacy Environment",StringComparison.Ordinal) ? "LEGACY_EM" : "PRM";
+            row["SampleID"]=++id; row["SampleType"]=type.StartsWith("Legacy Environment",StringComparison.Ordinal) ? "Environment" : type; row["SampleNumber"]="REGISTER-TEST-"+id.ToString("D3");
             row["Description"]="Fixture sample / source "+(i==14 ? new string('x',700) : "Room 01"); row["BatchOrLot"]="BATCH-001"; row["Quantity"]="100 g";
             row["SampledBy"]="Sampler"; row["RegisteredBy"]="Registrar";
             row["Tests"]=i==13 ? string.Join("; ",Enumerable.Repeat("LONG-TEST-NAME",type=="Primary Packaging" ? 600 : 80)) : "TAMC; TYMC; Specified organisms";
@@ -30,14 +31,15 @@ internal static class SampleRegisterSmoke
             source.Rows.Add(row);
         }
         var tables=SampleReceiptRegisterData.Tables(source);
-        Require(tables.Count==8 && tables.Sum(t=>t.Data.Rows.Count)==120,"all eight types and complete row counts");
+        Require(tables.Count==9 && tables.Sum(t=>t.Data.Rows.Count)==135,"all nine types and complete row counts");
+        Require(source.Rows.Cast<DataRow>().Count(r=>r["RecordKind"].ToString()=="LEGACY_EM")==15,"legacy EM remains a distinct historical kind");
         Require(tables.Any(t=>t.Data.Rows.Cast<DataRow>().Any(r=>r["Dates"].ToString()!.Contains("R: Not recorded"))),"missing lab receipt remains explicit");
         Require(tables.All(t=>t.Data.Rows[0]["No"].ToString()=="1"),"per-type numbering");
-        Require(tables.SelectMany(t=>t.Data.Rows.Cast<DataRow>()).Count(r=>r["Status"].ToString()=="Rejected")==8,"rejected records retained");
+        Require(tables.SelectMany(t=>t.Data.Rows.Cast<DataRow>()).Count(r=>r["Status"].ToString()=="Rejected")==9,"rejected records retained");
         var window=new SampleReceiptRegister(); // No Loaded query: constructor must remain read-only.
         window.Close();
         TrendPdfReportWriter.Write(Path.Combine(directory,"MEDICA_Sample_Register_Fixture_Preview.pdf"),"LABORATORY SAMPLE REGISTER","REGISTER-FIXTURE-ONLY","All types | September 2026 | Registration date","Fixture user",new DateTime(2026,9,30),
-            Path.Combine(AppContext.BaseDirectory,"medica-logo.png"),new[] {"SYNTHETIC TEST DATA ONLY. 120 source records across eight types. Not laboratory results.","Dates legend: S = Sampled; R = Laboratory received; G = Registered."},Array.Empty<TrendReportChart>(),tables,sampleRegister:true);
-        Console.WriteLine("PASS Sample register: eight types, all 120 rows, receipt evidence, date filter, per-type numbering and full PDF.");
+            Path.Combine(AppContext.BaseDirectory,"medica-logo.png"),new[] {"SYNTHETIC TEST DATA ONLY. 135 source records across nine types (including archived Environment). Not laboratory results.","Dates legend: S = Sampled; R = Laboratory received; G = Registered."},Array.Empty<TrendReportChart>(),tables,sampleRegister:true);
+        Console.WriteLine("PASS Sample register: nine types, all 135 rows, historical EM separation, receipt evidence, date filter, per-type numbering and full PDF.");
     }
 }

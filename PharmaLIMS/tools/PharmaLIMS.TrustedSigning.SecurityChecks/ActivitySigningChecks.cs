@@ -11,6 +11,18 @@ internal static class ActivitySigningChecks
         var request = new ActivitySigningRequest(Guid.NewGuid(), 42, "Reviewed", "Verified execution evidence", DateTimeOffset.UtcNow,
             new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 }, "EQ001_UAT_Test");
 
+        var snapshotRequest = new ActivitySnapshotRequest(Guid.NewGuid(), 42, 35, "Reviewed");
+        foreach (var invalidSnapshot in new[] {
+            snapshotRequest with { RequestId = Guid.Empty },
+            snapshotRequest with { ActivityId = 0 },
+            snapshotRequest with { EquipmentId = 0 },
+            snapshotRequest with { Stage = "SignedByOther" }
+        })
+        {
+            await Denied(() => coordinator.ReadSnapshotAsync(invalidSnapshot));
+            Check(store.SnapshotReads == 0, "Invalid snapshot must fail before persistence is read.");
+        }
+
         await coordinator.CommitAsync(request, account.Username, "fresh-secret");
         Check(store.Signer == account.Username && store.ActivityId == 42, "Verified caller must reach the activity store.");
         store.Signer = null;
@@ -67,6 +79,14 @@ internal static class ActivitySigningChecks
     {
         public string? Signer { get; set; }
         public long ActivityId { get; private set; }
+        public int SnapshotReads { get; private set; }
+        public Task<ActivitySnapshot> ReadSnapshotAsync(ActivitySnapshotRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SnapshotReads++;
+            return Task.FromResult(new ActivitySnapshot(request.ActivityId, request.EquipmentId,
+                "Submitted", new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 }, "EQ001_UAT_Test"));
+        }
         public Task CommitOnceAsync(ActivitySigningRequest request, VerifiedActivitySigner signer, CancellationToken cancellationToken)
         { Signer = signer.Username; ActivityId = request.ActivityId; return Task.CompletedTask; }
     }

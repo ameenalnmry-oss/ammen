@@ -550,6 +550,22 @@
                         </Grid>
 
                         <StackPanel Grid.Row="1">
+                                <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8"
+                                        Padding="12" Margin="0,0,0,12">
+                                    <DockPanel LastChildFill="True">
+                                        <Button x:Name="BtnManageEmEquipment" DockPanel.Dock="Right"
+                                                Content="Manage EM Equipment" Width="185" Height="38"
+                                                Margin="12,0,0,0" Click="BtnManageEmEquipment_Click"
+                                                ToolTip="Record sampling equipment by method for this event, once for all matching plates."/>
+                                        <StackPanel>
+                                            <TextBlock Text="Equipment use by EM method" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock x:Name="TxtEmEquipmentUsageSummary"
+                                                       Text="Select an EM event to view its sampling equipment."
+                                                       TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}"
+                                                       FontSize="12" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
                                 <StackPanel x:Name="pnlActiveAirResults" Visibility="Collapsed">
                                     <TextBlock Text="Active Air Sampling Results"
                                                FontWeight="Bold"
@@ -573,19 +589,6 @@
                                             <DataGridTextColumn Header="Alert Limit" Binding="{Binding AlertLimit}" Width="115" IsReadOnly="True"/>
                                             <DataGridTextColumn Header="Action Limit" Binding="{Binding ActionLimit}" Width="120" IsReadOnly="True"/>
                                             <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="115" IsReadOnly="True" CellStyle="{StaticResource StatusCellStyle}"/>
-                                            <DataGridTemplateColumn Header="Equipment Used" Width="230">
-                                                <DataGridTemplateColumn.CellTemplate>
-                                                    <DataTemplate>
-                                                        <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
-                                                                  DisplayMemberPath="DisplayName"
-                                                                  SelectedValuePath="EquipmentID"
-                                                                  SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                  MinWidth="215"
-                                                                  IsTextSearchEnabled="True"
-                                                                  ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
-                                                    </DataTemplate>
-                                                </DataGridTemplateColumn.CellTemplate>
-                                            </DataGridTemplateColumn>
                                             <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="240"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
@@ -612,19 +615,6 @@
                                         <DataGridTextColumn Header="Alert Limit" Binding="{Binding AlertLimit}" Width="115" IsReadOnly="True"/>
                                         <DataGridTextColumn Header="Action Limit" Binding="{Binding ActionLimit}" Width="125" IsReadOnly="True"/>
                                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="115" IsReadOnly="True" CellStyle="{StaticResource StatusCellStyle}"/>
-                                        <DataGridTemplateColumn Header="Equipment Used" Width="230">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=AvailableEquipmentChoices}"
-                                                              DisplayMemberPath="DisplayName"
-                                                              SelectedValuePath="EquipmentID"
-                                                              SelectedValue="{Binding EquipmentID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                              MinWidth="215"
-                                                              IsTextSearchEnabled="True"
-                                                              ToolTip="Unavailable equipment remains visible for traceability; Save Results revalidates current readiness."/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
                                         <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="280"/>
                                     </DataGrid.Columns>
                                 </DataGrid>

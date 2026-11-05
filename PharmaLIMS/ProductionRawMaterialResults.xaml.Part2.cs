@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Repositories;
 using PharmaLIMS.Services;
@@ -23,6 +23,148 @@ namespace PharmaLIMS
 {
     public partial class ProductionRawMaterialResults
     {
+        private void ResetPrmSpecificationOriginNotice()
+        {
+            if (TxtSpecificationSourceNotice != null)
+            {
+                TxtSpecificationSourceNotice.Text =
+                    "Select a sample to see the linked specification and test origin.";
+                TxtSpecificationSourceNotice.Foreground = Brushes.DarkSlateBlue;
+            }
+            if (PrmSpecificationNoticePanel != null)
+            {
+                PrmSpecificationNoticePanel.Background = Brushes.AliceBlue;
+                PrmSpecificationNoticePanel.BorderBrush = Brushes.LightSteelBlue;
+            }
+        }
+
+        private void DisplayPrmSpecificationOrigin(DataRow sample)
+        {
+            if (sample == null || TxtSpecificationSourceNotice == null)
+                return;
+
+            string specification = S(sample, "SpecificationNo").Trim();
+            string itemCode = S(sample, "MaterialCode").Trim();
+            bool isUat = specification.StartsWith("UAT-", StringComparison.OrdinalIgnoreCase) ||
+                         itemCode.Contains("-UAT-", StringComparison.OrdinalIgnoreCase);
+            if (!isUat && _resultsTable != null)
+            {
+                foreach (DataRow test in _resultsTable.Rows)
+                {
+                    string testCode = S(test, "TestCode").Trim();
+                    if (testCode.StartsWith("UAT-", StringComparison.OrdinalIgnoreCase))
+                    {
+                        isUat = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isUat)
+            {
+                TxtSpecificationSourceNotice.Text =
+                    "UAT / TEST SAMPLE ONLY - Linked specification: " + specification +
+                    " (Item: " + itemCode + "). These are UAT fixture tests, NOT " +
+                    "routine Primary Packaging microbiology tests or TAMC/TYMC evidence. " +
+                    "Do not rename previously registered or started tests. For routine " +
+                    "analysis, create the controlled general Primary Packaging profile " +
+                    "(Item Code *), enter approved methods, units, limits and minimum " +
+                    "elapsed times, complete Review/Approve, and register a real sample.";
+                TxtSpecificationSourceNotice.Foreground = Brushes.Firebrick;
+                if (PrmSpecificationNoticePanel != null)
+                {
+                    PrmSpecificationNoticePanel.Background = Brushes.MistyRose;
+                    PrmSpecificationNoticePanel.BorderBrush = Brushes.IndianRed;
+                }
+            }
+            else
+            {
+                TxtSpecificationSourceNotice.Text = "Linked specification: " + specification +
+                    ". Tests are sourced from the approved master profile linked to " +
+                    "this sample. Record only results of tests actually performed.";
+                TxtSpecificationSourceNotice.Foreground = Brushes.DarkSlateBlue;
+                if (PrmSpecificationNoticePanel != null)
+                {
+                    PrmSpecificationNoticePanel.Background = Brushes.AliceBlue;
+                    PrmSpecificationNoticePanel.BorderBrush = Brushes.LightSteelBlue;
+                }
+            }
+        }
+        private void BtnRecordLabReceipt_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                RequireSample();
+                if (!Login.CanRegisterSamples)
+                    throw new UnauthorizedAccessException("Laboratory receipt requires sample registration permission.");
+                if (_analysisStartRecorded || !GetCurrentSampleStatus().Equals("Registered", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Laboratory receipt is recorded before Analysis Start on a registered sample.");
+
+                // Reuse the existing authenticated, audited receipt dialog.
+                // It requires the receiver to enter the ACTUAL date/time and
+                // sign; no timestamp or acceptance is fabricated by this view.
+                var receipt = new LaboratoryReceiptDialog("PRM", _selectedSampleId,
+                    (TxtSampleNo.Text ?? string.Empty).Trim()) { Owner = this };
+                if (receipt.ShowDialog() == true)
+                {
+                    LoadSelectedSample(_selectedSampleId);
+                    TxtStatus.Text = "Signed laboratory receipt recorded. Choose Start Analysis to record the separate analysis-start signature.";
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowOperationError("Laboratory Receipt", ex);
+            }
+        }
+
+        private void BtnStartAnalysis_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!TryRecordPrmAnalysisStart(false))
+                    return;
+                // Recompute Eligibility from the signed SQL AnalysisStartedDate.
+                // Without a refresh, even a zero-hour test stays "Not Started".
+                LoadResultsForSample();
+
+                MessageBox.Show(
+                    "Analysis start date/time recorded successfully.",
+                    "Start Analysis",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowOperationError("Start Analysis", ex);
+            }
+        }
+
+        private bool VerifyAcceptedReceiptForAnalysisStart()
+        {
+            // Explain missing laboratory receipt before the user enters an
+            // analysis-start password. The transactional receipt guard below
+            // remains authoritative and prevents TOCTOU or fabricated evidence.
+            DataTable receiptEvidence = DatabaseHelper.ExecuteQuery(@"
+SELECT TOP (1) ReceiptID
+FROM dbo.LaboratoryReceipts
+WHERE PrmSampleID=@SampleID AND ReceiptDecision=N'Accepted'
+  AND ReceivedDateTime<=SYSDATETIME()
+  AND NULLIF(LTRIM(RTRIM(ReceivedBy)),N'') IS NOT NULL
+  AND NULLIF(LTRIM(RTRIM(MeaningOfSignature)),N'') IS NOT NULL;",
+                new[] { new SqlParameter("@SampleID", SqlDbType.Int) { Value = _selectedSampleId } });
+            if (receiptEvidence.Rows.Count == 0)
+            {
+                MessageBox.Show(
+                    "The sample has no accepted, electronically signed laboratory receipt.\n\n" +
+                    "Select Record Lab Receipt, confirm the actual receipt details, and sign. " +
+                    "Then use Start Analysis. No analysis time has been recorded.",
+                    "Laboratory Receipt Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
         private async void BtnChoosePackagingResults_Click(object sender, RoutedEventArgs e)
         {
             _selectedResultGroup = "PP";
@@ -517,6 +659,8 @@ WHERE SampleID = @SampleID
                     signature.SignedBy,
                     "CanIssueCOA",
                     isReissue ? "reissue PRM certificate/report" : "issue PRM certificate/report");
+                    if (isReissue) ReviewWorkflowAuthorization.EnsurePrmReissue(conn, tx, signature.SignedBy,
+                        AppConfig.IsDevelopment && AppConfig.DevelopmentAdminFullPermissions);
 
                     issuanceStage = "approved sample validation";
                     DataTable lockedSample = new DataTable();

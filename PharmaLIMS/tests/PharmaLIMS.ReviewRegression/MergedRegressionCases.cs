@@ -26,6 +26,18 @@ internal static partial class Program
             new("UNKNOWN_SPECIFICATION", 5m, "Refer to approved method", "", "", "", "Check Required"),
             new("STRUCTURED_COUNT_ONLY", 50m, "", "100", "TAMC", "", "Conforms"),
             new("SINGLE_INCLUSIVE_CONFLICT", 75m, "NMT 100", "50", "TAMC", "", "Check Required"),
+            new("CIPLA_TBC_MATCHING", 10m, "NMT 10 CFU/25 cm2", "10", "TBC", "Total Bacterial Count", "Conforms"),
+            new("CIPLA_TBC_AT_BOUNDARY_OVER", 11m, "NMT 10 CFU/25 cm2", "10", "TBC", "Total Bacterial Count", "Does Not Conform"),
+            new("CIPLA_TBC_CONFLICT", 2m, "NMT 10 CFU/25 cm2", "2", "TBC", "Total Bacterial Count", "Check Required"),
+            new("CIPLA_TFC_MATCHING", 2m, "NMT 2 CFU/25 cm2", "2", "TFC", "Total Fungal Count", "Conforms"),
+            new("CIPLA_TFC_AT_BOUNDARY_OVER", 3m, "NMT 2 CFU/25 cm2", "2", "TFC", "Total Fungal Count", "Does Not Conform"),
+            new("CIPLA_TFC_CONFLICT", 1m, "NMT 2 CFU/25 cm2", "10", "TFC", "Total Fungal Count", "Check Required"),
+            new("CIPLA_SUPERSCRIPT_CM2", 10m, "NMT 10 CFU/25 cm²", "10", "TBC", "Total Bacterial Count", "Conforms"),
+            new("CIPLA_CARET_CM2", 2m, "NMT 2 CFU/25 cm^2", "2", "TFC", "Total Fungal Count", "Conforms"),
+            new("CIPLA_NO_UPPER_BOUND_REJECTED", 3m, "NLT 1 CFU/25 cm2", "10", "TBC", "Total Bacterial Count", "Check Required"),
+            new("CIPLA_TBC_LABELLED_BOUND", 10m, "TBC NMT 10 CFU/25 cm2", "10", "TBC", "Total Bacterial Count", "Conforms"),
+            new("CIPLA_TFC_LABELLED_BOUND", 2m, "Total Fungal Count: NMT 2 CFU/25 cm²", "2", "TFC", "Total Fungal Count", "Conforms"),
+            new("CIPLA_DIFFERENT_TEST_BOUND_NOT_BORROWED", 1m, "TBC NMT 10 CFU/25 cm2", "2", "TFC", "Total Fungal Count", "Check Required"),
             new("NEGATIVE_RESULT", -1m, "NMT 100", "", "", "", "Check Required"),
 
             // F05: consume the whole expression, and do not parse separators twice.

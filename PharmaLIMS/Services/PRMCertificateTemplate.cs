@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Globalization;
 using System.IO;
@@ -36,6 +36,10 @@ namespace PharmaLIMS
             string verificationCode = S(cert, "VerificationCode");
             string reportHash = S(cert, "ReportHash");
             string logoDataUri = GetLogoDataUri();
+            // Debug builds are solely Development/UAT. Never let an accelerated
+            // certificate visually resemble a production GMP release document.
+            // The issue snapshot and immutable audit evidence remain unchanged.
+            bool isDevelopmentCertificate = AppConfig.IsDevelopment;
             DataRow entrySignature = FindLatestSignature(electronicSignatures, "Result Entry");
             DataRow reviewSignature = FindLatestSignature(electronicSignatures, "Review");
             DataRow approvalSignature = FindLatestSignature(electronicSignatures, "Approval");
@@ -103,6 +107,7 @@ namespace PharmaLIMS
             sb.AppendLine(".hashBox,.verifyBox{border:1px solid #d9e4f2;border-radius:7px;padding:8px;background:#ffffff;font-size:8.6px;color:#334155;}");
             sb.AppendLine(".footer{font-size:8px;color:#64748b;text-align:center;margin-top:7px;}");
             sb.AppendLine(".watermark{position:fixed;left:0;right:0;top:118mm;text-align:center;font-size:76px;color:#0f172a;opacity:.035;font-weight:900;transform:rotate(-22deg);z-index:-1;}");
+            sb.AppendLine(".uatNotice{font:900 15px Arial,sans-serif;letter-spacing:.4px;padding:9px 6px;border-bottom:3px solid #9f1239;text-align:center;background:#fff1f2;color:#9f1239;}");
             sb.AppendLine("@media print{html,body{margin:0!important}.page{margin:0;border:1.4px solid #1E3A5F}.noPrint{display:none}}");
             sb.AppendLine("</style>");
 
@@ -111,6 +116,8 @@ namespace PharmaLIMS
 
             sb.AppendLine("<div class='watermark'>MEDICA</div>");
             sb.AppendLine("<div class='page'>");
+            if (isDevelopmentCertificate)
+                sb.AppendLine("<div class='uatNotice'>UAT / NOT FOR GMP RELEASE - DEVELOPMENT TEST CERTIFICATE</div>");
 
             sb.AppendLine("<div class='header'>");
             sb.AppendLine("<div class='logoBox'>");

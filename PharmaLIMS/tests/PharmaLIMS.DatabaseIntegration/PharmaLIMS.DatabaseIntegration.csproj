@@ -8,7 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
+    <Compile Include="../PharmaLIMS.SchemaReadinessRegression/AppendOnlyPreflightCases.cs" Link="AppendOnlyPreflightCases.cs" />
+    <None Include="../fixtures/R9-ReviewClosureSchema-before-trigger-guard.sql" Link="fixtures/R9-ReviewClosureSchema-before-trigger-guard.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../Services/EmResultCalculator.cs" Link="Shared/EmResultCalculator.cs" />
@@ -34,5 +35,18 @@
     <Compile Include="../../Services/WaterResultValueContract.cs" Link="Shared/WaterResultValueContract.cs" />
     <Compile Include="../../Services/WaterResultSnapshotSql.cs" Link="Shared/WaterResultSnapshotSql.cs" />
     <Compile Include="../../Services/ResultSnapshotGuard.cs" Link="Shared/ResultSnapshotGuard.cs" />
+    <Compile Include="../../Services/WaterLesTemperatureContract.cs" Link="Shared/WaterLesTemperatureContract.cs" />
+    <Compile Include="../../Services/WaterEvidencePreflightSql.cs" Link="Shared/WaterEvidencePreflightSql.cs" />
+    <Compile Include="../../Services/CultureMediaPreparationGuard.cs" Link="Shared/CultureMediaPreparationGuard.cs" />
+    <Compile Include="../../Services/CultureMediaWriteContract.cs" Link="Shared/CultureMediaWriteContract.cs" />
+    <Compile Include="../../Services/ReviewClosureSchemaContract.cs" Link="Shared/ReviewClosureSchemaContract.cs" />
+    <Compile Include="../../Services/EmReportEvidenceGuard.cs" Link="Shared/EmReportEvidenceGuard.cs" />
+    <Compile Include="../../Services/SpecificationEvidenceService.cs" Link="Shared/SpecificationEvidenceService.cs" />
+    <Compile Include="../../Services/Investigations/PRMQualityEventInvestigationService.cs" Link="Shared/PRMQualityEventInvestigationService.cs" />
+    <Compile Include="../../Services/Investigations/PRMQualityEventInvestigationEvidence.cs" Link="Shared/PRMQualityEventInvestigationEvidence.cs" />
+    <Compile Include="../../Services/CultureQualificationStartContract.cs" Link="Shared/CultureQualificationStartContract.cs" />
+    <Compile Include="../../Services/ReviewWorkflowAuthorization.cs" Link="Shared/ReviewWorkflowAuthorization.cs" />
+    <Compile Include="../../Services/EmSourcePlanSql.cs" Link="Shared/EmSourcePlanSql.cs" />
+    <Compile Include="../../DatabaseHelper.EmSourcePlan.cs" Link="Shared/DatabaseHelper.EmSourcePlan.cs" />
   </ItemGroup>
 </Project>

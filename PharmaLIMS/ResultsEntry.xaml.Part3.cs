@@ -1,4 +1,4 @@
-#nullable disable
+﻿#nullable disable
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Services;
 using System;

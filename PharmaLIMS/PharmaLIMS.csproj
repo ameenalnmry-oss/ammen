@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -17,8 +17,8 @@
 		<AssemblyName>PharmaLIMS</AssemblyName>
 		<RootNamespace>PharmaLIMS</RootNamespace>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-		<Version>2026.10.6.303</Version>
-		<FileVersion>2026.10.6.303</FileVersion>
+		<Version>2026.10.19.309</Version>
+		<FileVersion>2026.10.19.309</FileVersion>
 		<!-- Do not pin RuntimeFrameworkVersion: F5/debug should use any installed compatible .NET 8 Windows Desktop patch.
 		     Production CI publishes self-contained win-x64, so deployment does not depend on a machine runtime patch. -->
 		<DeploymentEnvironment Condition="'$(DeploymentEnvironment)' == ''">Production</DeploymentEnvironment>
@@ -81,8 +81,14 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 		</None>
+		<None Update="appsettings.Development.json"
+			  Condition="'$(Configuration)' == 'Debug' and Exists('$(MSBuildProjectDirectory)\appsettings.Development.json')">
+			<TargetPath>appsettings.json</TargetPath>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</None>
 		<None Update="appsettings.Development.example.json"
-			  Condition="'$(Configuration)' == 'Debug'">
+			  Condition="'$(Configuration)' == 'Debug' and !Exists('$(MSBuildProjectDirectory)\appsettings.Development.json')">
 			<TargetPath>appsettings.json</TargetPath>
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

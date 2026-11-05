@@ -14,13 +14,15 @@ internal static partial class SiteEmWorkflowCases
         RunPortable(true);
         void Sql(string sql){using var c=new SqlConnection(cs);c.Open();using var cmd=new SqlCommand(sql,c){CommandTimeout=15};cmd.ExecuteNonQuery();}
         Sql(@"
-ALTER TABLE dbo.EM_Events ADD ResultRowVersion rowversion,WorkflowStatus nvarchar(50),FinalResult nvarchar(50),ReviewedBy nvarchar(100),ReviewedDate datetime2,ApprovedBy nvarchar(100),ApprovedDate datetime2;
+ALTER TABLE dbo.EM_Events ADD ResultRowVersion rowversion,ReviewedBy nvarchar(100),ReviewedDate datetime2,ApprovedBy nvarchar(100),ApprovedDate datetime2;
+IF COL_LENGTH(N'dbo.EM_Events',N'WorkflowStatus') IS NULL ALTER TABLE dbo.EM_Events ADD WorkflowStatus nvarchar(50);
+IF COL_LENGTH(N'dbo.EM_Events',N'FinalResult') IS NULL ALTER TABLE dbo.EM_Events ADD FinalResult nvarchar(50);
 ALTER TABLE dbo.EM_EventPlates ADD ResultRowVersion rowversion;
 CREATE TABLE dbo.EM_Areas(Id int PRIMARY KEY,Grade nvarchar(50)); INSERT dbo.EM_Areas VALUES(1,N'B');
 CREATE TABLE dbo.EM_EventSignatures(EventID int,EventNo nvarchar(50),ActionType nvarchar(100),ActionReason nvarchar(500),SignedBy nvarchar(100),UserRole nvarchar(100),MeaningOfSignature nvarchar(250),SignedAt datetime2);
 CREATE TABLE dbo.SiteEmTestAudit(ActionText nvarchar(50));
 ALTER TABLE dbo.EM_Plans ADD CompletedBy nvarchar(100),CompletedAt datetime2;
-ALTER TABLE dbo.EM_PlanSamples ADD Status nvarchar(50);");
+IF COL_LENGTH(N'dbo.EM_PlanSamples',N'Status') IS NULL ALTER TABLE dbo.EM_PlanSamples ADD Status nvarchar(50);");
         void Reset(string status)
         {
             BoundaryBase.CurrentStatus=status;

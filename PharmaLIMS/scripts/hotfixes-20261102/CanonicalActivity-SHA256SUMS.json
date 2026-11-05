@@ -1,0 +1,7 @@
+{
+  "Services/AuthService.cs": "d5cab992869a313d0c73bd6b2cb67095e8a7e4468fca5a0c48a93821f118062f",
+  "tools/PharmaLIMS.TrustedSigning/TrustedActivitySigning.cs": "8327a1fb17c0dd26542d6f3e0ebe12520fb14407c17603e563b4f53dd8721c81",
+  "tools/PharmaLIMS.TrustedSigning/WindowsTrustedPipeServer.cs": "a14bf18fcebed3eb58ccdb49a45d2551f616b6733df6ffaedb8ab980ee76dbac",
+  "tools/PharmaLIMS.TrustedSigning.Host/TrustedApplicationEndpoint.cs": "a172561e378744b6c3636cf0a2717d52389ecc333021c514fffe806541785c22",
+  "tests/test_v309_trusted_activity_reauthentication.py": "0051f8cb0c7e06da86c53a224d0cefe933240c30bde8ae731730a59f4d16f14a"
+}

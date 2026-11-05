@@ -214,7 +214,7 @@ SELECT CASE
               SELECT 1
               FROM dbo.PRM_SampleTests st WITH (UPDLOCK, HOLDLOCK)
               WHERE st.SampleID = @SampleID
-                AND NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue, N''))), N'') IS NOT NULL
+                AND (ISNULL(st.RequiredTest, 1) = 1 OR NULLIF(LTRIM(RTRIM(ISNULL(st.ResultValue, N''))), N'') IS NOT NULL)
                 AND st.Interpretation IN (N'Does Not Conform', N'Check Required')
                 AND NOT EXISTS
                 (
@@ -447,6 +447,10 @@ END;";
             if (DgResults != null)
                 DgResults.IsReadOnly = !editable;
 
+            if (BtnRecordLabReceipt != null)
+                BtnRecordLabReceipt.IsEnabled = hasSample && !_analysisStartRecorded &&
+                    Login.CanRegisterSamples && status.Equals("Registered", StringComparison.OrdinalIgnoreCase);
+
             if (BtnStartAnalysis != null)
                 BtnStartAnalysis.IsEnabled = hasSample && !_analysisStartRecorded && CanEnterPrmResults() && !timingReconciled && !historicalTimingClosed && IsOneOf(status, "Registered", "In Progress", "Results Entered");
             if (BtnTimingReconciliation != null)
@@ -521,6 +525,7 @@ END;";
                     activeCertificate != null &&
                     ToInt(activeCertificate, "CertificateID") == _initialLegacyCertificateId;
                 bool baseReissueAllowed =
+                    CanCancelPrmCertificate() &&
                     hasSample &&
                     CanIssuePrmCertificate() &&
                     hasReissueSource &&
@@ -982,6 +987,7 @@ WHERE S.SampleID=@SampleID;",
 
             LoadApprovedTestsForSample(r);
             LoadResultsForSample();
+            DisplayPrmSpecificationOrigin(r);
             LoadActiveCertificateNo();
             UpdateQualityEventSummary();
             Dispatcher.BeginInvoke(new Action(EnsureQualityEventButtonExists), System.Windows.Threading.DispatcherPriority.Loaded);
@@ -1024,6 +1030,7 @@ WHERE S.SampleID=@SampleID;",
             _analysisStartRecorded = false;
             _timingReconciliationStatus = "Not Required";
             TxtSelectedSampleHeader.Text = "No sample selected";
+            ResetPrmSpecificationOriginNotice();
             DgResults.ItemsSource = null;
             UpdateQualityEventButtonState();
             UpdateWorkflowControls();
@@ -1057,10 +1064,12 @@ SELECT
     EnteredDate,
     CONVERT(NVARCHAR(20), EnteredDate, 120) AS EnteredDateText,
     usage.EquipmentID,
+    (SELECT MAX(h.HistoryID) FROM dbo.LabEquipmentUsageHistory h WHERE h.Module=N'PRM' AND h.ParentRecordID=st.SampleID AND h.ResultRecordID=st.SampleTestID) AS EquipmentHistoryID,
     ISNULL(st.SortOrder, st.SampleTestID) AS SortOrder
 FROM dbo.PRM_SampleTests st
 LEFT JOIN dbo.LabEquipmentUsage usage
   ON usage.Module=N'PRM'
+ AND usage.ParentRecordID=st.SampleID
  AND usage.ResultRecordID=st.SampleTestID
 WHERE st.SampleID = @SampleID
 ORDER BY ISNULL(st.SortOrder, st.SampleTestID), st.SampleTestID;";
@@ -1142,36 +1151,22 @@ WHERE SampleID=@SampleID;",
                 return;
             }
 
-            // The displayed status can age while the window stays open. When
-            // there are pending edits, query the database clock without changing
-            // DataRow state; otherwise refresh all display-only values.
+            // Verify eligibility against the SQL clock without modifying the
+            // DataTable while WPF is starting an edit. Calling
+            // AddPrmTimingDisplayColumns here updates bound DataRows and runs
+            // AcceptChanges, which can reset the editing row before the Result
+            // TextBox is created. Keep the transactional Save Results timing
+            // validation as the final authority.
             string timingStatus;
-            if (!HasPendingResultChanges())
+            try
             {
-                try
-                {
-                    AddPrmTimingDisplayColumns(_resultsTable);
-                    timingStatus = Convert.ToString(rowView["TimingStatus"], CultureInfo.InvariantCulture) ?? string.Empty;
-                }
-                catch (Exception)
-                {
-                    e.Cancel = true;
-                    TxtStatus.Text = "Timing could not be verified. Reload the sample before entering results.";
-                    return;
-                }
+                timingStatus = ReadCurrentResultTimingStatus(rowView.Row);
             }
-            else
+            catch (Exception)
             {
-                try
-                {
-                    timingStatus = ReadCurrentResultTimingStatus(rowView.Row);
-                }
-                catch (Exception)
-                {
-                    e.Cancel = true;
-                    TxtStatus.Text = "Timing could not be verified. Reload the sample before entering results.";
-                    return;
-                }
+                e.Cancel = true;
+                TxtStatus.Text = "Timing could not be verified. Reload the sample before entering results.";
+                return;
             }
             if (timingStatus.Equals("Eligible", StringComparison.OrdinalIgnoreCase))
                 return;
@@ -1236,25 +1231,6 @@ WHERE SampleID=@SampleID;",
             }
         }
 
-        private void BtnStartAnalysis_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (!TryRecordPrmAnalysisStart(false))
-                    return;
-
-                MessageBox.Show(
-                    "Analysis start date/time recorded successfully.",
-                    "Start Analysis",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                ShowOperationError("Start Analysis", ex);
-            }
-        }
-
         private bool EnsureAnalysisStartedForResultSave()
         {
             if (_analysisStartRecorded)
@@ -1303,6 +1279,8 @@ WHERE SampleID=@SampleID;",
                 throw new InvalidOperationException(
                     "Analysis Start is allowed only for Registered / In Progress / Results Entered samples.");
             }
+
+            if (!VerifyAcceptedReceiptForAnalysisStart()) return false;
 
             DateTime analysisStartedAt = default;
 
@@ -1594,19 +1572,10 @@ WHERE SampleID=@SampleID
                 EnsurePrmTimingResultEntryAllowed("Save Results", allowRequiredReentry: true);
                 ValidatePrmNumericResultFormatsBeforeSignature();
 
-                DataRow missingEquipmentRow = _resultsTable?.Rows.Cast<DataRow>()
-                    .FirstOrDefault(row =>
-                        row.RowState != DataRowState.Deleted &&
-                        row["ResultValue"] != DBNull.Value &&
-                        !string.IsNullOrWhiteSpace(Convert.ToString(row["ResultValue"], CultureInfo.InvariantCulture)) &&
-                        (!row.Table.Columns.Contains("EquipmentID") || row["EquipmentID"] == DBNull.Value));
-                if (missingEquipmentRow != null)
-                {
-                    string missingTestName = Convert.ToString(missingEquipmentRow["TestName"], CultureInfo.InvariantCulture) ?? "PRM test";
-                    throw new InvalidOperationException(
-                        "Select the laboratory equipment / instrument used for '" + missingTestName +
-                        "'. Only Active, qualified, and in-calibration equipment is available.");
-                }
+                // PRM equipment documentation belongs to the equipment-use log.
+                // A registered result alone does not imply an instrument was used;
+                // direct per-test assignment remains an OPTIONAL audited detail.
+                // Do not obstruct laboratory result entry solely for a blank device.
 
                 ElectronicSignature signature = RequestPrmSignature("PRM Result Entry");
                 if (signature == null)
@@ -2189,8 +2158,8 @@ WHERE SampleID = @SampleID
             try
             {
                 RequireSample();
-                if (!CanIssuePrmCertificate())
-                    throw new InvalidOperationException("You do not have permission to reissue PRM certificates/reports.");
+                if (!CanIssuePrmCertificate() || !CanCancelPrmCertificate())
+                    throw new InvalidOperationException("Issue and cancellation permissions are required to reissue PRM certificates/reports.");
 
                 string status = GetCurrentSampleStatus();
                 if (!IsOneOf(status, "Approved", "Certificate Issued"))
@@ -2512,9 +2481,12 @@ WHERE SampleID = @SampleID
 
                 if (!string.IsNullOrWhiteSpace(currentResult))
                 {
-                    if (!equipmentId.HasValue)
-                        throw new InvalidOperationException("Equipment / instrument is required for PRM test '" + testName + "'.");
+                    // Validate and audit a device only when the operator explicitly
+                    // selected it. Do not impose one instrument per microbiology test.
 
+                    // Nullable assignments are intentional. This preserves genuine
+                    // manual tests and records signed assignment/clearance evidence
+                    // when equipment was actually used or previously assigned.
                     LabEquipmentUsageService.PersistAssignmentInTransaction(
                         conn, tx, "PRM", _selectedSampleId, testId, equipmentId,
                         signature.SignedBy, signerRole, signature.Meaning, signature.Reason,

@@ -23,6 +23,51 @@ function Get-Hash([byte[]]$Bytes) {
     try { return [BitConverter]::ToString($sha.ComputeHash($Bytes)).Replace('-','') }
     finally { $sha.Dispose() }
 }
+function Get-ConfiguredTrustedSigningCertificate($Config) {
+    $path = [string]$Config.CertificatePath
+    $thumbprint = ([string]$Config.CertificateThumbprint -replace '\s','').ToUpperInvariant()
+    $usesFile = -not [string]::IsNullOrWhiteSpace($path)
+    $usesStore = -not [string]::IsNullOrWhiteSpace($thumbprint)
+
+    if ($usesFile -eq $usesStore) {
+        throw 'Trusted signing configuration must select exactly one certificate source.'
+    }
+
+    if ($usesStore) {
+        if ($thumbprint.Length -ne 40 -or $thumbprint -notmatch '^[0-9A-F]{40}$') {
+            throw 'Trusted signing CertificateThumbprint is invalid.'
+        }
+        if ([string]$Config.CertificateStoreName -ine 'My') {
+            throw 'Trusted signing certificate-store mode requires LocalMachine\My.'
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$Config.CertificatePassword)) {
+            throw 'CertificatePassword must be empty in certificate-store mode.'
+        }
+
+        $store = [Security.Cryptography.X509Certificates.X509Store]::new(
+            [Security.Cryptography.X509Certificates.StoreName]::My,
+            [Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
+        try {
+            $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+            $matches = $store.Certificates.Find(
+                [Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $thumbprint,
+                $false)
+            if ($matches.Count -ne 1) {
+                throw "Expected exactly one trusted-signing certificate in LocalMachine\My; found $($matches.Count)."
+            }
+            return [Security.Cryptography.X509Certificates.X509Certificate2]::new($matches[0])
+        }
+        finally {
+            $store.Close()
+        }
+    }
+
+    return [Security.Cryptography.X509Certificates.X509Certificate2]::new(
+        $path,
+        [string]$Config.CertificatePassword)
+}
+
 function Get-NormalizedHash([byte[]]$Bytes) {
     $value = [Text.Encoding]::UTF8.GetString($Bytes).TrimStart([char]0xFEFF).Replace("`r`n","`n").TrimEnd([char[]]"`r`n") + "`n"
     Get-Hash ([Text.Encoding]::UTF8.GetBytes($value))
@@ -101,8 +146,12 @@ if ($hostConfig.DeploymentMode -ne 'UAT' -or $hostConfig.ProductionActivationApp
     (Get-DbOption $dbOptions @('Integrated Security','Trusted_Connection')) -notin @('True','SSPI') -or
     (Get-DbOption $dbOptions @('Encrypt')) -notin @('True','Mandatory','Strict') -or
     (Get-DbOption $dbOptions @('TrustServerCertificate','Trust Server Certificate')) -ne 'False') { throw 'Unexpected private service target or TLS settings.' }
-$pfxFile = $hostConfig.CertificatePath
-$pfxHash = Get-Hash ([IO.File]::ReadAllBytes($pfxFile))
+$certificateFileMode = -not [string]::IsNullOrWhiteSpace([string]$hostConfig.CertificatePath)
+$certificateStoreMode = -not [string]::IsNullOrWhiteSpace([string]$hostConfig.CertificateThumbprint)
+if ($certificateFileMode -eq $certificateStoreMode) { throw 'Trusted signing configuration must select exactly one certificate source.' }
+$pfxFile = if ($certificateFileMode) { [string]$hostConfig.CertificatePath } else { $null }
+$pfxHash = if ($certificateFileMode) { Get-Hash ([IO.File]::ReadAllBytes($pfxFile)) } else { $null }
+$certificateThumbprint = if ($certificateStoreMode) { ([string]$hostConfig.CertificateThumbprint -replace '\s','').ToUpperInvariant() } else { $null }
 $service = Get-CimInstance Win32_Service -Filter "Name='PharmaLIMS.TrustedSigning'"
 if ($null -eq $service -or $service.StartName -ne '.\PharmaLIMSSigner' -or
     $service.PathName -ne ('"' + (Join-Path $serviceRuntime 'PharmaLIMS.TrustedSigning.Host.exe') + '" --service --config "' + $hostConfigFile + '"')) {
@@ -297,17 +346,27 @@ function Enable-JsonBooleanFlag([string]$Json,[string]$Name) {
 }
 function Assert-ProtectedBytes {
     if ((Get-Hash ([IO.File]::ReadAllBytes($desktopConfigFile))) -ne (Get-Hash $desktopBytes) -or
-        (Get-Hash ([IO.File]::ReadAllBytes($hostConfigFile))) -ne (Get-Hash $hostBytes) -or
-        (Get-Hash ([IO.File]::ReadAllBytes($pfxFile))) -ne $pfxHash) { throw 'Protected configuration/PFX bytes changed.' }
+        (Get-Hash ([IO.File]::ReadAllBytes($hostConfigFile))) -ne (Get-Hash $hostBytes)) {
+        throw 'Protected desktop/service configuration bytes changed.'
+    }
+    if ($certificateFileMode -and (Get-Hash ([IO.File]::ReadAllBytes($pfxFile))) -ne $pfxHash) {
+        throw 'Protected PFX bytes changed.'
+    }
 }
-foreach ($path in @($project,$privateRoot,$serviceRuntime,$desktop,$hostConfigFile,$desktopConfigFile,$pfxFile)) { Assert-NoReparsePoint $path }
-Require-PrivateDirectory $pfxFile
+$protectedPaths = @($project,$privateRoot,$serviceRuntime,$desktop,$hostConfigFile,$desktopConfigFile)
+if ($certificateFileMode) { $protectedPaths += $pfxFile }
+foreach ($path in $protectedPaths) { Assert-NoReparsePoint $path }
+if ($certificateFileMode) { Require-PrivateDirectory $pfxFile }
 Require-PrivateDirectory $hostConfigFile
 Assert-BuildInputs $manifest
 # Kernel account identity must also match the database's isolated Windows signer.
-$certificate=[Security.Cryptography.X509Certificates.X509Certificate2]::new($pfxFile,$hostConfig.CertificatePassword)
+$certificate = Get-ConfiguredTrustedSigningCertificate $hostConfig
 try {
-    if ((Get-Hash $certificate.RawData) -ne $settings.TrustedSigning.ServerCertificateSha256 -or -not $certificate.HasPrivateKey -or $certificate.NotAfter -le (Get-Date)) { throw 'Private TLS certificate does not match the configured desktop pin or is expired.' }
+    if ((Get-Hash $certificate.RawData) -ne $settings.TrustedSigning.ServerCertificateSha256 -or
+        -not $certificate.HasPrivateKey -or
+        $certificate.NotAfter -le (Get-Date)) {
+        throw 'Private TLS certificate does not match the configured desktop pin or is expired.'
+    }
 } finally { $certificate.Dispose() }
 $signerSid=([Security.Principal.NTAccount]::new($env:COMPUTERNAME,'PharmaLIMSSigner')).Translate([Security.Principal.SecurityIdentifier]).Value
 if ($signerSid -ne 'S-1-5-21-3887410152-3473494482-1737934645-1009') { throw 'Unexpected signing service SID.' }
@@ -343,7 +402,12 @@ Backup-Tree $serviceRuntime (Join-Path $rollout 'service')
 foreach ($file in $sourceRollback) { Write-DurableBytes (Join-Path $rollout $file.Name) ([IO.File]::ReadAllBytes($file.FullName)) }
 Write-DurableBytes (Join-Path $rollout 'desktop-appsettings.json') $desktopBytes
 Write-DurableBytes (Join-Path $rollout 'hostsettings.json') $hostBytes
-Write-DurableBytes (Join-Path $rollout 'original-certificate.pfx') ([IO.File]::ReadAllBytes($pfxFile))
+if ($certificateFileMode) {
+    Write-DurableBytes (Join-Path $rollout 'original-certificate.pfx') ([IO.File]::ReadAllBytes($pfxFile))
+}
+else {
+    Write-DurableBytes (Join-Path $rollout 'certificate-store-thumbprint.txt') ([Text.Encoding]::ASCII.GetBytes($certificateThumbprint))
+}
 Write-DurableBytes (Join-Path $rollout 'source-commit.txt') ([Text.Encoding]::ASCII.GetBytes($SourceCommit))
 $buildOutput=Join-Path $rollout 'build'
 $mutated=New-Object 'System.Collections.Generic.List[object]'
@@ -461,7 +525,12 @@ IF (SELECT COUNT(*) FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.PRM_SampleT
     }
     if (-not $ready) { throw 'Expected trusted UAT pipe did not appear.' }
     foreach ($copy in $copies) { if ((Get-Hash ([IO.File]::ReadAllBytes($copy.Target))) -ne $copy.Hash) { throw 'Final qualified runtime validation failed.' } }
-    if ((Get-Hash ([IO.File]::ReadAllBytes($desktopConfigFile))) -ne (Get-Hash $desktopBytes) -or (Get-Hash ([IO.File]::ReadAllBytes($pfxFile))) -ne $pfxHash) { throw 'Final desktop/PFX byte preservation failed.' }
+    if ((Get-Hash ([IO.File]::ReadAllBytes($desktopConfigFile))) -ne (Get-Hash $desktopBytes)) {
+        throw 'Final desktop configuration byte preservation failed.'
+    }
+    if ($certificateFileMode -and (Get-Hash ([IO.File]::ReadAllBytes($pfxFile))) -ne $pfxHash) {
+        throw 'Final PFX byte preservation failed.'
+    }
     Write-Host "PASS: Analysis boundary committed and independently verified; $($copies.Count) qualified runtime differences installed; UAT service running."
     Write-Host "Protected source/runtime rollback: $rollout"
     if ($IncludePrmRegistration) { Write-Host 'PRM registration was independently selected, committed and enabled; native standard-user registration/readback remains required.' }

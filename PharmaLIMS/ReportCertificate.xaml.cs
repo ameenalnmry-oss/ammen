@@ -1,6 +1,7 @@
-﻿#nullable disable
+#nullable disable
 using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
+using PharmaLIMS.Services;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -704,8 +705,6 @@ namespace PharmaLIMS
             if (value == null || value == DBNull.Value)
                 return false;
 
-            // Database numeric values must not pass through the workstation's
-            // decimal separator before being parsed for the certificate.
             string raw = Convert.ToString(value, CultureInfo.InvariantCulture).Trim();
 
             if (string.IsNullOrWhiteSpace(raw))
@@ -813,18 +812,20 @@ namespace PharmaLIMS
             if (IsAppearanceTest(testName))
                 return "Clear and Colorless";
 
-            if (Services.WaterNumericResultEvaluator.IsRangeTest(testName))
+            if (WaterNumericResultEvaluator.IsRangeTest(testName))
             {
                 if (TryGetDecimal(alertLimit, out decimal lower) &&
-                    TryGetDecimal(actionLimit, out decimal upper) &&
-                    Services.WaterNumericResultEvaluator.HasCompleteLimits(testName, lower, upper))
-                    return lower.ToString("0.############################", CultureInfo.InvariantCulture) + " - " +
-                           upper.ToString("0.############################", CultureInfo.InvariantCulture);
+                    TryGetDecimal(actionLimit, out decimal upper))
+                    return WaterReportNumericContract.FormatRange(testName, lower, upper);
 
-                return "Check Required";
+                if (IsPhTest(testName) && (stored.Contains("operational", StringComparison.OrdinalIgnoreCase) ||
+                    stored.Contains("trend", StringComparison.OrdinalIgnoreCase)))
+                    return "Operational / trend parameter";
+
+                return "Approved specification snapshot missing";
             }
 
-            if (TryGetDecimal(actionLimit, out decimal numericLimit) && numericLimit > 0)
+            if (TryGetDecimal(actionLimit, out decimal numericLimit) && numericLimit >= 0)
                 return "NMT " + numericLimit.ToString("0.############################", CultureInfo.InvariantCulture);
 
             if (IsAbsencePresenceTest(unit, testName))
@@ -903,41 +904,16 @@ namespace PharmaLIMS
                     : "Non-Conform";
             }
 
-            if (Services.WaterNumericResultEvaluator.IsRangeTest(testName))
+            if (WaterNumericResultEvaluator.IsRangeTest(testName))
             {
-                if (!TryGetDecimal(resultValue, out decimal value))
-                    return "Check Required";
-
-                if (TryGetDecimal(alertLimit, out decimal lower) &&
-                    TryGetDecimal(actionLimit, out decimal upper) &&
-                    Services.WaterNumericResultEvaluator.HasCompleteLimits(testName, lower, upper))
-                    return value >= lower && value <= upper ? "Conform" : "Non-Conform";
-
-                return "Check Required";
-            }
-
-            if (IsConductivityTest(testName))
-            {
-                if (!TryGetDecimal(resultValue, out decimal value))
-                    return "Check Required";
-
-                if (TryGetDecimal(actionLimit, out decimal frozenConductivityLimit) && frozenConductivityLimit > 0)
-                    return value <= frozenConductivityLimit ? "Conform" : "Non-Conform";
-
-                // Conductivity must be evaluated from the approved compendial/site
-                // snapshot; do not invent a universal 1.3 µS/cm or other fallback.
-                return "Check Required";
-            }
-
-            if (IsHardnessTest(testName) && IsPotableWater(sampleType))
-            {
-                decimal value;
-
-                if (!TryGetDecimal(resultValue, out value))
-                    return "Non-Conform";
-
-                decimal limit = IsSoftWaterPoint(sampleType) ? 5.0m : 300.0m;
-                return value <= limit ? "Conform" : "Non-Conform";
+                decimal? lower = TryGetDecimal(alertLimit, out decimal l) ? l : null;
+                decimal? upper = TryGetDecimal(actionLimit, out decimal u) ? u : null;
+                if (IsPhTest(testName) && !lower.HasValue && !upper.HasValue &&
+                    ((storedDescription ?? "").Contains("operational", StringComparison.OrdinalIgnoreCase) ||
+                     (storedDescription ?? "").Contains("trend", StringComparison.OrdinalIgnoreCase)))
+                    return "Trend";
+                return WaterReportNumericContract.Conformity(testName,
+                    TryGetDecimal(resultValue, out decimal measured) ? measured : null, lower, upper);
             }
 
             if (IsPathogenTest(testName) && IsPotableWater(sampleType))
@@ -957,16 +933,6 @@ namespace PharmaLIMS
                 return "Non-Conform";
             }
 
-            if (IsTotalBacterialCountTest(testName) && IsPotableWater(sampleType))
-            {
-                decimal value;
-
-                if (!TryGetDecimal(resultValue, out value))
-                    return "Non-Conform";
-
-                return value <= 500.0m ? "Conform" : "Non-Conform";
-            }
-
             if (IsAbsencePresenceTest(unit, testName))
             {
                 decimal value;
@@ -983,17 +949,10 @@ namespace PharmaLIMS
                 return "Non-Conform";
             }
 
-            decimal numericResult;
-            decimal actionLimitValue;
-
-            if (TryGetDecimal(resultValue, out numericResult) &&
-                TryGetDecimal(actionLimit, out actionLimitValue) &&
-                actionLimitValue > 0)
-            {
-                return numericResult <= actionLimitValue ? "Conform" : "Non-Conform";
-            }
-
-            return "Conform";
+            return WaterReportNumericContract.Conformity(testName,
+                TryGetDecimal(resultValue, out decimal numericResult) ? numericResult : null,
+                TryGetDecimal(alertLimit, out decimal frozenAlert) ? frozenAlert : null,
+                TryGetDecimal(actionLimit, out decimal frozenAction) ? frozenAction : null);
         }
 
         private string GetUnitForCertificate(

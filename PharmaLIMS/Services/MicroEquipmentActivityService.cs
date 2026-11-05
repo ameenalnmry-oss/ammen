@@ -15,6 +15,26 @@ internal static class MicroEquipmentActivityService
     {
         if (equipmentId <= 0 || string.IsNullOrWhiteSpace(actor) || string.IsNullOrWhiteSpace(activityType))
             throw new ArgumentException("Equipment, activity type and authenticated performer are required.");
+        // EQ-001 isolated UAT prohibits direct client DML on dbo. A narrowly scoped
+        // OWNER-executed procedure validates Windows login + PharmaLIMS actor and
+        // atomically creates the unsigned draft with append-only audit evidence.
+        var target = new SqlConnectionStringBuilder(connection.ConnectionString);
+        if (string.Equals(target.InitialCatalog, "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal))
+        {
+            using var scoped = new SqlCommand("dbo.EQ001_UAT_CreateMicroEquipmentDraft", connection, transaction)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            scoped.Parameters.Add("@EquipmentID", SqlDbType.Int).Value = equipmentId;
+            scoped.Parameters.Add("@ActivityType", SqlDbType.NVarChar, 60).Value = activityType;
+            scoped.Parameters.Add("@Actor", SqlDbType.NVarChar, 100).Value = actor.Trim();
+            scoped.Parameters.Add("@MethodReference", SqlDbType.NVarChar, 200).Value =
+                string.IsNullOrWhiteSpace(methodReference) ? DBNull.Value : methodReference.Trim();
+            object? scopedId = scoped.ExecuteScalar();
+            if (scopedId is null or DBNull)
+                throw new InvalidOperationException("Controlled equipment draft was not committed.");
+            return Convert.ToInt64(scopedId, CultureInfo.InvariantCulture);
+        }
         DatabaseHelper.EnsureUserPermissionInTransaction(connection,transaction,actor,"CanEnterResults","create microbiology equipment activity");
         using var command = new SqlCommand(@"
 DECLARE @CreatedActivity TABLE (ActivityID bigint NOT NULL);
@@ -51,11 +71,29 @@ SELECT ActivityID FROM @CreatedActivity;
         if (activityId <= 0 || parentId <= 0 || (resultId.HasValue && resultId.Value <= 0) ||
             string.IsNullOrWhiteSpace(actor))
             throw new ArgumentException("Valid draft, registered sample/event and authenticated performer are required.");
-        DatabaseHelper.EnsureUserPermissionInTransaction(connection, transaction, actor,
-            "CanEnterResults", "link microbiology equipment activity");
         string normalized = (module ?? string.Empty).Trim().ToUpperInvariant();
         if (normalized is not ("PRM" or "EM" or "WATER"))
             throw new ArgumentException("Unsupported laboratory module.");
+        // EQ-001 UAT forbids direct INSERT even for Admin; the controlled
+        // module-specific procedure verifies the Windows/app actor, draft
+        // owner, sample membership and idempotent association atomically.
+        var target = new SqlConnectionStringBuilder(connection.ConnectionString);
+        if (string.Equals(target.InitialCatalog, "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal))
+        {
+            using var scoped = new SqlCommand("dbo.EQ001_UAT_LinkMicroEquipmentDraft", connection, transaction)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            scoped.Parameters.Add("@ActivityID", SqlDbType.BigInt).Value = activityId;
+            scoped.Parameters.Add("@Module", SqlDbType.NVarChar, 20).Value = normalized;
+            scoped.Parameters.Add("@ParentID", SqlDbType.Int).Value = parentId;
+            scoped.Parameters.Add("@ResultID", SqlDbType.Int).Value = resultId.HasValue ? resultId.Value : DBNull.Value;
+            scoped.Parameters.Add("@Actor", SqlDbType.NVarChar, 100).Value = actor.Trim();
+            scoped.ExecuteNonQuery();
+            return;
+        }
+        DatabaseHelper.EnsureUserPermissionInTransaction(connection, transaction, actor,
+            "CanEnterResults", "link microbiology equipment activity");
 
         // Verify the parent independently, even when no test identifier was selected.
         // When a test is supplied, its membership in that same parent is mandatory.
@@ -126,6 +164,21 @@ IF NOT EXISTS (SELECT 1 FROM dbo.MicroEquipmentActivityLinks WITH(UPDLOCK,HOLDLO
         if(activityId<=0 || expectedRowVersion is null || expectedRowVersion.Length!=8 || string.IsNullOrWhiteSpace(actor))
             throw new ArgumentException("Activity, baseline and authenticated performer are required.");
         if(actualEnd<actualStart) throw new ArgumentException("Use end must not precede the start.");
+        var target = new SqlConnectionStringBuilder(connection.ConnectionString);
+        if (string.Equals(target.InitialCatalog, "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal))
+        {
+            using var scoped = new SqlCommand("dbo.EQ001_UAT_ConfirmMicroEquipmentUse", connection, transaction)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            scoped.Parameters.Add("@ActivityID", SqlDbType.BigInt).Value = activityId;
+            scoped.Parameters.Add("@Version", SqlDbType.Binary, 8).Value = expectedRowVersion;
+            scoped.Parameters.Add("@Actor", SqlDbType.NVarChar, 100).Value = actor.Trim();
+            scoped.Parameters.Add("@Started", SqlDbType.DateTimeOffset).Value = actualStart;
+            scoped.Parameters.Add("@Ended", SqlDbType.DateTimeOffset).Value = actualEnd;
+            scoped.ExecuteNonQuery();
+            return;
+        }
         DatabaseHelper.EnsureUserPermissionInTransaction(connection,transaction,actor,"CanEnterResults","confirm microbiology equipment use");
         using var command=new SqlCommand(@"
 UPDATE dbo.MicroEquipmentActivities WITH(UPDLOCK,HOLDLOCK)
@@ -144,12 +197,29 @@ IF @@ROWCOUNT<>1 THROW 56511,'Stale or unlinked activity: reload and confirm act
 
     internal static void SubmitNonUseExecution(SqlConnection connection, SqlTransaction transaction,
         long activityId, byte[] expectedRowVersion, string actor, DateTimeOffset actualStart,
-        DateTimeOffset actualEnd, string executionDetails)
+        DateTimeOffset actualEnd, string executionDetails, string? structuredJson = null)
     {
         if (activityId <= 0 || expectedRowVersion is null || expectedRowVersion.Length != 8 ||
             string.IsNullOrWhiteSpace(actor) || string.IsNullOrWhiteSpace(executionDetails) ||
             executionDetails.Trim().Length > 500 || actualEnd < actualStart)
             throw new ArgumentException("Valid activity, performer, execution details and timestamps are required.");
+        var target = new SqlConnectionStringBuilder(connection.ConnectionString);
+        if (string.Equals(target.InitialCatalog, "EQ001_UAT_AMEEN_20261024", StringComparison.Ordinal))
+        {
+            using var scoped = new SqlCommand("dbo.EQ001_UAT_SubmitMicroEquipmentExecution", connection, transaction)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            scoped.Parameters.Add("@ActivityID", SqlDbType.BigInt).Value = activityId;
+            scoped.Parameters.Add("@Version", SqlDbType.Binary, 8).Value = expectedRowVersion;
+            scoped.Parameters.Add("@Actor", SqlDbType.NVarChar, 100).Value = actor.Trim();
+            scoped.Parameters.Add("@Started", SqlDbType.DateTimeOffset).Value = actualStart;
+            scoped.Parameters.Add("@Ended", SqlDbType.DateTimeOffset).Value = actualEnd;
+            scoped.Parameters.Add("@Details", SqlDbType.NVarChar, 500).Value = executionDetails.Trim();
+            scoped.Parameters.Add("@StructuredJson", SqlDbType.NVarChar, -1).Value = structuredJson ?? "{}";
+            scoped.ExecuteNonQuery();
+            return;
+        }
         DatabaseHelper.EnsureUserPermissionInTransaction(connection, transaction, actor,
             "CanEnterResults", "submit microbiology equipment execution");
         using var command = new SqlCommand(@"

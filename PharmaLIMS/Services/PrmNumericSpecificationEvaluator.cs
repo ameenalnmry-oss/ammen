@@ -80,7 +80,8 @@ namespace PharmaLIMS.Services
                     out decimal? upper, out bool upperInclusive))
                 return "Check Required";
 
-            // Structured TAMC/TYMC limits mean inclusive NMT upper bounds.
+            // Structured microbiology count limits (TAMC/TYMC and CIPLA TBC/TFC)
+            // must equal the inclusive upper acceptance bound.
             // Compare the canonical intersection, including open/closed bounds,
             // not merely a single <= token. Redundant weaker bounds are harmless.
             if (structuredLimit.HasValue && IsMicrobialCountUpperLimitTest(testCode, fallbackName) &&
@@ -162,12 +163,13 @@ namespace PharmaLIMS.Services
         }
 
         private const string UnitPattern =
-            @"(?:CFU(?:\s*/\s*(?:\d+\s*)?(?:g|mL|L|m3|m\^3|cm2|cm\^2|plate|swab|glove|bottle)(?:\s+or\s+(?:g|mL))?)|%|pH)";
+            @"(?:CFU(?:\s*/\s*(?:\d+\s*)?(?:g|mL|L|m3|m\^3|cm2|cm\^2|cm\u00B2|plate|swab|glove|bottle)(?:\s+or\s+(?:g|mL))?)|%|pH)";
 
         private static string StripTestLabel(string text)
         {
             return Regex.Replace(text.Trim(),
-                @"^(?:TAMC\b|TYMC\b|TOTAL\s+AEROBIC\s+MICROBIAL(?:\s+COUNT)?\b|" +
+                @"^(?:TAMC\b|TYMC\b|TBC\b|TFC\b|TOTAL\s+AEROBIC\s+MICROBIAL(?:\s+COUNT)?\b|" +
+                @"TOTAL\s+BACTERIAL\s+COUNT\b|TOTAL\s+FUNGAL\s+COUNT\b|" +
                 @"TOTAL\s+(?:COMBINED\s+)?YEAST(?:S)?\s+AND\s+MO(?:U)?LD(?:S)?(?:\s+COUNT)?\b)\s*[:=]?\s*",
                 string.Empty, RuleOptions).Trim();
         }
@@ -394,6 +396,14 @@ namespace PharmaLIMS.Services
                 return TestIdentity.Tymc;
             }
 
+            if (code.Equals("TBC", StringComparison.OrdinalIgnoreCase) ||
+                Regex.IsMatch(value, @"\bTBC\b|TOTAL\s+BACTERIAL\s+COUNT", RuleOptions))
+                return TestIdentity.Tbc;
+
+            if (code.Equals("TFC", StringComparison.OrdinalIgnoreCase) ||
+                Regex.IsMatch(value, @"\bTFC\b|TOTAL\s+FUNGAL\s+COUNT", RuleOptions))
+                return TestIdentity.Tfc;
+
             return TestIdentity.None;
         }
 
@@ -403,7 +413,11 @@ namespace PharmaLIMS.Services
             string name = (testName ?? string.Empty).Trim();
             return code.Equals("TAMC", StringComparison.OrdinalIgnoreCase) ||
                    code.Equals("TYMC", StringComparison.OrdinalIgnoreCase) ||
+                   code.Equals("TBC", StringComparison.OrdinalIgnoreCase) ||
+                   code.Equals("TFC", StringComparison.OrdinalIgnoreCase) ||
                    name.Contains("Total Aerobic Microbial Count", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("Total Bacterial Count", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("Total Fungal Count", StringComparison.OrdinalIgnoreCase) ||
                    name.Contains("Total Yeast and Mold Count", StringComparison.OrdinalIgnoreCase) ||
                    name.Contains("Total Yeast and Mould Count", StringComparison.OrdinalIgnoreCase);
         }
@@ -412,7 +426,9 @@ namespace PharmaLIMS.Services
         {
             None,
             Tamc,
-            Tymc
+            Tymc,
+            Tbc,
+            Tfc
         }
 
         private enum RuleKind

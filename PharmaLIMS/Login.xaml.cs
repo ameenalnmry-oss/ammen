@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Services;
 using Microsoft.Data.SqlClient;
@@ -96,10 +96,10 @@ namespace PharmaLIMS
 
                 authenticationCompleted = true;
 
-                if (user.MustChangePassword)
+                if (user.MustChangePassword || user.PasswordChangedAt is null)
                 {
                     ApplicationLogger.Information(
-                        $"Account '{username}' authenticated with a temporary password. Mandatory personal password change is required before workspace access.");
+                        $"Account '{username}' requires a personal credential finalization before workspace access.");
 
                     var passwordChange = new ChangePassword(_authService) { Owner = this };
                     if (passwordChange.ShowDialog() != true)
@@ -110,7 +110,7 @@ namespace PharmaLIMS
                     }
 
                     user = _authService.GetCurrentUser();
-                    if (user == null || user.MustChangePassword)
+                    if (user == null || user.MustChangePassword || user.PasswordChangedAt is null)
                     {
                         ClearFailedSessionState(authenticationCompleted);
                         ShowError("The required password change could not be confirmed. No workspace session was created.");

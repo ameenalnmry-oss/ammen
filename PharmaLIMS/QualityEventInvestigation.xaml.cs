@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
@@ -49,6 +49,7 @@ namespace PharmaLIMS
         private DateTime? loadedClosedDate;
         private DateTime? loadedEventCreatedDate;
         private string loadedInvestigationVersion;
+        private string pendingSavedInvestigationVersion;
 
         private sealed class QualityEventPaginatorSource : IDocumentPaginatorSource
         {
@@ -254,7 +255,7 @@ namespace PharmaLIMS
             DataTable table = DatabaseHelper.GetQualityEventChecklist(qualityEventId);
 
             if (table == null)
-                return CreateChecklistSchema();
+                throw new InvalidOperationException("The Quality Event checklist was not loaded. Reload before continuing.");
 
             EnsureChecklistColumn(table, "QuestionID", typeof(int));
             EnsureChecklistColumn(table, "SectionName", typeof(string));
@@ -501,7 +502,7 @@ namespace PharmaLIMS
                 ApplicationLogger.Warning(
                     $"Unable to load Environmental Monitoring context for Quality Event {qualityEventId}, EM Event '{eventNumber}'.",
                     ex);
-                return empty;
+                throw new InvalidOperationException("The EM investigation context was not loaded. Reload before continuing.", ex);
             }
         }
 
@@ -660,6 +661,8 @@ namespace PharmaLIMS
             try
             {
                 isLoadingEvent = true;
+                loadedInvestigationVersion = null;
+                pendingSavedInvestigationVersion = null;
                 IsEnabled = false;
                 Mouse.OverrideCursor = Cursors.Wait;
 
@@ -692,9 +695,9 @@ namespace PharmaLIMS
 
                 QualityEventLoadData loaded = await Task.Run(() =>
                 {
-                    loadedInvestigationVersion = null;
                     string versionBeforeLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, false);
-                    DataTable header = DatabaseHelper.GetQualityEventHeader(qualityEventId);
+                    DataTable header = DatabaseHelper.GetQualityEventHeader(qualityEventId)
+                        ?? throw new InvalidOperationException("The Quality Event header was not loaded.");
                     if (header.Rows.Count == 0)
                         return null;
 
@@ -716,10 +719,14 @@ namespace PharmaLIMS
                             ? LoadEnvironmentalMonitoringContext(headerRow.GetSafeString("SampleNumber"))
                             : new DataTable()
                     };
+                    if (new[] { data.AffectedResults, data.Actions, data.Checklist, data.RootCauseWhys,
+                        data.ImpactAssessment, data.CapaItems, data.Retesting, data.Distribution,
+                        data.EnvironmentalMonitoringContext }.Any(table => table == null))
+                        throw new InvalidOperationException("Complete Quality Event evidence was not loaded. Reload before continuing.");
                     string versionAfterLoad = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, false);
                     if (!string.Equals(versionBeforeLoad, versionAfterLoad, StringComparison.Ordinal))
                         throw new DBConcurrencyException("The investigation changed while loading. Reload before continuing.");
-                    loadedInvestigationVersion = versionAfterLoad;
+                    data.EvidenceVersion = versionAfterLoad;
                     return data;
                 });
 
@@ -788,6 +795,9 @@ namespace PharmaLIMS
                 PopulateEnvironmentalMonitoringContext();
                 UpdateButtons(row.GetSafeString("CurrentStatus"));
                 lblStatus.Text = "Loaded " + lblEventNumber.Text + ".";
+                if (string.IsNullOrEmpty(loaded.EvidenceVersion))
+                    throw new DBConcurrencyException("The complete investigation evidence version was not loaded.");
+                loadedInvestigationVersion = loaded.EvidenceVersion;
             }
             catch (Exception ex)
             {
@@ -899,6 +909,7 @@ namespace PharmaLIMS
             CommitChecklistEdits();
             string actionNote = txtActionNote.Text.Trim();
             string savedVersion = null;
+            pendingSavedInvestigationVersion = null;
 
             DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
             {
@@ -926,7 +937,8 @@ namespace PharmaLIMS
                     "Quality Event");
                 savedVersion = QualityEventInvestigationConcurrencyGuard.Capture(connection, transaction, qualityEventId, false);
             });
-            loadedInvestigationVersion = savedVersion;
+            loadedInvestigationVersion = null;
+            pendingSavedInvestigationVersion = savedVersion;
 
             if (!string.IsNullOrWhiteSpace(actionNote))
                 txtActionNote.Clear();
@@ -2152,21 +2164,37 @@ namespace PharmaLIMS
 
         private void ReloadInvestigationTablesForValidation()
         {
-            checklistTable = GetFilteredChecklist();
-            rootCauseWhysTable = LoadRootCauseWhysTable();
-            impactAssessmentTable = LoadImpactAssessmentTable();
-            capaItemsTable = LoadCAPAItemsTable();
-            retestingTable = LoadRetestingTable();
-            distributionTable = LoadDistributionTable();
-
+            string expected = pendingSavedInvestigationVersion;
+            pendingSavedInvestigationVersion = null;
+            loadedInvestigationVersion = null;
+            if (string.IsNullOrEmpty(expected))
+                throw new DBConcurrencyException("Reload the complete investigation before validation.");
+            string before = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, false);
+            if (!string.Equals(expected, before, StringComparison.Ordinal))
+                throw new DBConcurrencyException("The investigation changed after saving. Reload before validation.");
+            DataTable affected = DatabaseHelper.GetQualityEventAffectedResults(qualityEventId)
+                ?? throw new InvalidOperationException("Affected results were not loaded.");
+            DataTable actions = DatabaseHelper.GetQualityEventActions(qualityEventId)
+                ?? throw new InvalidOperationException("Actions were not loaded.");
+            checklistTable = GetFilteredChecklist() ?? throw new InvalidOperationException("Checklist was not loaded.");
+            rootCauseWhysTable = LoadRootCauseWhysTable() ?? throw new InvalidOperationException("Root cause was not loaded.");
+            impactAssessmentTable = LoadImpactAssessmentTable() ?? throw new InvalidOperationException("Impact assessment was not loaded.");
+            capaItemsTable = LoadCAPAItemsTable() ?? throw new InvalidOperationException("CAPA was not loaded.");
+            retestingTable = LoadRetestingTable() ?? throw new InvalidOperationException("Retesting was not loaded.");
+            distributionTable = LoadDistributionTable() ?? throw new InvalidOperationException("Distribution was not loaded.");
+            string after = QualityEventInvestigationConcurrencyGuard.CaptureLoadedVersion(AppConfig.ConnectionString, qualityEventId, false);
+            if (!string.Equals(expected, after, StringComparison.Ordinal))
+                throw new DBConcurrencyException("The investigation changed while validating. Reload before continuing.");
             EnsureEnvironmentalMonitoringStructuredDefaults();
-
+            dgAffectedResults.ItemsSource = affected.DefaultView;
+            dgActions.ItemsSource = actions.DefaultView;
             dgChecklist.ItemsSource = checklistTable.DefaultView;
             dgRootCauseWhys.ItemsSource = rootCauseWhysTable.DefaultView;
             dgImpactAssessment.ItemsSource = impactAssessmentTable.DefaultView;
             dgCAPAItems.ItemsSource = capaItemsTable.DefaultView;
             dgRetesting.ItemsSource = retestingTable.DefaultView;
             dgDistribution.ItemsSource = distributionTable.DefaultView;
+            loadedInvestigationVersion = expected;
         }
 
         private async void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -2214,6 +2242,7 @@ namespace PharmaLIMS
                 if (!ValidateBeforeClosure())
                     return;
 
+                string expectedVersion = loadedInvestigationVersion;
                 var signatureWindow = _serviceProvider?.GetRequiredService<ElectronicSignature>();
                 if (signatureWindow == null)
                 {
@@ -2246,7 +2275,7 @@ namespace PharmaLIMS
                     signatureWindow.Meaning,
                     signatureWindow.Reason,
                     currentRole,
-                    loadedInvestigationVersion);
+                    expectedVersion);
 
 
                 await LoadEventAsync();

@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Infrastructure;
@@ -75,6 +75,7 @@ namespace PharmaLIMS
 
         private List<EMPlateResultItem> plateItems = new List<EMPlateResultItem>();
         private DataTable _loadedPlateSnapshot;
+        private string currentAreaContextSource = "";
         private bool isSaving = false;
         private bool isWorkflowActionInProgress = false;
         private bool reportPrintedThisSession = false;
@@ -592,6 +593,9 @@ SELECT CASE
         private bool CanPrintApprovedEMReport(out string message)
         {
             message = "";
+            try { CommitEmResultGridEdits(); }
+            catch (Exception ex) { message = UserFacingError.SafeMessage(ex); return false; }
+
 
             if (currentEventId <= 0)
             {
@@ -631,7 +635,9 @@ SELECT CASE
             }
 
             string databaseMessage;
-            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, currentUser, out databaseMessage))
+            if (!DatabaseHelper.CanPrintEMResultReport(currentEventId, currentUser, out databaseMessage,
+                (conn, tx, locked) => EnsureEmVisibleEvidenceSaved(_loadedPlateSnapshot, locked, currentEventId,
+                    plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)), plateItems.ToDictionary(item => item.PlateId, item => item.EquipmentID))))
             {
                 message = databaseMessage;
                 return false;
@@ -681,6 +687,9 @@ SELECT CASE
             if (BtnSaveResults != null)
                 BtnSaveResults.IsEnabled = canEdit &&
                     !resultsLocked;
+
+            if (BtnManageEmEquipment != null)
+                BtnManageEmEquipment.IsEnabled = hasEvent && canEdit && !resultsLocked;
 
             if (BtnCalculate != null)
                 BtnCalculate.IsEnabled = canEdit &&
@@ -820,12 +829,14 @@ SELECT CASE
                 return;
 
             EMPlateResultItem missingEquipment = plateItems.FirstOrDefault(item =>
-                item.TotalCount.HasValue && !item.EquipmentID.HasValue);
+                item.TotalCount.HasValue &&
+                EmResultCalculator.RequiresSamplingEquipment(item.Method) &&
+                !item.EquipmentID.HasValue);
             if (missingEquipment != null)
             {
                 MessageBox.Show(
-                    "Select the laboratory equipment / instrument used for plate " + missingEquipment.PlateCode +
-                    "\n\nOnly equipment that is currently Active, qualified, and within calibration is available.",
+                    "Select the sampling instrument used for plate " + missingEquipment.PlateCode +
+                    "\n\nActive Air Sampling requires a controlled instrument. Manual direct-count sampling does not require one at this stage. Any selected equipment must be Active, qualified, and within calibration.",
                     "Equipment Required",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
@@ -907,10 +918,24 @@ SELECT CASE
                 return;
             }
 
+            try
+            {
+            CommitEmResultGridEdits();
+            int submittedEventId = currentEventId;
+            string submittedEventNo = currentEventNo;
+            DataTable original = _loadedPlateSnapshot?.Copy() ?? throw new InvalidOperationException("Reload the EM event before submitting.");
+            var visible = plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)).ToArray();
+            var equipment = plateItems.ToDictionary(item => item.PlateId, item => item.EquipmentID);
+            EnsureEmVisibleEvidenceSaved(original, original, submittedEventId, visible, equipment);
             await PerformEMWorkflowActionAsync(
                 "Submit for Review",
                 "EM Submit for Review",
-                (meaning, reason) => DatabaseHelper.SubmitEMEventForReview(currentEventId, currentEventNo, currentUser, meaning, reason));
+                (meaning, reason) => DatabaseHelper.SubmitEMEventForReview(submittedEventId, submittedEventNo, currentUser, meaning, reason,
+                    (conn, tx) => EnsureEmVisibleEvidenceSaved(original, DatabaseHelper.ReadEmPlateSnapshotInTransaction(conn, tx, submittedEventId),
+                        submittedEventId, visible, equipment)));
+            }
+            catch (Exception ex) { MessageBox.Show(UserFacingError.SafeMessage(ex), "Unsaved EM Evidence", MessageBoxButton.OK, MessageBoxImage.Warning); }
+
         }
 
         private async void BtnReview_Click(object sender, RoutedEventArgs e)
@@ -930,10 +955,21 @@ SELECT CASE
                 return;
             }
 
-            await PerformEMWorkflowActionAsync(
-                "Review",
-                "EM Review",
-                (meaning, reason) => DatabaseHelper.ReviewEMEvent(currentEventId, currentEventNo, currentUser, meaning, reason));
+            try
+            {
+                int signedEventId = currentEventId;
+                string signedEventNo = currentEventNo;
+                string signedBy = currentUser;
+                DataTable original = CaptureEmWorkflowEvidence(signedEventId);
+                await PerformEMWorkflowActionAsync(
+                    "Review",
+                    "EM Review",
+                    (meaning, reason) => DatabaseHelper.ReviewEMEvent(signedEventId, signedEventNo, signedBy, meaning, reason, original));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex), "Unsaved EM Evidence", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private async void BtnApprove_Click(object sender, RoutedEventArgs e)
@@ -959,10 +995,21 @@ SELECT CASE
                 return;
             }
 
-            await PerformEMWorkflowActionAsync(
-                "Approve",
-                "EM Approval",
-                (meaning, reason) => DatabaseHelper.ApproveEMEvent(currentEventId, currentEventNo, currentUser, meaning, reason));
+            try
+            {
+                int signedEventId = currentEventId;
+                string signedEventNo = currentEventNo;
+                string signedBy = currentUser;
+                DataTable original = CaptureEmWorkflowEvidence(signedEventId);
+                await PerformEMWorkflowActionAsync(
+                    "Approve",
+                    "EM Approval",
+                    (meaning, reason) => DatabaseHelper.ApproveEMEvent(signedEventId, signedEventNo, signedBy, meaning, reason, original));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex), "Unsaved EM Evidence", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private bool EnsureControlledEmPlanningProvenance(string actionName)
@@ -1019,18 +1066,44 @@ SELECT CASE
                 await Task.Run(() => action(meaning, reason));
                 workflowStatus = await Task.Run(() => DatabaseHelper.GetEMWorkflowStatus(eventId));
 
+                // A successful workflow signature can advance the joined EM event
+                // rowversion in the plate snapshot. Refresh the snapshot only after
+                // the transaction commits; never bypass the print-time comparison.
+                bool evidenceRefreshed = false;
+                try
+                {
+                    LoadPlates(eventId);
+                    CalculateAllStatuses();
+                    RefreshGrid();
+                    RefreshCounters();
+                    evidenceRefreshed = true;
+                }
+                catch (Exception refreshError)
+                {
+                    // The workflow action has already committed. Fail closed for
+                    // printing and report the reload failure without claiming the
+                    // signature was rolled back.
+                    _loadedPlateSnapshot = null;
+                    ApplicationLogger.Error("EM workflow committed but its result snapshot could not be refreshed.", refreshError);
+                }
+
                 SetFinalResultStatus(currentFinalResult);
                 CheckLinkedDeviation();
                 UpdateWorkflowButtons();
 
-                lblStatus.Text = "EM event workflow updated: " + workflowStatus;
-                lblStatus.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                lblStatus.Text = evidenceRefreshed
+                    ? "EM event workflow updated: " + workflowStatus
+                    : "EM workflow signed, but evidence refresh failed. Reload this event before printing.";
+                lblStatus.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                    evidenceRefreshed ? "#10B981" : "#D97706"));
 
                 MessageBox.Show(
-                    "EM workflow action completed successfully.\n\nCurrent Status: " + workflowStatus,
+                    evidenceRefreshed
+                        ? "EM workflow action completed successfully.\n\nCurrent Status: " + workflowStatus
+                        : "The EM workflow action was signed and committed.\n\nReload this event before printing or performing another workflow action.",
                     actionName,
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    evidenceRefreshed ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
@@ -1059,6 +1132,7 @@ SELECT CASE
             if (BtnReview != null) BtnReview.IsEnabled = !isBusy;
             if (BtnApprove != null) BtnApprove.IsEnabled = !isBusy;
             if (BtnSaveResults != null) BtnSaveResults.IsEnabled = !isBusy;
+            if (BtnManageEmEquipment != null) BtnManageEmEquipment.IsEnabled = !isBusy;
             if (BtnCalculate != null) BtnCalculate.IsEnabled = !isBusy;
             if (BtnManageLimits != null) BtnManageLimits.IsEnabled = !isBusy && currentCanManageSettings;
             if (BtnReconcileLegacySnapshot != null) BtnReconcileLegacySnapshot.IsEnabled = !isBusy && currentCanApproveResults;
@@ -1114,6 +1188,8 @@ SELECT CASE
             document.PagePadding = new Thickness(42, 38, 42, 48);
             document.ColumnWidth = double.PositiveInfinity;
 
+            int previewEventId = currentEventId;
+            string previewEventNo = currentEventNo;
             var viewer = new FlowDocumentPageViewer
             {
                 Document = document,
@@ -1174,15 +1250,8 @@ SELECT CASE
 
                 try
                 {
-                    // The preview and printer dialog can stay open while the controlled state changes.
-                    // Revalidate at physical printing before building or submitting the document.
-                    if (!CanPrintApprovedEMReport(out string validationMessage))
-                    {
-                        MessageBox.Show(validationMessage, "EM Report Printing Blocked",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-
+                    if (currentEventId != previewEventId || currentEventNo != previewEventNo || !CanPrintApprovedEMReport(out string blockReason))
+                        throw new InvalidOperationException("The preview evidence changed or is no longer printable. Reload the approved report.");
                     // Create a separate document for printing.
                     // Do not reuse the document currently attached to the preview viewer.
                     FlowDocument printDocument = BuildEMResultReportDocument();
@@ -1925,6 +1994,8 @@ SELECT CASE
                 Foreground = CreateReportBrush("#1E3A5F")
             };
 
+            if (currentAreaContextSource.Contains("Legacy", StringComparison.OrdinalIgnoreCase) || currentAreaContextSource.Contains("not recorded", StringComparison.OrdinalIgnoreCase))
+                list.ListItems.Add(MakeEvaluationListItem("Area identity evidence: " + currentAreaContextSource + "."));
             if (HasSettlePlateResults())
                 list.ListItems.Add(MakeEvaluationListItem("Settle Plate results are evaluated as direct CFU/plate counts."));
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -418,6 +418,30 @@ ELSE
                 }).ConfigureAwait(false) == 1;
         }
 
+        private static IEnumerable<string> SplitControlledSqlBatches(string sql)
+        {
+            using var reader = new StringReader(sql);
+            var batch = new StringBuilder();
+            string? line;
+
+            while ((line = reader.ReadLine()) != null)
+            {
+                if (line.Trim().Equals("GO", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(batch.ToString()))
+                        yield return batch.ToString();
+
+                    batch.Clear();
+                    continue;
+                }
+
+                batch.AppendLine(line);
+            }
+
+            if (!string.IsNullOrWhiteSpace(batch.ToString()))
+                yield return batch.ToString();
+        }
+
         private static async Task ConfigureMigrationLockTimeoutAsync(
             SqlConnection connection,
             SqlTransaction transaction)
@@ -472,9 +496,24 @@ ELSE
             if (existingMaintenanceLease == null)
             {
                 // On-demand maintenance uses the same non-pooled lifecycle lease contract.
-                ownedMaintenanceLease = _database.CreateUnpooledConnection();
-                await ownedMaintenanceLease.OpenAsync().ConfigureAwait(false);
-                await AcquireMigrationSessionApplicationLockAsync(ownedMaintenanceLease).ConfigureAwait(false);
+                // Retry only transient connection-handshake timeouts, before executing any SQL.
+                // Never retry a migration or a lock failure: their outcomes require inspection.
+                for (int attempt = 1; attempt <= 3; attempt++)
+                {
+                    ownedMaintenanceLease = _database.CreateUnpooledConnection();
+                    try
+                    {
+                        await ownedMaintenanceLease.OpenAsync().ConfigureAwait(false);
+                        break;
+                    }
+                    catch (SqlException ex) when (attempt < 3 && ex.Number == -2)
+                    {
+                        await ownedMaintenanceLease.DisposeAsync().ConfigureAwait(false);
+                        ownedMaintenanceLease = null;
+                        await Task.Delay(attempt * 1500).ConfigureAwait(false);
+                    }
+                }
+                await AcquireMigrationSessionApplicationLockAsync(ownedMaintenanceLease!).ConfigureAwait(false);
                 existingMaintenanceLease = ownedMaintenanceLease;
             }
             else if (existingMaintenanceLease.State != ConnectionState.Open)
@@ -714,9 +753,12 @@ WHERE VersionKey=@VersionKey;", connection, transaction))
                     await PrepareManifestMigrationCompatibilityAsync(versionKey, connection, transaction).ConfigureAwait(false);
 
                     string migrationSql = System.Text.Encoding.UTF8.GetString(migrationBytes).TrimStart('\uFEFF');
-                    await using SqlCommand apply = new SqlCommand(migrationSql, connection, transaction);
-                    apply.CommandTimeout = Math.Max(AppConfig.CommandTimeoutSeconds, 300);
-                    await apply.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    foreach (string batchSql in SplitControlledSqlBatches(migrationSql))
+                    {
+                        await using SqlCommand apply = new SqlCommand(batchSql, connection, transaction);
+                        apply.CommandTimeout = Math.Max(AppConfig.CommandTimeoutSeconds, 300);
+                        await apply.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    }
                     ApplicationLogger.Information($"Controlled database migration '{versionKey}' SQL completed.");
 
                     await using SqlCommand record = new SqlCommand(@"
@@ -1052,6 +1094,19 @@ SELECT @ReleaseResult;", connection)
             // idempotent are eligible for structural verification and controlled replay.
             string verificationSql = versionKey switch
             {
+                "20261010_001" => @"
+SELECT CASE WHEN
+    EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.WaterResultResourceEvidence') AND name=N'ExecutionDate' AND system_type_id=40 AND max_length=3)
+    AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.MediaPreparations') AND name=N'WorkflowRowVersion' AND system_type_id=189 AND max_length=8)
+    AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.PRM_SpecificationContentHistory') AND name=N'ContentHash' AND system_type_id=173 AND max_length=32 AND is_nullable=0)
+    AND NOT EXISTS
+    (SELECT 1 FROM (VALUES(N'CultureMedia',N'TRG_CultureMedia_ReferencedIdentity'),
+      (N'CultureMediaLots',N'TRG_CultureMediaLots_ReferencedIdentity'),
+      (N'PRM_SpecificationContentHistory',N'TRG_PRM_SpecificationContentHistory_AppendOnly')) e(TableName,TriggerName)
+      LEFT JOIN sys.triggers t ON t.object_id=OBJECT_ID(N'dbo.'+e.TriggerName,N'TR')
+      WHERE t.object_id IS NULL OR t.parent_id<>OBJECT_ID(N'dbo.'+e.TableName) OR t.is_disabled=1 OR t.is_instead_of_trigger=1)
+    AND EXISTS(SELECT 1 FROM sys.check_constraints WHERE object_id=OBJECT_ID(N'dbo.CK_QEInvestigationEvidenceHistory_Table_20261010_001',N'C') AND is_disabled=0 AND is_not_trusted=0)
+THEN 1 ELSE 0 END;",
                 "20260722_005" => @"
 SELECT CASE WHEN
     OBJECT_ID(N'dbo.PRM_SpecificationTests',N'U') IS NOT NULL
@@ -1592,6 +1647,7 @@ SELECT CASE WHEN
     )
 THEN 1 ELSE 0 END;",
 
+                "20261017_001" => @"EXEC dbo.MicroEquipment_AssertTrustedBoundary; SELECT 1;",
                 _ => "SELECT 1;"
             };
 

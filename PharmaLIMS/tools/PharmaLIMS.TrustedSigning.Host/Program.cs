@@ -1,5 +1,6 @@
 using System.IO;
 using PharmaLIMS.TrustedSigning;
+using PharmaLIMS.Infrastructure;
 using System.ServiceProcess;
 using System.Security.Cryptography.X509Certificates;
 
@@ -16,8 +17,13 @@ else
     try{await server.RunAsync(stop.Token);}catch(OperationCanceledException)when(stop.IsCancellationRequested){}
 }
 
-static WindowsTrustedPipeServer BuildServer(TrustedHostSettings settings,X509Certificate2 certificate) => new(settings.PipeName,certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString, enablePrmUat: settings.DeploymentMode == "UAT", enableWaterUat: settings.EnableWaterRegistrationUat, enableWaterAnalysisUat: settings.EnableWaterAnalysisUat, enablePrmRegistrationUat: settings.EnablePrmRegistrationUat),
-    settings.DeploymentMode == "UAT" ? new TrustedActivitySigningCoordinator(new TrustedActivityAuthenticator(settings.ConnectionString),new SqlTrustedActivitySignatureStore(settings.ConnectionString)) : null);
+static WindowsTrustedPipeServer BuildServer(TrustedHostSettings settings,X509Certificate2 certificate)
+{
+    string activityConnection = settings.GetActivitySigningConnectionString();
+    return new WindowsTrustedPipeServer(settings.PipeName,certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString, enablePrmUat: settings.DeploymentMode == "UAT", enableWaterUat: settings.EnableWaterRegistrationUat, enableWaterAnalysisUat: settings.EnableWaterAnalysisUat, enablePrmRegistrationUat: settings.EnablePrmRegistrationUat, enableEquipmentDraftUat: settings.EnableEquipmentDraftUat, enableEquipmentLinkUat: settings.EnableEquipmentLinkUat, enableEquipmentConfirmUat: settings.EnableEquipmentConfirmUat),
+        settings.DeploymentMode == "UAT" ? new TrustedActivitySigningCoordinator(new TrustedActivityAuthenticator(settings.ConnectionString),new SqlTrustedActivitySignatureStore(activityConnection)) : null,
+        TrustedServiceDiagnosticSink.Log);
+}
 
 sealed class SigningWindowsService : ServiceBase
 {
@@ -27,8 +33,10 @@ sealed class SigningWindowsService : ServiceBase
     {
         var settings=TrustedHostSettings.Load(_path);
         _certificate=settings.LoadCertificate();
-        var server=new WindowsTrustedPipeServer(settings.PipeName,_certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString, enablePrmUat: settings.DeploymentMode == "UAT", enableWaterUat: settings.EnableWaterRegistrationUat, enableWaterAnalysisUat: settings.EnableWaterAnalysisUat, enablePrmRegistrationUat: settings.EnablePrmRegistrationUat),
-            settings.DeploymentMode == "UAT" ? new TrustedActivitySigningCoordinator(new TrustedActivityAuthenticator(settings.ConnectionString),new SqlTrustedActivitySignatureStore(settings.ConnectionString)) : null);
+        string activityConnection=settings.GetActivitySigningConnectionString();
+        var server=new WindowsTrustedPipeServer(settings.PipeName,_certificate,new TrustedCallerMap(settings.WindowsAccounts),new SqlTrustedSignerAccountRepository(settings.ConnectionString),new SqlTrustedEquipmentSignatureStore(settings.ConnectionString),new TrustedApplicationEndpoint(settings.ConnectionString, enablePrmUat: settings.DeploymentMode == "UAT", enableWaterUat: settings.EnableWaterRegistrationUat, enableWaterAnalysisUat: settings.EnableWaterAnalysisUat, enablePrmRegistrationUat: settings.EnablePrmRegistrationUat, enableEquipmentDraftUat: settings.EnableEquipmentDraftUat, enableEquipmentLinkUat: settings.EnableEquipmentLinkUat, enableEquipmentConfirmUat: settings.EnableEquipmentConfirmUat),
+            settings.DeploymentMode == "UAT" ? new TrustedActivitySigningCoordinator(new TrustedActivityAuthenticator(settings.ConnectionString),new SqlTrustedActivitySignatureStore(activityConnection)) : null,
+            TrustedServiceDiagnosticSink.Log);
         _stop=new CancellationTokenSource();var ready=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _host=server.RunAsync(_stop.Token,ready);
         if(!ready.Task.Wait(TimeSpan.FromSeconds(10)) || _host.IsFaulted){_stop.Cancel();_certificate.Dispose();throw new InvalidOperationException("Trusted signing listener failed to start.");}
@@ -39,5 +47,15 @@ sealed class SigningWindowsService : ServiceBase
         _stop?.Cancel();
         try{if(_host is not null && !_host.IsFaulted)_host.Wait(TimeSpan.FromSeconds(20));}catch(AggregateException){}
         _certificate?.Dispose();_stop?.Dispose();
+    }
+}
+
+
+static class TrustedServiceDiagnosticSink
+{
+    public static void Log(Guid requestId,string category)
+    {
+        string correlation=requestId==Guid.Empty ? "transport" : requestId.ToString("N");
+        ApplicationLogger.Warning($"Trusted service rejection. Request='{correlation}', Category='{category}'.");
     }
 }

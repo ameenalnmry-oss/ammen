@@ -27,6 +27,117 @@ public static class TrustedApplicationSession
         catch (TrustedSigningRejectedException ex) when(ex.ErrorCode is "CredentialsRejected" or "Locked" or "Inactive") { LastCredentialRejection=ex.ErrorCode; return null; }
     }
 
+    public static async Task<EquipmentConfirmReceipt> EquipmentConfirmAsync(
+        Guid requestId, EquipmentConfirmRequest payload, string actor,
+        string reason, string meaning, CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty || string.IsNullOrWhiteSpace(actor) ||
+            string.IsNullOrWhiteSpace(reason) || string.IsNullOrWhiteSpace(meaning))
+            throw new ArgumentException("Equipment confirmation identity, reason and meaning are required.");
+        EquipmentDraftContract.ValidateTarget(AppConfig.ConnectionString);
+        string canonical = EquipmentConfirmContract.CanonicalPayload(payload);
+        string ticket = _ticket;
+        _ticket = "";
+        if (string.IsNullOrEmpty(ticket))
+            throw new UnauthorizedAccessException("Fresh trusted reauthentication is required for equipment confirmation.");
+        var reply = await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(
+            new TrustedApplicationRequest(requestId, "EquipmentConfirm", actor,
+                Ticket: ticket, UserJson: canonical, Reason: reason, Meaning: meaning),
+            cancellationToken);
+        var receipt = reply.UserJson is null ? null :
+            JsonSerializer.Deserialize<EquipmentConfirmReceipt>(reply.UserJson,
+                new JsonSerializerOptions
+                {
+                    UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+                });
+        if (!string.Equals(reply.SignedBy, actor, StringComparison.OrdinalIgnoreCase) ||
+            receipt is null || receipt.RequestId != requestId ||
+            receipt.ActivityId != payload.ActivityId || receipt.State != "Submitted")
+            throw new InvalidOperationException("Invalid equipment confirmation receipt. Preserve and recover the original request.");
+        return receipt;
+    }
+
+    public static async Task<EquipmentLinkReceipt> EquipmentLinkAsync(
+        Guid requestId, EquipmentLinkRequest payload, string actor,
+        string reason, string meaning, CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty || string.IsNullOrWhiteSpace(actor) ||
+            string.IsNullOrWhiteSpace(reason) || string.IsNullOrWhiteSpace(meaning))
+            throw new ArgumentException("Equipment link identity, reason and meaning are required.");
+        EquipmentDraftContract.ValidateTarget(AppConfig.ConnectionString);
+        string canonical = EquipmentLinkContract.CanonicalPayload(payload);
+        string ticket = _ticket;
+        _ticket = "";
+        if (string.IsNullOrEmpty(ticket))
+            throw new UnauthorizedAccessException("Fresh trusted reauthentication is required for equipment linking.");
+        var reply = await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(
+            new TrustedApplicationRequest(requestId, "EquipmentLink", actor,
+                Ticket: ticket, UserJson: canonical, Reason: reason, Meaning: meaning),
+            cancellationToken);
+        var receipt = reply.UserJson is null ? null :
+            JsonSerializer.Deserialize<EquipmentLinkReceipt>(reply.UserJson,
+                new JsonSerializerOptions
+                {
+                    UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+                });
+        if (!string.Equals(reply.SignedBy, actor, StringComparison.OrdinalIgnoreCase) ||
+            receipt is null || receipt.RequestId != requestId ||
+            receipt.ActivityId != payload.ActivityId || receipt.LinkCount != payload.ParentIds.Length ||
+            receipt.State != "Committed")
+            throw new InvalidOperationException("Invalid equipment-link receipt. Preserve and recover the original request.");
+        return receipt;
+    }
+
+    public static async Task<EquipmentDraftReceipt> EquipmentDraftAsync(
+        Guid requestId, EquipmentDraftRequest payload, string actor,
+        string reason, string meaning, CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty || string.IsNullOrWhiteSpace(actor) ||
+            string.IsNullOrWhiteSpace(reason) || string.IsNullOrWhiteSpace(meaning))
+            throw new ArgumentException("Equipment draft identity and reason are required.");
+        EquipmentDraftContract.ValidateTarget(AppConfig.ConnectionString);
+        string canonical = EquipmentDraftContract.CanonicalPayload(payload);
+        string ticket = _ticket;
+        _ticket = "";
+        if (string.IsNullOrEmpty(ticket))
+            throw new UnauthorizedAccessException("Fresh trusted reauthentication is required for equipment activities.");
+        try
+        {
+            var reply = await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(
+                new TrustedApplicationRequest(requestId, "EquipmentDraft", actor,
+                    Ticket: ticket, UserJson: canonical, Reason: reason, Meaning: meaning),
+                cancellationToken);
+            var receipt = reply.UserJson is null ? null :
+                JsonSerializer.Deserialize<EquipmentDraftReceipt>(reply.UserJson,
+                    new JsonSerializerOptions
+                    {
+                        UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+                    });
+            if (!string.Equals(reply.SignedBy, actor, StringComparison.OrdinalIgnoreCase) ||
+                receipt is null || receipt.RequestId != requestId ||
+                receipt.ActivityId <= 0 || receipt.State != "Committed")
+                throw new InvalidOperationException("Invalid equipment receipt. Resolve the original request before retrying.");
+            return receipt;
+        }
+        catch (TrustedSigningRejectedException ex) when (ex.ErrorCode == "InvalidRequest")
+        {
+            throw new InvalidOperationException(
+                "The installed trusted service rejected the equipment draft request as unsupported or invalid. " +
+                "Check the deployed trusted-service version and controlled equipment activation before retrying. " +
+                "The original request is retained; do not create a replacement.", ex);
+        }
+        catch (TrustedSigningRejectedException ex) when (ex.ErrorCode == "EquipmentDraftDisabled")
+        {
+            throw new InvalidOperationException(
+                "Equipment draft trusted service is not activated in this isolated UAT. No draft was created.", ex);
+        }
+        catch (TrustedSigningRejectedException ex) when (ex.ErrorCode == "EquipmentDraftStateRejected")
+        {
+            throw new InvalidOperationException(
+                "The trusted equipment draft was rejected by its controlled database rules. The original request remains available for recovery.", ex);
+        }
+    }
+
     public static async Task<int> PrmAsync(string action, PrmSpecificationRequest specification, string actor,
         string reason, string meaning, CancellationToken cancellationToken = default)
     {
@@ -54,8 +165,51 @@ public static class TrustedApplicationSession
         if (string.IsNullOrEmpty(ticket)) throw new UnauthorizedAccessException("Fresh trusted reauthentication is required for account administration.");
         var request = new TrustedApplicationRequest(Guid.NewGuid(), action, actor, NewPassword:password, Ticket:ticket,
             UserJson:user is null ? "" : JsonSerializer.Serialize(user), UserId:id, ExpectedVersion:version, Reason:reason, Meaning:meaning);
-        var reply=await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(request,cancellationToken);
-        return int.TryParse(reply.UserJson,out int result)?result:0;
+        try
+        {
+            var reply=await TrustedEquipmentSigningClient.CreateFromConfiguration().ApplicationAsync(request,cancellationToken);
+            return int.TryParse(reply.UserJson,out int result)?result:0;
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminTargetChanged")
+        {
+            throw new InvalidOperationException(
+                "The selected user account changed after it was loaded. Refresh User Management and retry the action once.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminPasswordPolicyRejected")
+        {
+            throw new InvalidOperationException(
+                "The new password does not satisfy the controlled password policy for the selected account.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminReasonRejected")
+        {
+            throw new InvalidOperationException(
+                "Enter a specific electronic-signature justification of at least 10 characters for this user-administration change.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminSelfResetDenied")
+        {
+            throw new InvalidOperationException(
+                "Use Change Password for your own account. Administrative reset is for other users only.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminPermissionDenied")
+        {
+            throw new InvalidOperationException(
+                "The authenticated account is not currently eligible to perform User Management changes.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminSignerMismatch")
+        {
+            throw new InvalidOperationException(
+                "The electronic-signature signer does not match the authenticated User Manager.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminAuditActorRejected")
+        {
+            throw new InvalidOperationException(
+                "The trusted audit actor could not be bound to the authenticated User Manager.", ex);
+        }
+        catch(TrustedSigningRejectedException ex) when(ex.ErrorCode=="AdminStateRejected")
+        {
+            throw new InvalidOperationException(
+                "The trusted service rejected the current user-administration state. Refresh User Management and retry once.", ex);
+        }
     }
 
     public static async Task<WaterRegistrationResult> WaterAsync(string action,Guid requestId,

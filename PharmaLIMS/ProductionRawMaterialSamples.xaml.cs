@@ -2,12 +2,12 @@ using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.Repositories;
 using PharmaLIMS.Services;
+using PharmaLIMS.TrustedSigning;
 using System;
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -30,7 +30,8 @@ namespace PharmaLIMS
         private string _selectedCategory = "";
         private readonly ObservableCollection<SpecificationTestDraft> _specificationTests = new();
         private int _masterVersion;
-        private DataTable _loadedSpecificationSnapshot;
+        private bool _trustedPrmBusy;
+        private DataTable? _loadedSpecificationSnapshot;
         private string _loadedSpecificationView = string.Empty;
         private int? _requestedLoadVersion;
         private string _masterApprovalStatus = "Draft";
@@ -56,7 +57,7 @@ namespace PharmaLIMS
             // Keep this screen constrained to the visible desktop. Wide sample columns
             // scroll inside DgSamples instead of stretching the whole page off-screen.
             if (MainContentScroll != null)
-                MainContentScroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+                MainContentScroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
 
             Mouse.OverrideCursor = Cursors.Wait;
             IsEnabled = false;
@@ -117,6 +118,7 @@ namespace PharmaLIMS
             PnlRegistration.Visibility = Visibility.Collapsed;
             PnlSpecificationMaster.Visibility = Visibility.Visible;
             if (CmbMasterCategory.SelectedIndex < 0) CmbMasterCategory.SelectedIndex = 0;
+            UpdateMasterScopeGuidance();
             if (_specificationTests.Count == 0) NewSpecificationDraft();
         }
 
@@ -155,14 +157,14 @@ namespace PharmaLIMS
 
                 DataTable table = DatabaseHelper.ExecuteQuery(@"
 SELECT *
-FROM dbo.PRM_SpecificationTests
+FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @"
 WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
   AND LTRIM(RTRIM(SampleCategory))=@Category
   AND ApprovalStatus=N'Approved'
   AND IsActive=1
   AND VersionNo=(
       SELECT MAX(VersionNo)
-      FROM dbo.PRM_SpecificationTests
+      FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @"
       WHERE LTRIM(RTRIM(SpecificationNo))=@SpecificationNo
         AND LTRIM(RTRIM(SampleCategory))=@Category
         AND ApprovalStatus=N'Approved'
@@ -180,6 +182,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                 int sourceVersion = Convert.ToInt32(table.Rows[0]["VersionNo"], CultureInfo.InvariantCulture);
 
                 _masterVersion = 0;
+            _loadedSpecificationSnapshot = null;
+            _loadedSpecificationView = string.Empty;
                 _masterApprovalStatus = "Draft";
                 TxtMasterVersion.Text = "New";
                 TxtMasterReference.Text = table.Rows[0]["CompendialReference"] == DBNull.Value
@@ -203,6 +207,8 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                         TestCode = Convert.ToString(row["TestCode"], CultureInfo.InvariantCulture) ?? string.Empty,
                         TestName = Convert.ToString(row["TestName"], CultureInfo.InvariantCulture) ?? string.Empty,
                         SpecificationText = Convert.ToString(row["SpecificationText"], CultureInfo.InvariantCulture) ?? string.Empty,
+                        SpecificationLimit = row["SpecificationLimit"] == DBNull.Value ? null : Convert.ToDecimal(row["SpecificationLimit"], CultureInfo.InvariantCulture),
+                        IsDefaultForCategory = row["IsDefaultForCategory"] != DBNull.Value && Convert.ToBoolean(row["IsDefaultForCategory"], CultureInfo.InvariantCulture),
                         Unit = row["Unit"] == DBNull.Value ? string.Empty : Convert.ToString(row["Unit"], CultureInfo.InvariantCulture) ?? string.Empty,
                         ResultType = Convert.ToString(row["ResultType"], CultureInfo.InvariantCulture) ?? "Text",
                         RequiredTest = row["RequiredTest"] != DBNull.Value && Convert.ToBoolean(row["RequiredTest"], CultureInfo.InvariantCulture),
@@ -250,9 +256,36 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
 
             if (normalized.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase))
             {
-                // Packaging limits and method timing must come from its approved specification.
-                TxtMasterReference.Text = string.Empty;
-                _specificationTests.Add(new SpecificationTestDraft { ResultType = "Text", RequiredTest = true, SortOrder = 1, MinimumElapsedHours = 0m });
+                // CIPLA SOP 1035-G-0193 v2.0: only unapproved draft result names.
+                // Different primary materials use different methods, bases and limits.
+                // The material MUST be explicitly selected and verified against the
+                // controlled material-specific limits BEFORE Save Draft / Review / Approve.
+                // Never assume AnalysisStartedDate proves 72h + 48h incubation.
+                TxtMasterReference.Text =
+                    "Cipla SOP 1035-G-0193 v2.0 sections 2.4-2.14; " +
+                    "two microbiological count results (Total Bacterial Count and " +
+                    "Total Fungal Count), with material-specific preparation, " +
+                    "unit, limits, negative control and actual incubation evidence. " +
+                    "Verify the selected material and approved limits before Save Draft. " +
+                    "The general Item Code * profile must NOT assign foil limits to bottles.";
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "TBC",
+                    TestName = "Total Bacterial Count",
+                    ResultType = "Numeric",
+                    RequiredTest = true,
+                    SortOrder = 10,
+                    MinimumElapsedHours = 0m
+                });
+                _specificationTests.Add(new SpecificationTestDraft
+                {
+                    TestCode = "TFC",
+                    TestName = "Total Fungal Count",
+                    ResultType = "Numeric",
+                    RequiredTest = true,
+                    SortOrder = 20,
+                    MinimumElapsedHours = 0m
+                });
                 return;
             }
 
@@ -454,6 +487,20 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
 
         private string MasterCategory => GetComboText(CmbMasterCategory).Trim();
 
+        private void CmbMasterCategory_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateMasterScopeGuidance();
+        }
+
+        private void UpdateMasterScopeGuidance()
+        {
+            if (CmbMasterCategory == null || TxtMasterScopeGuidance == null) return;
+            bool generalPackaging = MasterCategory.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase);
+            TxtMasterScopeGuidance.Text = generalPackaging
+                ? "Primary Packaging: use Item Code * for ONE category-wide profile. Enter tests and limits from the approved packaging specification, then obtain independent Review and QA Approve signatures. Exact item codes are for controlled exceptions. The wildcard * is reserved for a formally reviewed and approved reusable standard profile; it is never approved automatically by deployment."
+                : "Use exact item/stage scope for item-specific profiles. The wildcard * is reserved for a formally reviewed and approved reusable standard profile; it is never approved automatically by deployment.";
+        }
+
         private void BtnLoadSpecification_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -517,10 +564,12 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
             catch (Exception ex) { MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Load Specification", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
-        private void BtnSaveSpecification_Click(object sender, RoutedEventArgs e)
+        private async void BtnSaveSpecification_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                if (AppConfig.IsProduction && !AppConfig.TrustedSigningEnabled)
+                    throw new InvalidOperationException("PRM changes require the trusted service in Production runtime.");
                 CommitSpecificationEdits();
                 if (!DatabaseHelper.CanEditResults(Login.CurrentUser))
                     throw new UnauthorizedAccessException("You are not authorized to maintain specification drafts.");
@@ -561,7 +610,16 @@ ORDER BY ISNULL(SortOrder,SpecificationTestID),SpecificationTestID;",
                 if (category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(productionStage))
                     throw new InvalidOperationException("Production Stage is required for an In-Process inspection profile.");
 
-
+                if (AppConfig.TrustedSigningEnabled)
+                {
+                    if (_trustedPrmBusy) return;
+                    int version = await RunTrustedPrmActionAsync("PrmSaveDraft", "Save PRM Draft");
+                    if (version == 0) return;
+                    _masterVersion = version;
+                    ReloadSpecificationVersion(version);
+                    TxtStatus.Text = "Specification draft saved through the trusted UAT service.";
+                    return;
+                }
 
                 int targetVersion = _masterVersion;
                 DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
@@ -675,10 +733,12 @@ VALUES(@No,@Category,@ItemCode,@ProductionStage,@Reference,@Version,@Code,@Name,
         private void BtnReviewSpecification_Click(object sender, RoutedEventArgs e) => ChangeSpecificationState("Reviewed");
         private void BtnApproveSpecification_Click(object sender, RoutedEventArgs e) => ChangeSpecificationState("Approved");
 
-        private void ChangeSpecificationState(string targetStatus)
+        private async void ChangeSpecificationState(string targetStatus)
         {
             try
             {
+                if (AppConfig.IsProduction && !AppConfig.TrustedSigningEnabled)
+                    throw new InvalidOperationException("PRM signing requires the trusted service in Production runtime.");
                 EnsureSpecificationViewSaved();
                 if (_masterVersion <= 0) throw new InvalidOperationException("Save or load the specification version first.");
                 bool approval = targetStatus == "Approved";
@@ -713,7 +773,16 @@ WHERE SpecificationNo=@No AND SampleCategory=@Category AND VersionNo=@Version;",
                 }
 
                 string action = approval ? "Approve Specification" : "Review Specification";
-
+                if (AppConfig.TrustedSigningEnabled)
+                {
+                    if (_trustedPrmBusy) return;
+                    int version = await RunTrustedPrmActionAsync(approval ? "PrmApprove" : "PrmReview", action);
+                    if (version == 0) return;
+                    ReloadSpecificationVersion(version);
+                    TxtStatus.Text = "Specification version " + targetStatus.ToLowerInvariant() + " through the trusted UAT service.";
+                    if (approval) LoadApprovedSpecificationChoices();
+                    return;
+                }
                 ElectronicSignature signature = new ElectronicSignature(TxtMasterSpecificationNo.Text + " v" + _masterVersion, Login.CurrentUser, action) { Owner = this };
                 if (signature.ShowDialog() != true || !signature.IsConfirmed) return;
                 EnsureSpecificationViewSaved();
@@ -879,6 +948,60 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             catch (Exception ex) { MessageBox.Show(Infrastructure.UserFacingError.SafeMessage(ex), "Specification Workflow", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
+        private async System.Threading.Tasks.Task<int> RunTrustedPrmActionAsync(string action, string label)
+        {
+            if (!AppConfig.TrustedSigningEnabled || _trustedPrmBusy)
+                throw new InvalidOperationException("Trusted PRM action is unavailable or already running.");
+            var tests = _specificationTests.Where(test => !string.IsNullOrWhiteSpace(test.TestCode) || !string.IsNullOrWhiteSpace(test.TestName))
+                .Select(test => new PrmSpecificationTest(test.TestCode.Trim(), test.TestName.Trim(), test.SpecificationText.Trim(),
+                    test.SpecificationLimit, test.IsDefaultForCategory, test.Unit?.Trim() ?? string.Empty, NormalizeControlledResultType(test.ResultType),
+                    test.RequiredTest, test.MinimumElapsedHours, test.SortOrder)).ToArray();
+            var request = new PrmSpecificationRequest(TxtMasterSpecificationNo.Text.Trim(), MasterCategory, _masterVersion,
+                TxtMasterReference.Text.Trim(), TxtMasterItemCode.Text.Trim(),
+                MasterCategory == "Production / In-Process" ? GetComboText(CmbMasterProductionStage).Trim() : "",
+                DpMasterEffective.SelectedDate?.Date,
+                _masterVersion > 0 ? PrmSpecificationPolicy.SnapshotHash(_loadedSpecificationSnapshot ??
+                    throw new InvalidOperationException("Reload the complete specification before continuing.")) : "", tests);
+            if (action == "PrmApprove")
+            {
+                DataTable predecessors = DatabaseHelper.ExecuteQuery(@"
+SELECT DISTINCT t.VersionNo, CONVERT(varchar(64), e.EvidenceHash, 2) AS EvidenceHash
+FROM dbo.EQ001_UAT_EffectivePrmSpecificationTests t
+JOIN dbo.EQ001_UAT_PrmVersionEvidence e ON e.SpecificationNo=t.SpecificationNo AND e.SampleCategory=t.SampleCategory AND e.VersionNo=t.VersionNo
+WHERE t.SpecificationNo=@No AND t.SampleCategory=@Category AND t.VersionNo<>@Version
+  AND t.IsActive=1 AND t.ApprovalStatus=N'Approved';", new[] {
+                    new SqlParameter("@No", SqlDbType.NVarChar,120) { Value=request.SpecificationNo },
+                    new SqlParameter("@Category", SqlDbType.NVarChar,40) { Value=request.Category },
+                    new SqlParameter("@Version", SqlDbType.Int) { Value=request.Version }
+                });
+                if (predecessors.Rows.Count > 1)
+                    throw new InvalidOperationException("Multiple active approved predecessors require separate investigation.");
+                if (predecessors.Rows.Count == 1)
+                {
+                    int predecessor=Convert.ToInt32(predecessors.Rows[0]["VersionNo"], CultureInfo.InvariantCulture);
+                    if (MessageBox.Show("Approve " + request.SpecificationNo + " v" + request.Version +
+                        " and supersede v" + predecessor + " for new UAT registrations?\n\n" +
+                        "The prior version, its signatures and historical sample links will remain unchanged. " +
+                        "A separate immutable supersession decision will be recorded with your approval reason.",
+                        "Controlled UAT Supersession", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                        MessageBoxResult.No) != MessageBoxResult.Yes) return 0;
+                    request=request with { SupersedesVersion=predecessor,
+                        SupersededEvidenceHash=Convert.ToString(predecessors.Rows[0]["EvidenceHash"], CultureInfo.InvariantCulture) ?? "" };
+                }
+            }
+            PrmSpecificationPolicy.Validate(request, action);
+            _trustedPrmBusy = true;
+            try
+            {
+                var signature = new ElectronicSignature(request.SpecificationNo + (request.Version > 0 ? " v" + request.Version : " New Draft"), Login.CurrentUser, label) { Owner = this };
+                if (signature.ShowDialog() != true || !signature.IsConfirmed) return 0;
+                if (action != "PrmSaveDraft") EnsureSpecificationViewSaved();
+                PnlSpecificationMaster.IsEnabled = false;
+                return await TrustedApplicationSession.PrmAsync(action, request, signature.SignedBy, signature.Reason, signature.Meaning);
+            }
+            finally { PnlSpecificationMaster.IsEnabled = true; _trustedPrmBusy = false; }
+        }
+
         private void ReloadSpecificationVersion(int version)
         {
             _requestedLoadVersion = version;
@@ -949,8 +1072,8 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             _selectedSampleId = 0;
 
             if (TxtSampleNo != null) TxtSampleNo.Text = "Auto";
-            if (DpSampleDate != null) DpSampleDate.SelectedDate = DateTime.Today;
-            if (TxtSampleTime != null) TxtSampleTime.Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture);
+            if (DpSampleDate != null) DpSampleDate.SelectedDate = null;
+            if (TxtSampleTime != null) TxtSampleTime.Text = string.Empty;
             if (DpReceivedDate != null) DpReceivedDate.SelectedDate = DateTime.Today;
             if (TxtSampledBy != null) TxtSampledBy.Text = GetCurrentUserDisplayName();
             if (TxtSearch != null) TxtSearch.Text = string.Empty;
@@ -1122,10 +1245,21 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                                                 "Production / In-Process Sample Registration";
 
             if (TxtSelectedWorkflowNote != null)
-                TxtSelectedWorkflowNote.Text = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) ? "Register product-contact packaging materials using an independently approved material specification." : isRaw ? "Register new material, retest, vendor qualification, additional test, or complaint/investigation samples." :
+                TxtSelectedWorkflowNote.Text = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) ? "Register each material under the approved general Primary Packaging inspection profile (scope *); an approved item-specific exception takes precedence." : isRaw ? "Register new material, retest, vendor qualification, additional test, or complaint/investigation samples." :
                                                isStability ? "Register stability study pull point samples for testing and reporting." :
                                                isFinished ? "Register finished product samples after packaging." :
                                                "Register in-process samples after mixing, compression, or coating.";
+
+            if (BtnCreateProfileForScope != null)
+            {
+                bool generalPackaging = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase);
+                BtnCreateProfileForScope.Content = generalPackaging
+                    ? "Create General Packaging Profile"
+                    : "Create Profile for This Scope";
+                BtnCreateProfileForScope.ToolTip = generalPackaging
+                    ? "Create one controlled Primary Packaging master profile with Item Code * for all materials in its approved scope. Draft -> Review -> Approve is required."
+                    : "Create an item-specific inspection profile for the current material/product and production stage.";
+            }
 
             GrpRawMaterial.Header = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase) ? "Primary Packaging Material Sample" : "Raw Material Sample";
             SetVisibilitySafe(GrpRawMaterial, isRaw);
@@ -1163,8 +1297,11 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             string productionStage = category.Equals("Production / In-Process", StringComparison.OrdinalIgnoreCase)
                 ? GetComboText(CmbProductionStage).Trim()
                 : string.Empty;
+            bool generalPackaging = category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase);
 
-            if (string.IsNullOrWhiteSpace(itemCode))
+            // Primary Packaging uses a single reviewed/approved wildcard master.
+            // The sample's actual material code remains unchanged for traceability.
+            if (!generalPackaging && string.IsNullOrWhiteSpace(itemCode))
             {
                 MessageBox.Show(
                     "Enter the current Material / Product Code before creating its inspection profile.",
@@ -1187,10 +1324,12 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
             PnlSpecificationMaster.Visibility = Visibility.Visible;
             NewSpecificationDraft();
             SetComboText(CmbMasterCategory, category);
-            TxtMasterItemCode.Text = itemCode;
+            TxtMasterItemCode.Text = generalPackaging ? "*" : itemCode;
             SetComboText(CmbMasterProductionStage, productionStage);
             ApplyPharmacopoeialMicrobiologyTemplate(category);
-            TxtMasterState.Text = "New Draft — current sample scope copied. Define the material-specific tests, limits, method reference and timing before approval. Verify the approved product/material specification before Review -> Approve.";
+            TxtMasterState.Text = generalPackaging
+                ? "New general Primary Packaging draft (Item Code *). Define tests, acceptance criteria, method reference and timing from the controlled packaging specification. Save Draft -> independent Review -> QA Approve."
+                : "New Draft - current sample scope copied. Define the item-specific tests, limits, method reference and timing before Review -> Approve.";
             TxtMasterSpecificationNo.Focus();
         }
 
@@ -1229,7 +1368,7 @@ VALUES(@No,@Category,@Version,@Action,@Reason,@User,@Meaning,@Role,SYSDATETIME()
                           AND UPPER(LTRIM(RTRIM(ISNULL(configured.ProductionStage,N''))))=UPPER(LTRIM(RTRIM(@ProductionStage)))
                      THEN 1 ELSE 0 END)
            ) AS MatchRank
-    FROM dbo.PRM_SpecificationTests configured
+    FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @" configured
     WHERE configured.SampleCategory=@Category
       AND configured.ApprovalStatus=N'Approved'
       AND configured.IsActive=1
@@ -1311,7 +1450,10 @@ ORDER BY SpecificationNo;",
                 scope += " / " + productionStage;
 
             return "No approved active inspection profile matches " + scope +
-                ". The controlled standard profile is unavailable. If a Draft or Reviewed profile exists, QA must verify the approved site/product specification and complete the normal Specification Master Review -> Approve electronic-signature workflow before registration can continue. " +
+                (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)
+                    ? ". Create or approve one general Primary Packaging profile with Item Code *; do not create a separate profile for every material."
+                    : ". The controlled standard profile is unavailable.") +
+                " If a Draft or Reviewed profile exists, QA must verify the approved site/product specification and complete the normal Specification Master Review -> Approve electronic-signature workflow before registration can continue. " +
                 "Use Database Maintenance/deployment only when System Preflight reports a pending controlled migration or schema blocker. " +
                 "An Approved status without matching Review/Approve specification-signature evidence is intentionally excluded from registration. " +
                 "Create an item-specific exception only when scientifically justified and formally approved.";
@@ -1324,8 +1466,10 @@ ORDER BY SpecificationNo;",
                 scope += " / " + productionStage;
 
             return "No approved active inspection profile matches " + scope +
-                ". Open Specification Master (or use Create Profile for This Scope), then complete Review -> Approve. " +
-                "Registration remains blocked until an approved profile with valid electronic-signature evidence is available.";
+                (category.Equals("Primary Packaging", StringComparison.OrdinalIgnoreCase)
+                    ? ". Use Create General Packaging Profile (Item Code *) in Specification Master, then Review -> Approve."
+                    : ". Open Specification Master (or use Create Profile for This Scope), then complete Review -> Approve.") +
+                " Registration remains blocked until an approved profile with valid electronic-signature evidence is available.";
         }
 
         private string GetSelectedItemCode(string category)
@@ -1401,8 +1545,8 @@ ORDER BY SpecificationNo;",
             TxtSampleQty.Text = string.Empty;
             TxtRemarks.Text = string.Empty;
 
-            DpSampleDate.SelectedDate = DateTime.Today;
-            TxtSampleTime.Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture);
+            DpSampleDate.SelectedDate = null;
+            TxtSampleTime.Text = string.Empty;
             DpReceivedDate.SelectedDate = DateTime.Today;
             DpManufacturerExpiry.SelectedDate = null;
             DpRetestDate.SelectedDate = null;
@@ -1637,7 +1781,7 @@ ORDER BY SampleID DESC;";
                 throw new InvalidOperationException(BuildNoApprovedProfileOperatorMessage(category, itemCode, productionStage));
             object approvedSpecification = DatabaseHelper.ExecuteScalar(@"
 SELECT COUNT(1)
-FROM dbo.PRM_SpecificationTests configured
+FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @" configured
 WHERE configured.SpecificationNo=@SpecificationNo
   AND configured.SampleCategory=@Category
   AND UPPER(LTRIM(RTRIM(ISNULL(configured.ItemCode,N'')))) IN (UPPER(LTRIM(RTRIM(@ItemCode))),N'*')
@@ -2099,7 +2243,7 @@ WHERE SampleID = @SampleID
 
             using SqlCommand command = new SqlCommand(@"
 SELECT ISNULL(MAX(configured.VersionNo),0)
-FROM dbo.PRM_SpecificationTests configured WITH (UPDLOCK, HOLDLOCK)
+FROM " + Infrastructure.PrmEffectiveProfileSource.Sql + @" configured WITH (UPDLOCK, HOLDLOCK)
 WHERE LTRIM(RTRIM(configured.SpecificationNo)) = @SpecificationNo
   AND LTRIM(RTRIM(configured.SampleCategory)) = @Category
   AND UPPER(LTRIM(RTRIM(ISNULL(configured.ItemCode,N'')))) IN (UPPER(LTRIM(RTRIM(@ItemCode))),N'*')

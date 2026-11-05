@@ -1,4 +1,4 @@
-﻿using PharmaLIMS.Services;
+using PharmaLIMS.Services;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
@@ -487,6 +487,57 @@ VALUES
             SetComboText(CmbReleaseConclusion, LoadSopField("MediaQualification", qualificationId, "1035-L-0005/A8", "Conclusion"));
         }
 
+        private SqlParameter[] CapturePreparationInputs(string preparationNo,int preparationId)
+        {
+            if(!TryResolveSelectedMediaLot(out int lotId,out int mediaId,out _))
+                throw new InvalidOperationException("Select the saved source media lot before signing preparation evidence.");
+            return BuildPreparationParameters(preparationNo,mediaId,lotId,preparationId);
+        }
+
+        private System.Collections.Generic.Dictionary<(string Annexure,string Field),string> CapturePreparationSopInputs(bool includeVisual)
+        {
+            var fields=new System.Collections.Generic.Dictionary<(string Annexure,string Field),string>
+            {
+                [("1035-L-0005/A6","LoadNo")]=TxtPreparationLoadNo.Text,
+                [("1035-L-0005/A6","MpmNo")]=TxtPreparationMpmNo.Text,
+                [("1035-L-0005/A6","PurifiedWaterMl")]=TxtPreparationPurifiedWaterMl.Text,
+                [("1035-L-0005/A6","QuantityDispensed")]=TxtPreparationQuantityDispensed.Text,
+                [("1035-L-0005/A6","BalanceNo")]=TxtPreparationBalanceNo.Text,
+                [("1035-L-0005/A6","EquipmentCode")]=TxtPreparationEquipmentCode.Text,
+                [("1035-L-0005/A6","PhMeterNo")]=TxtPreparationPhMeterNo.Text,
+                [("1035-L-0005/A6","MethodOfSterilization")]=TxtPreparationSterilizationMethod.Text,
+                [("1035-L-0005/A6","Additives")]=TxtPreparationAdditives.Text
+            };
+            if(includeVisual)
+            {
+                fields[("1035-L-0005/A7","EquipmentCode")]=TxtPreparationVisualEquipmentCode.Text;
+                fields[("1035-L-0005/A7","VisualObservations")]=TxtPreparationVisualObservations.Text;
+                fields[("1035-L-0005/A7","Conclusion")]=ComboText(CmbPreparationVisualConclusion);
+                fields[("1035-L-0005/A7","CheckedBy")]=TxtPreparationVisualCheckedBy.Text;
+            }
+            return fields;
+        }
+
+        private void EnsurePreparationSigningScope(int targetId,string displayedNo,MediaPreparationAmendmentSnapshot? original)
+        {
+            DataRow? selected = RowFromGrid(DgPreparations);
+            if(targetId>0 && (selected==null || RowInt(selected,"MediaPreparationID")!=targetId))
+                throw new DBConcurrencyException("The selected grid record differs from the loaded preparation. Reload and review the intended record before signing.");
+            MediaPreparationAmendmentSnapshot.EnsureSigningScope(targetId,displayedNo,original,
+                _selectedPreparationId,TxtPreparationNo.Text,_loadedPreparationSnapshot,
+                _preparationLoadFailed,_newPreparationRequested);
+        }
+
+        private void InvalidatePreparationEvidence()
+        {
+            _loadedPreparationSnapshot=null;
+            _loadedPreparationVersion=null;
+            _selectedPreparationId=0;
+            _selectedPreparationPrintId=0;
+            _preparationLoadFailed=true;
+            _newPreparationRequested=false;
+        }
+
         private void SavePreparationSopFields(int preparationId)
         {
             if (preparationId <= 0)
@@ -614,24 +665,24 @@ VALUES
                 }, conn, tx);
         }
 
-        private void LoadPreparationSopFields(int preparationId)
+        private void LoadPreparationSopFields(int preparationId, MediaPreparationAmendmentSnapshot snapshot)
         {
             if (preparationId <= 0)
                 return;
 
-            TxtPreparationLoadNo.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "LoadNo");
-            TxtPreparationMpmNo.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "MpmNo");
-            TxtPreparationPurifiedWaterMl.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "PurifiedWaterMl");
-            TxtPreparationQuantityDispensed.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "QuantityDispensed");
-            TxtPreparationBalanceNo.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "BalanceNo");
-            TxtPreparationEquipmentCode.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "EquipmentCode");
-            TxtPreparationPhMeterNo.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "PhMeterNo");
-            TxtPreparationSterilizationMethod.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "MethodOfSterilization");
-            TxtPreparationAdditives.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A6", "Additives");
-            TxtPreparationVisualEquipmentCode.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A7", "EquipmentCode");
-            TxtPreparationVisualObservations.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A7", "VisualObservations");
-            SetComboText(CmbPreparationVisualConclusion, _loadedPreparationSnapshot!.SopField("1035-L-0005/A7", "Conclusion"));
-            TxtPreparationVisualCheckedBy.Text = _loadedPreparationSnapshot!.SopField("1035-L-0005/A7", "CheckedBy");
+            TxtPreparationLoadNo.Text = snapshot.SopField("1035-L-0005/A6", "LoadNo");
+            TxtPreparationMpmNo.Text = snapshot.SopField("1035-L-0005/A6", "MpmNo");
+            TxtPreparationPurifiedWaterMl.Text = snapshot.SopField("1035-L-0005/A6", "PurifiedWaterMl");
+            TxtPreparationQuantityDispensed.Text = snapshot.SopField("1035-L-0005/A6", "QuantityDispensed");
+            TxtPreparationBalanceNo.Text = snapshot.SopField("1035-L-0005/A6", "BalanceNo");
+            TxtPreparationEquipmentCode.Text = snapshot.SopField("1035-L-0005/A6", "EquipmentCode");
+            TxtPreparationPhMeterNo.Text = snapshot.SopField("1035-L-0005/A6", "PhMeterNo");
+            TxtPreparationSterilizationMethod.Text = snapshot.SopField("1035-L-0005/A6", "MethodOfSterilization");
+            TxtPreparationAdditives.Text = snapshot.SopField("1035-L-0005/A6", "Additives");
+            TxtPreparationVisualEquipmentCode.Text = snapshot.SopField("1035-L-0005/A7", "EquipmentCode");
+            TxtPreparationVisualObservations.Text = snapshot.SopField("1035-L-0005/A7", "VisualObservations");
+            SetComboText(CmbPreparationVisualConclusion, snapshot.SopField("1035-L-0005/A7", "Conclusion"));
+            TxtPreparationVisualCheckedBy.Text = snapshot.SopField("1035-L-0005/A7", "CheckedBy");
         }
 
         private void SaveSopField(string entityType, int entityId, string annexureCode, string fieldName, string value)

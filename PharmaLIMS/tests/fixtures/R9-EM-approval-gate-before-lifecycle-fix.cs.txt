@@ -1,0 +1,98 @@
+private static void EnsureEmApprovalQualityEventGateInTransaction(
+            SqlConnection connection,
+            SqlTransaction transaction,
+            int eventId,
+            string eventNo)
+        {
+            using (SqlCommand oosCommand = new SqlCommand(@"
+SELECT CASE WHEN
+    EXISTS
+    (
+        SELECT 1
+        FROM dbo.EM_EventPlates WITH (UPDLOCK, HOLDLOCK)
+        WHERE EventId = @eventId
+          AND UPPER(LTRIM(RTRIM(ISNULL(Status,N'')))) IN (N'OOS',N'ACTION',N'FAIL')
+    )
+    OR EXISTS
+    (
+        SELECT 1
+        FROM dbo.EM_Events WITH (UPDLOCK, HOLDLOCK)
+        WHERE Id = @eventId
+          AND UPPER(LTRIM(RTRIM(ISNULL(FinalResult,N'')))) IN (N'OOS',N'ACTION',N'FAIL')
+    )
+THEN 1 ELSE 0 END;", connection, transaction))
+            {
+                oosCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+                oosCommand.Parameters.Add("@eventId", SqlDbType.Int).Value = eventId;
+                bool hasOos = Convert.ToInt32(oosCommand.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture) == 1;
+                if (!hasOos)
+                    return;
+            }
+
+            using SqlCommand qualityEventCommand = new SqlCommand(@"
+IF OBJECT_ID(N'dbo.QualityEvents', N'U') IS NULL
+    THROW 51441, 'Required table dbo.QualityEvents is missing. EM approval was blocked.', 1;
+
+IF COL_LENGTH(N'dbo.QualityEvents', N'SourceRecordID') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEvents', N'CurrentStatus') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEvents', N'FinalDisposition') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEvents', N'QAConclusion') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEvents', N'ClosedBy') IS NULL
+   OR COL_LENGTH(N'dbo.QualityEvents', N'ClosedDate') IS NULL
+    THROW 51442, 'Quality Event schema is incomplete. EM approval was blocked.', 1;
+
+SELECT TOP (1)
+       ISNULL(CurrentStatus,N''),
+       ISNULL(FinalDisposition,N''),
+       ISNULL(QAConclusion,N''),
+       ISNULL(ClosedBy,N''),
+       ClosedDate
+FROM dbo.QualityEvents WITH (UPDLOCK, HOLDLOCK)
+WHERE
+    (
+        SourceRecordID = @eventId
+        OR
+        (
+            NULLIF(LTRIM(RTRIM(@eventNo)),N'') IS NOT NULL
+            AND UPPER(LTRIM(RTRIM(ISNULL(SampleNumber,N'')))) = UPPER(LTRIM(RTRIM(@eventNo)))
+        )
+    )
+    AND
+    (
+        UPPER(LTRIM(RTRIM(ISNULL(DetectionSource,N'')))) = N'ENVIRONMENTAL MONITORING'
+        OR UPPER(LTRIM(RTRIM(ISNULL(SourceModule,N'')))) IN (N'ENVIRONMENTAL MONITORING',N'EM')
+        OR UPPER(LTRIM(RTRIM(ISNULL(SampleNumber,N'')))) = UPPER(LTRIM(RTRIM(@eventNo)))
+    )
+ORDER BY QualityEventID DESC;", connection, transaction);
+            qualityEventCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
+            qualityEventCommand.Parameters.Add("@eventId", SqlDbType.Int).Value = eventId;
+            qualityEventCommand.Parameters.Add("@eventNo", SqlDbType.NVarChar, 80).Value = string.IsNullOrWhiteSpace(eventNo) ? (object)DBNull.Value : eventNo.Trim();
+
+            using SqlDataReader reader = qualityEventCommand.ExecuteReader();
+            if (!reader.Read())
+            {
+                throw new InvalidOperationException(
+                    "This EM event contains ACTION/OOS results but no linked Quality Event was found. Approval is blocked.");
+            }
+
+            string status = reader.IsDBNull(0) ? string.Empty : reader.GetString(0).Trim();
+            string disposition = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
+            string qaConclusion = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
+            string closedBy = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).Trim();
+            bool hasClosedDate = !reader.IsDBNull(4);
+
+            // Only an explicitly closed Quality Event can release an ACTION/OOS EM event.
+            // "Approved" is an investigation workflow state, not a terminal closure. Cancelled/
+            // rejected events are terminal for dashboards but do not constitute positive QA release.
+            bool closed = status.Equals("Closed", StringComparison.OrdinalIgnoreCase) ||
+                          status.Equals("QA Closed", StringComparison.OrdinalIgnoreCase);
+            bool qaReleased = disposition.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                              disposition.Equals("Area Released after Corrective Action", StringComparison.OrdinalIgnoreCase) ||
+                              disposition.Equals("Accept with Justification", StringComparison.OrdinalIgnoreCase);
+
+            if (!closed || !qaReleased || string.IsNullOrWhiteSpace(qaConclusion) || string.IsNullOrWhiteSpace(closedBy) || !hasClosedDate)
+            {
+                throw new InvalidOperationException(
+                    "This EM event contains ACTION/OOS results. Approval requires a linked, closed Quality Event with QA conclusion, explicit release disposition, closer identity, and closure date.");
+            }
+        }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -967,9 +967,7 @@ WHERE QualityEventID = @qualityEventId
             {
                 EnsureQualityEventManagementAuthorizationInTransaction(
                     conn, tx, submittedBy, "submit a Quality Event to QA review");
-                if (expectedInvestigationVersion != null)
-                    QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
-                EnsureEMQualityEventEvidenceCurrentInTransaction(conn, tx, qualityEventId);
+                QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
 
                 int affected = ExecuteNonQueryWithTransaction(@"
                     UPDATE dbo.QualityEvents
@@ -1059,9 +1057,7 @@ WHERE QualityEventID = @qualityEventId
                 string authorizedRole = EnsureQaClosureAuthorizationInTransaction(
                     conn, tx, closedBy, "close a Quality Event");
                 userRole = authorizedRole;
-                if (expectedInvestigationVersion != null)
-                    QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
-                EnsureEMQualityEventEvidenceCurrentInTransaction(conn, tx, qualityEventId);
+                QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
 
                 int? linkedSampleId = null;
                 int? linkedEmEventId = null;

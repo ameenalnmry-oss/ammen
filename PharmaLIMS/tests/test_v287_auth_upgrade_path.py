@@ -12,7 +12,7 @@ class V287AuthenticationUpgradePathTests(unittest.TestCase):
     def test_debug_startup_reconciles_auth_prerequisites_without_enabling_production_ddl(self):
         app = text("App.xaml.cs")
         branch = app.split("if (AppConfig.IsDevelopment)", 1)[1].split("loginWindow.SetStartupBusy(false)", 1)[0]
-        self.assertIn("ApplyControlledMigrationAsync", branch)
+        self.assertNotIn("ApplyControlledMigrationAsync", branch)
         self.assertIn("AuthenticationLoginCompatibilityMigrationKey", branch)
         self.assertIn("UserAdministrationSecurityMigrationKey", branch)
         self.assertIn("else", branch)
@@ -55,8 +55,8 @@ class V287AuthenticationUpgradePathTests(unittest.TestCase):
 
     def test_release_identity_is_v287(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.10.6.303</Version>", text("PharmaLIMS.csproj"))
+        self.assertEqual("2026.10.19.309", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.10.19.309</Version>", text("PharmaLIMS.csproj"))
 
 if __name__ == "__main__":
     unittest.main()

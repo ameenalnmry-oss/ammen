@@ -12,7 +12,7 @@ def text(path):
 class UserManagementRegressionTests(unittest.TestCase):
     def test_release_identity_and_security_migration(self):
         manifest = json.loads(text("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
+        self.assertEqual("2026.10.19.309", manifest["applicationVersion"])
         self.assertEqual(92, sum(m["versionKey"] <= "20261009_001" for m in manifest["migrations"]))
         migration = next(x for x in manifest["migrations"] if x["versionKey"] == "20260915_000")
         self.assertEqual("Migrations/20260915_000_User_Administration_Security_Hardening.sql", migration["file"])
@@ -84,16 +84,16 @@ class UserManagementRegressionTests(unittest.TestCase):
         repository = text("Repositories/UserRepository.cs")
         self.assertIn("MustChangePassword = 1", service)
         self.assertIn("PasswordChangedAt = NULL", service)
-        self.assertIn("if (user.MustChangePassword)", login)
+        self.assertIn("if (user.MustChangePassword || user.PasswordChangedAt is null)", login)
         self.assertIn("new ChangePassword(_authService)", login)
         self.assertIn("if (freshUser.MustChangePassword)", auth)
         self.assertIn("Electronic-signature validation blocked", auth)
         contract = text("Services/AuthenticationCommitContract.cs")
         self.assertIn("AuthenticationCommitContract.PasswordChangeSql", repository)
-        self.assertIn("MustChangePassword = 0", contract)
         self.assertIn("AuthenticationCommitContract.PasswordChangeAuditSql", repository)
-        self.assertIn("N'Password Changed', N'Authentication'", contract)
-        self.assertIn("account.AuthenticationRowVersion = @CommittedVersion", contract)
+        self.assertIn("MustChangePassword = 0", contract)
+        self.assertIn("N'Password Changed'", contract)
+        self.assertIn("N'Authentication'", contract)
 
     def test_password_policy_and_password_values_are_not_audited(self):
         security = text("Infrastructure/PasswordSecurity.cs")

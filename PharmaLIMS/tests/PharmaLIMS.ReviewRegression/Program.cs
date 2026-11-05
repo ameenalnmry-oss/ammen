@@ -107,6 +107,13 @@ internal static partial class Program
             EmResultCalculator.Calculate(1, "Active Air Sampling", 0, 1m, 1m).Status));
         Run("EM unknown method blocked", () => Equal("Not Assessed",
             EmResultCalculator.Calculate(1, "Air", 1000, 1m, 1m).Status));
+        Run("EM Active Air instrument required", () =>
+            Equal(true, EmResultCalculator.RequiresSamplingEquipment("Active Air Sampling")));
+        foreach (string manual in new[] { "Settle Plate", "Contact Plate", "Surface Swab", "Personnel Monitoring" })
+            Run("EM manual sample instrument optional: " + manual, () =>
+                Equal(false, EmResultCalculator.RequiresSamplingEquipment(manual)));
+        Run("EM unknown method cannot bypass instrument", () =>
+            Equal(true, EmResultCalculator.RequiresSamplingEquipment("Unapproved Method")));
         Run("EM no count is pending", () => Equal("Pending",
             EmResultCalculator.Calculate(null, "Settle Plate", null, 1m, 2m).Status));
         Run("EM negative throws", () => Throws<ArgumentOutOfRangeException>(() =>
@@ -200,6 +207,9 @@ internal static partial class Program
         RunMergedRegressionCases();
         RunPrmSignatureChainCases();
         RunV303ReviewClosureCases();
+        RunReviewGapClosureCases();
+        RunWaterWorkflowFindingCases();
+        RunEquipmentBoundaryCases();
         Console.WriteLine($"Review regression: {passed} passed, {failed} failed.");
         return failed==0 ? 0 : 1;
     }

@@ -41,8 +41,9 @@ class Repair3QualityEventConsistencyTests(unittest.TestCase):
         source = (ROOT / "DatabaseHelper.EnvironmentalMonitoring.cs").read_text(encoding="utf-8-sig")
         method = source.split("public static bool CanPrintEMResultReport", 1)[1].split("public static DataTable GetEMEventSignatures", 1)[0]
         self.assertIn("EnsureEmApprovalQualityEventGateInTransaction", method)
-        self.assertIn("Report printing is blocked", method)
-        self.assertIn("WITH (UPDLOCK, HOLDLOCK)", method)
+        self.assertIn("EmReportEvidenceGuard.EnsureConsistent(rows)", method)
+        self.assertIn("GetLockedEMWorkflowStatusInTransaction(conn, tx, eventId)", method)
+        self.assertIn("ReadEmPlateSnapshotInTransaction(conn, tx, eventId)", method)
 
     def test_prm_approval_issue_reissue_require_qe_schema(self):
         main = (ROOT / "ProductionRawMaterialResults.xaml.cs").read_text(encoding="utf-8-sig")

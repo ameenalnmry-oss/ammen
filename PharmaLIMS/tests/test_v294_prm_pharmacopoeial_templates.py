@@ -12,8 +12,8 @@ def source(path: str) -> str:
 class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
     def test_release_version_is_v294(self):
         manifest = json.loads(source("Database/MigrationManifest.json"))
-        self.assertEqual("2026.10.6.303", manifest["applicationVersion"])
-        self.assertIn("<Version>2026.10.6.303</Version>", source("PharmaLIMS.csproj"))
+        self.assertEqual("2026.10.19.309", manifest["applicationVersion"])
+        self.assertIn("<Version>2026.10.19.309</Version>", source("PharmaLIMS.csproj"))
 
     def test_specification_master_exposes_template_loader(self):
         xaml = source("ProductionRawMaterialSamples.xaml")
@@ -29,6 +29,26 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
         self.assertIn('TestCode = "ECOLI"', code)
         self.assertIn('SpecificationText = "Absent in 1 g"', code)
         self.assertIn("non-aqueous preparations for oral use", code)
+
+    def test_general_primary_packaging_template_uses_real_test_names_without_invented_limits(self):
+        code = source("ProductionRawMaterialSamples.xaml.cs")
+        start = code.index('if (normalized.Equals("Primary Packaging"')
+        end = code.index('if (normalized.Equals("Raw Material"', start)
+        packaging = code[start:end]
+        self.assertIn('TestCode = "TBC"', packaging)
+        self.assertIn('TestName = "Total Bacterial Count"', packaging)
+        self.assertIn('TestCode = "TFC"', packaging)
+        self.assertIn('TestName = "Total Fungal Count"', packaging)
+        self.assertIn('Cipla SOP 1035-G-0193', packaging)
+        self.assertEqual(2, packaging.count('MinimumElapsedHours = 0m'))
+        self.assertNotIn("SpecificationText =", packaging)
+        self.assertNotIn("SpecificationLimit =", packaging)
+        self.assertNotIn('UAT Visual Check', packaging)
+        self.assertNotIn('UAT Integrity Check', packaging)
+        self.assertIn('RequiredTest = true', packaging)
+        validation = code[code.index('private async void BtnSaveSpecification_Click'):]
+        self.assertIn('Every test requires Code, Test Name, and Acceptance Criteria.', validation)
+        self.assertIn('Minimum Elapsed Hours value greater than zero', validation)
 
     def test_raw_material_default_does_not_invent_universal_specified_organisms(self):
         code = source("ProductionRawMaterialSamples.xaml.cs")
@@ -96,7 +116,7 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
     def test_load_specification_does_not_invent_missing_timing(self):
         code = source("ProductionRawMaterialSamples.xaml.cs")
         start = code.index("private void BtnLoadSpecification_Click")
-        end = code.index("private void BtnSaveSpecification_Click", start)
+        end = code.index("private async void BtnSaveSpecification_Click", start)
         handler = code[start:end]
         self.assertIn(": 0m,", handler)
         self.assertNotIn(": 120m,", handler)
@@ -112,7 +132,7 @@ class V294PrmPharmacopoeialTemplateTests(unittest.TestCase):
 
     def test_draft_resave_preserves_original_creator_identity(self):
         code = source("ProductionRawMaterialSamples.xaml.cs")
-        start = code.index("private void BtnSaveSpecification_Click")
+        start = code.index("private async void BtnSaveSpecification_Click")
         end = code.index("private void BtnReviewSpecification_Click", start)
         handler = code[start:end]
         self.assertIn("SELECT TOP(1) CreatedBy, CreatedDate", handler)

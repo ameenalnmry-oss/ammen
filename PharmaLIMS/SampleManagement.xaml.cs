@@ -21,6 +21,10 @@ namespace PharmaLIMS
     public partial class SampleManagement : Window
     {
         private DataTable samplesTable;
+        private const int SearchPageSize = 150;
+        private int _searchPageIndex;
+        private bool _hasNextSearchPage;
+        private bool _loadingSearchPage;
         private static bool pdfFontsConfigured = false;
 
         public SampleManagement()
@@ -69,6 +73,7 @@ namespace PharmaLIMS
             cboSampleType.Items.Add(new ComboBoxItem { Content = "PW", Tag = "PW" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "PTW", Tag = "PTW" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Environmental Monitoring", Tag = "Environmental Monitoring" });
+            cboSampleType.Items.Add(new ComboBoxItem { Content = "Legacy Environment (historical)", Tag = "Environment" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Raw Material", Tag = "Raw Material" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Primary Packaging", Tag = "Primary Packaging" });
             cboSampleType.Items.Add(new ComboBoxItem { Content = "Production / In-Process", Tag = "Production / In-Process" });
@@ -148,8 +153,11 @@ namespace PharmaLIMS
 
         private async Task LoadSamplesAsync()
         {
+            if (_loadingSearchPage) return;
+            _loadingSearchPage = true;
             try
             {
+                _hasNextSearchPage = false;
                 samplesTable = null;
                 dgSamples.ItemsSource = null;
                 UpdateCounters();
@@ -202,7 +210,8 @@ namespace PharmaLIMS
                     ;WITH WaterRows AS
                     (
                         SELECT
-                            'WATER' AS RecordKind,
+                            CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(s.SampleType,N''))))=N'ENVIRONMENT'
+                                 THEN N'LEGACY_EM' ELSE N'WATER' END AS RecordKind,
                             s.SampleID,
                             ISNULL(s.SampleNumber, '') AS SampleNumber,
                             ISNULL(s.SampleType, '') AS SampleType,
@@ -407,16 +416,28 @@ namespace PharmaLIMS
                     parameters.Add(new SqlParameter("@status", status));
                 }
 
-                query += " ORDER BY SamplingDateTime DESC, CreatedDate DESC, SampleID DESC";
+                // Stable ordering is required at the boundary between Water,
+                // EM and PRM identifiers (the same SampleID can exist in each).
+                // Fetch one extra row to detect Next without loading the full
+                // filtered result set into WPF or silently truncating it.
+                query += @" ORDER BY SamplingDateTime DESC, CreatedDate DESC, SampleID DESC, RecordKind DESC
+                             OFFSET @pageOffset ROWS FETCH NEXT @pageTake ROWS ONLY";
+                parameters.Add(new SqlParameter("@pageOffset", SqlDbType.Int)
+                { Value = checked(_searchPageIndex * SearchPageSize) });
+                parameters.Add(new SqlParameter("@pageTake", SqlDbType.Int)
+                { Value = SearchPageSize + 1 });
 
                 SqlParameter[] parameterArray = parameters.ToArray();
-                DataTable loadedTable = await Task.Run(() => DatabaseHelper.ExecuteQuery(query, parameterArray, commandTimeoutSeconds: 10));
+                DataTable loadedTable = await Task.Run(() => DatabaseHelper.ExecuteQuery(query, parameterArray, commandTimeoutSeconds: 15));
+                _hasNextSearchPage = loadedTable.Rows.Count > SearchPageSize;
+                if (_hasNextSearchPage)
+                    loadedTable.Rows.RemoveAt(SearchPageSize);
 
                 samplesTable = loadedTable;
                 dgSamples.ItemsSource = samplesTable.DefaultView;
 
                 UpdateCounters();
-                SetStatus("Water, EM and PRM samples loaded successfully.", false);
+                SetStatus("Water, EM and PRM search page loaded. Print/CSV here exports this page only; use Sample Register for the full register.", false);
             }
             catch (Exception ex)
             {
@@ -428,9 +449,34 @@ namespace PharmaLIMS
             }
             finally
             {
+                _loadingSearchPage = false;
                 if (btnSearch != null)
                     btnSearch.IsEnabled = true;
+                UpdatePagingControls();
             }
+        }
+
+        private void UpdatePagingControls()
+        {
+            if (lblPaging == null || btnPrevPage == null || btnNextPage == null)
+                return;
+            lblPaging.Text = $"Page {_searchPageIndex + 1:N0} (max {SearchPageSize:N0} samples)";
+            btnPrevPage.IsEnabled = !_loadingSearchPage && _searchPageIndex > 0;
+            btnNextPage.IsEnabled = !_loadingSearchPage && _hasNextSearchPage;
+        }
+
+        private async void BtnPrevPage_Click(object sender, RoutedEventArgs e)
+        {
+            if (_loadingSearchPage || _searchPageIndex == 0) return;
+            _searchPageIndex--;
+            await LoadSamplesAsync();
+        }
+
+        private async void BtnNextPage_Click(object sender, RoutedEventArgs e)
+        {
+            if (_loadingSearchPage || !_hasNextSearchPage) return;
+            _searchPageIndex++;
+            await LoadSamplesAsync();
         }
 
         private string GetComboTag(ComboBox comboBox)
@@ -452,7 +498,9 @@ namespace PharmaLIMS
                 if (sampleId <= 0)
                     continue;
 
-                if (IsEMRow(row) || IsPRMRow(row))
+                // Legacy Environment rows live in dbo.Samples but are not Water.
+                // Never apply the water situation evaluator to a historical EM row.
+                if (IsEMRow(row) || IsPRMRow(row) || IsLegacyEMRow(row))
                     continue;
 
                 try
@@ -588,8 +636,8 @@ namespace PharmaLIMS
                 }
             }
 
-            lblCounts.Text = $"Samples: {total} | Pending Results: {pending} | Alert: {alert} | Fail/OOS: {fail} | COA Active: {coaActive}";
-            lblHeaderStatus.Text = total.ToString(CultureInfo.InvariantCulture) + " sample(s)";
+            lblCounts.Text = $"Samples on page: {total} | Pending Results: {pending} | Alert: {alert} | Fail/OOS: {fail} | COA Active: {coaActive}";
+            lblHeaderStatus.Text = total.ToString(CultureInfo.InvariantCulture) + " sample(s) on page";
         }
 
         private int SafeInt(object value)
@@ -642,9 +690,28 @@ namespace PharmaLIMS
             return GetSelectedRecordKind().Equals("PRM", StringComparison.OrdinalIgnoreCase);
         }
 
+        private bool IsSelectedLegacyEnvironmentRecord()
+        {
+            return GetSelectedRecordKind().Equals("LEGACY_EM", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool BlockLegacyEnvironmentWorkflow()
+        {
+            if (!IsSelectedLegacyEnvironmentRecord()) return false;
+            ShowInfo("Historical Environment record: this sample is stored in the legacy Samples table. " +
+                     "It is visible for traceability, but cannot be processed as current Water or EM. " +
+                     "Use the read-only View Details / Sample Register and a controlled QA reconciliation.");
+            return true;
+        }
+
         private bool IsEMRow(DataRow row)
         {
             return GetCellText(row, "RecordKind").Equals("EM", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsLegacyEMRow(DataRow row)
+        {
+            return GetCellText(row, "RecordKind").Equals("LEGACY_EM", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsPRMRow(DataRow row)
@@ -892,11 +959,15 @@ namespace PharmaLIMS
 
         private async void BtnSearch_Click(object sender, RoutedEventArgs e)
         {
+            if (_loadingSearchPage) return;
+            _searchPageIndex = 0;
             await LoadSamplesAsync();
         }
 
         private async void BtnClear_Click(object sender, RoutedEventArgs e)
         {
+            if (_loadingSearchPage) return;
+            _searchPageIndex = 0;
             txtSampleNumber.Text = "";
             cboSampleType.SelectedIndex = 0;
             cboSamplingPoint.SelectedIndex = 0;
@@ -908,8 +979,11 @@ namespace PharmaLIMS
 
         private async void TxtSampleNumber_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter && !_loadingSearchPage)
+            {
+                _searchPageIndex = 0;
                 await LoadSamplesAsync();
+            }
         }
 
         private void DgSamples_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -926,6 +1000,24 @@ namespace PharmaLIMS
         {
             if (!RequireSampleSelection(out int sampleId, out string sampleNumber))
                 return;
+
+            if (IsSelectedLegacyEnvironmentRecord())
+            {
+                // SampleDetails contains active Water result, investigation and
+                // COA actions. Do not expose those actions for historical EM.
+                // Display only immutable registration-context values already
+                // present in this row; the original register remains available.
+                DataRow row = GetSelectedSample().Row;
+                ShowInfo("Historical Environment (read-only)\n" +
+                    "Sample: " + sampleNumber + "\n" +
+                    "Sampling: " + GetCellText(row, "SamplingDateTimeText") + "\n" +
+                    "Point: " + GetCellText(row, "PointCode") + "\n" +
+                    "Location: " + GetCellText(row, "Location") + "\n" +
+                    "Status recorded: " + GetCellText(row, "CurrentStatus") + "\n\n" +
+                    "No active Water or EM workflow is available. Use Sample Register " +
+                    "and controlled QA reconciliation for source evidence.");
+                return;
+            }
 
             if (IsSelectedEMRecord())
             {
@@ -945,6 +1037,9 @@ namespace PharmaLIMS
         private void BtnEnterResults_Click(object sender, RoutedEventArgs e)
         {
             if (!RequireSampleSelection(out int sampleId, out string sampleNumber))
+                return;
+
+            if (BlockLegacyEnvironmentWorkflow())
                 return;
 
             if (IsSelectedEMRecord())
@@ -967,6 +1062,9 @@ namespace PharmaLIMS
             if (!RequireSampleSelection(out int sampleId, out string sampleNumber))
                 return;
 
+            if (BlockLegacyEnvironmentWorkflow())
+                return;
+
             if (IsSelectedEMRecord())
             {
                 OpenEMResultsEntry(sampleId, sampleNumber);
@@ -985,6 +1083,9 @@ namespace PharmaLIMS
         private void BtnViewIssueCoa_Click(object sender, RoutedEventArgs e)
         {
             if (!RequireSampleSelection(out int sampleId, out string sampleNumber))
+                return;
+
+            if (BlockLegacyEnvironmentWorkflow())
                 return;
 
             if (IsSelectedEMRecord())
@@ -1025,7 +1126,8 @@ namespace PharmaLIMS
                     return;
                 }
 
-                string fileName = "SampleManagement_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".csv";
+                string fileName = $"SampleManagement_Page{_searchPageIndex + 1:D4}_" +
+                                  DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".csv";
                 string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
 
                 using (StreamWriter writer = new StreamWriter(filePath, false, Encoding.UTF8))
@@ -1046,8 +1148,9 @@ namespace PharmaLIMS
                 string exportHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(filePath))).ToLowerInvariant();
                 DatabaseHelper.AddAuditTrailAdvanced(
                     "Samples", 0, "Uncontrolled CSV Export", string.Empty,
-                    fileName + "; SHA256=" + exportHash + "; Rows=" + samplesTable.Rows.Count.ToString(CultureInfo.InvariantCulture),
-                    "User-requested working copy export; CSV is not a controlled GMP record.",
+                    fileName + "; SHA256=" + exportHash + "; SearchPage=" + (_searchPageIndex + 1).ToString(CultureInfo.InvariantCulture) +
+                    "; PageRows=" + samplesTable.Rows.Count.ToString(CultureInfo.InvariantCulture),
+                    "User-requested CURRENT SEARCH PAGE ONLY working copy; CSV is not a controlled GMP record or full sample register.",
                     Login.CurrentUser, "Export", null, fileName, "Sample Management");
 
                 ShowInfo("UNCONTROLLED COPY - CSV exported successfully:\n" + filePath + "\nSHA-256: " + exportHash);
@@ -1118,12 +1221,13 @@ namespace PharmaLIMS
                 }
 
                 string reportType = detailed ? "Detailed" : "Summary";
-                string fileName = "SampleManagement_" + reportType + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".pdf";
+                string fileName = $"SampleManagement_{reportType}_Page{_searchPageIndex + 1:D4}_" +
+                                  DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".pdf";
                 string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
 
                 using (PdfDocument document = new PdfDocument())
                 {
-                    document.Info.Title = "Sample Management " + reportType + " Report";
+                    document.Info.Title = $"Sample Management {reportType} - Current Search Page {_searchPageIndex + 1} Only";
                     document.Info.Author = GetCurrentUserName();
                     document.Info.CreationDate = DateTime.Now;
 
@@ -1135,7 +1239,8 @@ namespace PharmaLIMS
                     document.Save(filePath);
                 }
 
-                ShowInfo(reportType + " PDF exported successfully:\n" + filePath);
+                ShowInfo(reportType + " CURRENT SEARCH PAGE ONLY PDF exported successfully:\n" + filePath +
+                         "\nThis is not the full sample register. Use Sample Register for the complete record.");
             }
             catch (Exception ex)
             {
@@ -1169,7 +1274,7 @@ namespace PharmaLIMS
                 XFont normalFont = new XFont("Arial", 7, XFontStyleEx.Regular);
                 XFont smallFont = new XFont("Arial", 6, XFontStyleEx.Regular);
 
-                DrawPdfHeader(gfx, page, "Sample Management Summary Report", pageNo);
+                DrawPdfHeader(gfx, page, $"Sample Management Summary - Search Page {_searchPageIndex + 1} Only", pageNo);
 
                 double y = 112;
                 DrawSummaryBox(gfx, page, y, normalFont, boldFont);
@@ -1214,7 +1319,7 @@ namespace PharmaLIMS
                 XFont normalFont = new XFont("Arial", 7, XFontStyleEx.Regular);
                 XFont smallFont = new XFont("Arial", 6, XFontStyleEx.Regular);
 
-                DrawPdfHeader(gfx, page, "Sample Management Detailed Report", pageNo);
+                DrawPdfHeader(gfx, page, $"Sample Management Details - Search Page {_searchPageIndex + 1} Only", pageNo);
 
                 double y = 112;
                 int samplesOnPage = 0;
@@ -1370,6 +1475,9 @@ namespace PharmaLIMS
         {
             if (row == null)
                 return "Review sample workflow status.";
+
+            if (IsLegacyEMRow(row))
+                return "Historical Environment record: read-only. Review the original register and reconcile via QA.";
 
             if (IsEMRow(row))
             {

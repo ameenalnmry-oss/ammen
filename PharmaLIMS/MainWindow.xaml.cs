@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using PharmaLIMS.Services;
 using PharmaLIMS.Infrastructure;
 using System;
@@ -332,6 +332,10 @@ SELECT @Result;");
                                             Login.CanAccessReports;
 
             BtnNewSample.IsEnabled = Login.CanRegisterSamples;
+
+            BtnControlledCoaCancellation.Visibility = AppConfig.IsDevelopment && Login.CanCancelCOA
+                ? Visibility.Visible : Visibility.Collapsed;
+            BtnControlledCoaCancellation.IsEnabled = AppConfig.IsDevelopment && Login.CanCancelCOA && !_maintenanceRunning;
 
             BtnResultsEntry.IsEnabled = Login.CanEnterResults ||
                                         Login.CanReviewResults ||
@@ -999,6 +1003,58 @@ SELECT @Result;");
                 ApplicationLogger.Error("Unable to open User Management.", ex);
                 MessageBox.Show(UserFacingError.SafeMessage(ex, "User Management"), "User Management",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnControlledCoaCancellation_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sessionClosed || !AppConfig.IsDevelopment || !Login.CanCancelCOA || _maintenanceRunning || _preflightRunning)
+                return;
+
+            string rawId = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter the SampleID of the UAT certificate to cancel. Cancellation preserves the audit and certificate history.",
+                "Controlled UAT COA Cancellation", "");
+            if (!int.TryParse(rawId, out int sampleId) || sampleId <= 0)
+                return;
+
+            if (!DatabaseHelper.HasCertificate(sampleId))
+            {
+                MessageBox.Show("No active certificate exists for the selected sample.", "Cancel COA");
+                return;
+            }
+
+            string reason = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter the complete cancellation reason (required).", "COA Cancellation Reason",
+                "Cancellation of an explicitly identified UAT test certificate.");
+            if (string.IsNullOrWhiteSpace(reason))
+                return;
+
+            if (MessageBox.Show(
+                    $"Cancel the active certificate for SampleID {sampleId}? This action requires your own electronic signature and is audited.",
+                    "Confirm Controlled Cancellation", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+
+            if (_sessionClosed) return;
+            try
+            {
+                ElectronicSignature signature = GetService<ElectronicSignature>();
+                signature.Configure("WATER-SAMPLE-" + sampleId.ToString(CultureInfo.InvariantCulture),
+                    Login.CurrentUser, "COA Cancellation", true);
+                signature.Owner = this;
+                if (signature.ShowDialog() != true || !signature.IsConfirmed)
+                    return;
+
+                string outcome = DatabaseHelper.CancelCertificateControlled(sampleId,
+                    signature.SignedBy, reason, signature.Meaning, signature.Reason);
+                MessageBox.Show(outcome, "Controlled COA Cancellation",
+                    MessageBoxButton.OK, outcome.Contains("successfully", StringComparison.OrdinalIgnoreCase)
+                        ? MessageBoxImage.Information : MessageBoxImage.Warning);
+                await RefreshSystemReadinessAsync(showBlockedWindow: false);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(UserFacingError.SafeMessage(ex, "Controlled COA cancellation"),
+                    "Controlled COA Cancellation", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

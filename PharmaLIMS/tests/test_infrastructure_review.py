@@ -74,7 +74,7 @@ class InfrastructureReviewTests(unittest.TestCase):
         self.assertIn('PipeOptions.FirstPipeInstance', source)
         self.assertIn('TrustedPipeConnectionPool.RunAsync', source)
         self.assertIn('SslProtocols.Tls12 | SslProtocols.Tls13', source)
-        authentication = source.split('if (envelope.Authentication is not null)', 1)[1].split('Guid requestId', 1)[0]
+        authentication = source.split('if (envelope.Authentication is not null)', 1)[1].split('Guid requestId', 1)[0].split('if (envelope.ActivitySnapshot is not null)', 1)[0]
         self.assertIn('_callers.IsAllowedCaller(callerSid, serviceSid)', authentication)
         self.assertNotIn('_callers.Resolve(', authentication, 'Login ticket usernames must remain independent of native account mapping')
 

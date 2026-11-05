@@ -7,6 +7,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Services/WaterWorkflowEvidenceGuard.cs" Link="Shared/WaterWorkflowEvidenceGuard.cs" />
+    <Compile Include="../../Services/WaterReportNumericContract.cs" Link="Shared/WaterReportNumericContract.cs" />
     <Compile Include="../../Services/EmQualityEventEvidenceGuard.cs" Link="Shared/EmQualityEventEvidenceGuard.cs" />
     <Compile Include="../../Services/MediaGrowthPromotionEvaluator.cs" Link="Shared/MediaGrowthPromotionEvaluator.cs" />
     <Compile Include="../../Services/ControlledNumericValue.cs" Link="Shared/ControlledNumericValue.cs" />
@@ -20,5 +22,12 @@
     <Compile Include="../../Services/EmTrendAssessmentService.cs" Link="Production/EmTrendAssessmentService.cs" />
     <Compile Include="../../Services/WaterResultValueContract.cs" Link="Production/WaterResultValueContract.cs" />
     <Compile Include="../../Services/PrmCertificateSignatureChain.cs" Link="Production/PrmCertificateSignatureChain.cs" />
+    <Compile Include="../../Services/WaterLesTemperatureContract.cs" Link="Shared/WaterLesTemperatureContract.cs" />
+    <Compile Include="../../Services/EmReportEvidenceGuard.cs" Link="Shared/EmReportEvidenceGuard.cs" />
+    <Compile Include="../../Services/CultureMediaPreparationGuard.cs" Link="Shared/CultureMediaPreparationGuard.cs" />
+    <Compile Include="../../Services/EmPersonnelHandoffContract.cs" Link="Shared/EmPersonnelHandoffContract.cs" />
+    <Compile Include="../../Services/SpecificationNumericStorage.cs" Link="Shared/SpecificationNumericStorage.cs" />
+    <Compile Include="../../tools/PharmaLIMS.TrustedSigning/EquipmentLinkContract.cs" Link="Trusted/EquipmentLinkContract.cs" />
+    <Compile Include="../../tools/PharmaLIMS.TrustedSigning/EquipmentConfirmContract.cs" Link="Trusted/EquipmentConfirmContract.cs" />
   </ItemGroup>
 </Project>

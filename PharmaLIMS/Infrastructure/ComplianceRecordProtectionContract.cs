@@ -48,7 +48,10 @@ VALUES
     (N'WaterTestProfileSignatures', N'TRG_WaterTestProfileSignatures_AppendOnly', N'signature evidence is append-only'),
     (N'LabEquipmentSignatures', N'TRG_LabEquipmentSignatures_AppendOnly', N'laboratory equipment signature evidence is append-only and cannot be updated or deleted'),
     (N'LabEquipmentUsageHistory', N'TRG_LabEquipmentUsageHistory_AppendOnly', N'laboratory equipment usage history is append-only and cannot be updated or deleted'),
+    (N'WaterResultResourceEvidence',N'TRG_WaterResourceEvidence_AppendOnly',N'Water resource evidence is append-only'),
+    (N'PRM_SpecificationContentHistory',N'TRG_PRM_SpecificationContentHistory_AppendOnly',N'PRM specification content history is append-only'),
     (N'WaterResultExecutionEvidence', N'TRG_WaterResultExecutionEvidence_AppendOnly', N'water les execution evidence is append-only and cannot be updated or deleted'),
+    (N'LabEquipmentUsageReconciliations', N'TRG_LabEquipmentUsageReconciliations_AppendOnly_20261029', N'Historical equipment-use reconciliations are append-only and cannot be updated or deleted'),
     (N'LegacyCertificateEvidenceReconciliations', N'TRG_LegacyCertificateEvidenceReconciliations_AppendOnly_20260908', N'reconciliation evidence is append-only');
 
 SELECT

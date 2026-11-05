@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using PharmaLIMS.Infrastructure;
 using System;
 using System.Collections.Generic;
@@ -341,6 +341,18 @@ ORDER BY E.EventNo,E.Id,P.SequenceNo,P.Id;", new[] { new SqlParameter("@Event", 
                     selected.Count == 1
                         ? "reconcile historical EM limit evidence"
                         : "batch reconcile historical EM limit evidence");
+
+                var sourcePlans = new HashSet<int>();
+                foreach (int eventId in selected.Select(row => row.EventID).Distinct())
+                {
+                    using var discover = new SqlCommand("SELECT ISNULL(PlanID,0) FROM dbo.EM_Events WHERE Id=@Event;", connection, transaction);
+                    discover.Parameters.Add("@Event", SqlDbType.Int).Value = eventId;
+                    int planId = Convert.ToInt32(discover.ExecuteScalar(), CultureInfo.InvariantCulture);
+                    if (planId > 0) sourcePlans.Add(planId);
+                }
+                foreach (int planId in sourcePlans.OrderBy(id => id)) DatabaseHelper.LockEmSourcePlanInTransaction(connection, transaction, planId);
+                foreach (int eventId in selected.Select(row => row.EventID).Distinct().OrderBy(id => id))
+                    DatabaseHelper.EnsureEmSourcePlanInTransaction(connection, transaction, eventId, false);
 
                 foreach (LegacyPlateRow row in selected.OrderBy(x => x.EventID).ThenBy(x => x.PlateID))
                 {
