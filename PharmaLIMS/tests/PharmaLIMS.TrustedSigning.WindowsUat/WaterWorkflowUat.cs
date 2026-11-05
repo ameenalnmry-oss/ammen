@@ -74,7 +74,7 @@ internal sealed partial class UatRun
             // this primary fixture. Desktop credential DENY and clinical DML
             // restrictions remain independently exercised below.
             await Exec(_admin, $"GRANT SELECT ON SCHEMA::dbo TO PharmaLIMS_TrustedEquipmentSigner;GRANT SELECT,UPDATE ON dbo.Users TO PharmaLIMS_TrustedEquipmentSigner;GRANT INSERT ON dbo.AuditTrail TO PharmaLIMS_TrustedEquipmentSigner;CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
-            await PrepareActivitySchema();
+            await PrepareActivitySchema(recordCoreCheck:false);
             foreach (string actor in new[] { "uat-signer", author, reviewer, qa }) await SeedUser(actor, false);
             await Exec(_admin, "UPDATE dbo.Users SET Role=CASE Username WHEN N'uat-water-qa' THEN N'QA' WHEN N'uat-water-reviewer' THEN N'Supervisor' ELSE N'Analyst' END,CanRegisterSamples=1,CanEnterResults=1,CanReviewResults=1,CanApproveResults=1,PasswordChangedAt=SYSUTCDATETIME(),MustChangePassword=0,IsActive=1,IsLocked=0;");
             string template = File.ReadAllText(Path.Combine(settings.RepositoryRoot, "scripts/EQ001_UAT_Water_Analysis.sql"));
@@ -162,7 +162,7 @@ internal sealed partial class UatRun
             stage = "WPF transport failure never falls back to SQL DML";
             await NativeUiOperation(author, "StartAnalysis", "Registered", sampleNumber: "WATER-NATIVE-2", expectedCommit: false, stopAfterSignature: true);
             WaterCheck(Convert.ToString(await Scalar("SELECT Status FROM dbo.Samples WHERE SampleID=2")) == "Registered" && Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.ElectronicSignatures WHERE SampleID=2")) == 0, "unavailable service leaves the real WPF sample and signature unchanged");
-            WaterCheck(_passes.Count == 0, "Water phase does not alter the original 122-check counter");
+            WaterCheck(_passes.Count == 0, "Water phase does not alter the original 123-check counter");
             File.WriteAllText(Path.Combine(settings.ResultsDirectory, "water-workflow-results.json"), JsonSerializer.Serialize(new { Commit = Environment.GetEnvironmentVariable("GITHUB_SHA"), Phase = "WaterWorkflow", BuildConfiguration = "Release", DesktopRuntime = AppConfig.EnvironmentName, WindowsCallerSid = settings.CallerSid, ServiceSid = settings.ServiceSid, Passed = _waterPasses.Count, ExpectedOperations = 6, Operations = new[] { "CorrectTimes", "StartAnalysis", "SaveResults", "SubmitReview", "Review", "Approve" }, Checks = _waterPasses, ProductionActivated = false, SiteUatQualified = false, CertificateLifecycleQualified = false }, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"WATER NATIVE WINDOWS/WPF/SQL: {_waterPasses.Count} checks passed; six operations; isolated CI only.");
         }

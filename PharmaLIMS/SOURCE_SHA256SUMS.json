@@ -1,5 +1,5 @@
 {
-  "package": "PharmaLIMS-v309-R9-AMEEN-20261105-primary-water-auth-fixture",
+  "package": "PharmaLIMS-v309-R9-AMEEN-20261105-isolated-native-water-evidence",
   "files": {
     ".github/workflows/ci.yml": "5a786048c32dfd163f1b99cf2367780898b6dda45843a33b4954670e299c9d15",
     ".gitignore": "aafb9c0113da2468afeb8555a30580d99b87a4f6c3f03d508e15252124e7b65b",
@@ -719,12 +719,12 @@
     "tests/PharmaLIMS.TrendReportSmoke/PrimaryPackagingSmoke.cs": "a29ae0d10c338c842e536333c768d814944f5a76fac1e3b84aaa9b0f2fd8543f",
     "tests/PharmaLIMS.TrendReportSmoke/Program.cs": "6baea693a39e7efe057e3dfef0a0d1bb8c50a09563c750729b9f591e54d1d4d8",
     "tests/PharmaLIMS.TrendReportSmoke/SampleRegisterSmoke.cs": "b2e95b40a23020ebd446c63808c7b1bd5622752ec76bcf3465955fa8b7390b88",
-    "tests/PharmaLIMS.TrustedSigning.WindowsUat/ActivityUat.cs": "919ef9a56167c4a7d46843da97bf606ce43a0273d78fbe1d4600087a1619f1bb",
+    "tests/PharmaLIMS.TrustedSigning.WindowsUat/ActivityUat.cs": "1c569cda6ddd364de913851448ffe98074784e7793cc13e8f0ca724994ead835",
     "tests/PharmaLIMS.TrustedSigning.WindowsUat/CredentialPreflightUat.cs": "16ee883a82b28f01f2b0d65fe20aabfb6919bbf762d7ec0b22f9bcc162501bfa",
     "tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj": "78f5f6f5dc730289a27c1e7d90c4316abcfdfd7b05e4ebcdf6e6d627cc652690",
     "tests/PharmaLIMS.TrustedSigning.WindowsUat/PrmSpecificationUat.cs": "b3b4b68ca2bcef76ced9961f176e287f5596dc52a0f05e3b5c79d9046eb1354a",
     "tests/PharmaLIMS.TrustedSigning.WindowsUat/Program.cs": "1d69d8d64cf85709c13fad6d3027495f378eca4ead999c737e8c18307c303f69",
-    "tests/PharmaLIMS.TrustedSigning.WindowsUat/WaterWorkflowUat.cs": "def01b97240d7a214aae100a73f29868c6667226fb4aae94586a07936a378fec",
+    "tests/PharmaLIMS.TrustedSigning.WindowsUat/WaterWorkflowUat.cs": "6256f07cfde456aa19282a3277dbd385e4c4e631b0f000fdbf8361dc66bbba18",
     "tests/PharmaLIMS.WaterAnalysisSqlRegression/PharmaLIMS.WaterAnalysisSqlRegression.csproj": "cf55030f59be27713c759a50d3022ef004294d484ff70f2499d53838010befd6",
     "tests/PharmaLIMS.WaterAnalysisSqlRegression/Program.cs": "f8526513b25410c0e296be59012c28529411d4da50afa7db11b90b93194c83c7",
     "tests/PharmaLIMS.WaterCertificateRegression/PharmaLIMS.WaterCertificateRegression.csproj": "a7185194490215e75f37f85df91c22dccedcfd4ccc85dfb3dea9396e3624833a",

@@ -14,7 +14,7 @@ using System.Windows.Threading;
 
 internal sealed partial class UatRun
 {
-    private async Task PrepareActivitySchema()
+    private async Task PrepareActivitySchema(bool recordCoreCheck=true)
     {
         if (!_db.StartsWith("EQ001_UAT_",StringComparison.Ordinal)) throw new Exception("Activity fixture database guard failed.");
         string fixture = File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/fixtures/eq001_activity_site_procedures.sql"));
@@ -34,8 +34,10 @@ internal sealed partial class UatRun
             "GRANT EXECUTE ON dbo.EQ001_WindowsUat_RecordFailure TO PharmaLIMS_EquipmentWindowsUat;"+
             "GRANT EXECUTE ON dbo.EQ001_WindowsUat_AssertActor TO PharmaLIMS_EquipmentWindowsUat;");
         await Exec(_admin,File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/eq001_activity_service_boundary_uat.sql")));
-        Check(stageBefore==Convert.ToString(await Scalar("SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.MicroEquipment_SignActivityStage',N'P'))")),
-            "native fixture preserves the controlled R9 activity signing procedure");
+        bool stageUnchanged=stageBefore==Convert.ToString(await Scalar("SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.MicroEquipment_SignActivityStage',N'P'))"));
+        const string stageEvidence="native fixture preserves the controlled R9 activity signing procedure";
+        if(recordCoreCheck) Check(stageUnchanged,stageEvidence);
+        else WaterCheck(stageUnchanged,stageEvidence);
     }
 
     private async Task ExerciseActivities(WindowsTrustedPipeClient pipe,AuthService auth,string client,TrustedHostSettings hostSettings)
