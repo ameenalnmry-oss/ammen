@@ -30,11 +30,11 @@ internal sealed partial class UatRun
         Console.WriteLine("PASS WATER: " + label);
         Console.WriteLine("::notice title=Water native milestone::" + _waterPasses.Count + ": " + label);
     }
-    private async Task WaterSqlDenied(string client, string sql, string label)
+    private async Task WaterSqlDenied(string client, string sql, string label, int expectedNumber=229)
     {
         try { await Exec(client, sql); }
-        catch (SqlException ex) when (ex.Number == 229) { WaterCheck(true, label + " (SQL229)"); return; }
-        throw new InvalidOperationException("Expected exact SQL229: " + label);
+        catch (SqlException ex) when (ex.Number == expectedNumber) { WaterCheck(true, label + " (SQL"+expectedNumber+")"); return; }
+        throw new InvalidOperationException("Expected exact SQL"+expectedNumber+": " + label);
     }
     private async Task WaterRejected(Func<Task> action, string label, string code)
     {
@@ -67,8 +67,13 @@ internal sealed partial class UatRun
             await Exec(_admin,$"CREATE USER PharmaLIMS_TrustedEquipmentSigner FOR LOGIN [{_serviceLogin}];");
             await PrepareSchema();
             await PrepareNativeWaterSiteContract();
-            // Retain the existing host's authentication rights; grant no direct clinical DML.
-            await Exec(_admin, $"GRANT SELECT ON SCHEMA::dbo TO PharmaLIMS_TrustedEquipmentSigner;GRANT UPDATE ON dbo.Users TO PharmaLIMS_TrustedEquipmentSigner;GRANT INSERT ON dbo.AuditTrail TO PharmaLIMS_TrustedEquipmentSigner;CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
+            // This is the primary credential database, not a separate activity
+            // database. Match the already-qualified core fixture's explicit
+            // primary Users read/update rights for the independent verifier.
+            // Activity-only credential cutover must not accidentally redefine
+            // this primary fixture. Desktop credential DENY and clinical DML
+            // restrictions remain independently exercised below.
+            await Exec(_admin, $"GRANT SELECT ON SCHEMA::dbo TO PharmaLIMS_TrustedEquipmentSigner;GRANT SELECT,UPDATE ON dbo.Users TO PharmaLIMS_TrustedEquipmentSigner;GRANT INSERT ON dbo.AuditTrail TO PharmaLIMS_TrustedEquipmentSigner;CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
             await PrepareActivitySchema();
             foreach (string actor in new[] { "uat-signer", author, reviewer, qa }) await SeedUser(actor, false);
             await Exec(_admin, "UPDATE dbo.Users SET Role=CASE Username WHEN N'uat-water-qa' THEN N'QA' WHEN N'uat-water-reviewer' THEN N'Supervisor' ELSE N'Analyst' END,CanRegisterSamples=1,CanEnterResults=1,CanReviewResults=1,CanApproveResults=1,PasswordChangedAt=SYSUTCDATETIME(),MustChangePassword=0,IsActive=1,IsLocked=0;");
@@ -86,6 +91,8 @@ internal sealed partial class UatRun
             await WaterSqlDenied(client, "UPDATE dbo.Samples SET Status=N'In Analysis' WHERE SampleNumber=N'WATER-NATIVE-1'", "reproduce the standard desktop StartAnalysis permission failure");
             await WaterSqlDenied(client, "UPDATE dbo.SampleTests SET ResultValue=1", "desktop cannot write results directly");
             await WaterSqlDenied(client, "EXEC dbo.EQ001_UAT_WaterWorkflow", "desktop cannot execute owner workflow procedure");
+            await WaterSqlDenied(client, "SELECT PasswordHashNew,PasswordSalt FROM dbo.Users", "desktop cannot read primary credential material",230);
+            await WaterSqlDenied(client, "UPDATE dbo.Users SET FailedLoginAttempts=0", "desktop cannot reset primary authentication counters");
             WaterCheck(Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM sys.database_permissions WHERE grantee_principal_id=DATABASE_PRINCIPAL_ID(N'PharmaLIMS_TrustedEquipmentSigner') AND permission_name IN(N'INSERT',N'UPDATE',N'DELETE') AND major_id IN(OBJECT_ID(N'dbo.Samples'),OBJECT_ID(N'dbo.SampleTests'),OBJECT_ID(N'dbo.Water_PlanSamples'),OBJECT_ID(N'dbo.WaterResultResourceEvidence')) AND state IN(N'G',N'W')")) == 0, "service has no direct clinical DML grants");
             var hostSettings = new TrustedHostSettings { PipeName = settings.PipeName, ConnectionString = new SqlConnectionStringBuilder(_admin) { IntegratedSecurity = true }.ConnectionString, CertificatePath = settings.CertificatePath, CertificatePassword = settings.CertificatePassword, EnableWaterAnalysisUat = false, EnableWaterRegistrationUat = false, WindowsAccounts = new() { [settings.CallerSid] = "uat-signer", [settings.ServiceSid] = "uat-signer" } };
             File.WriteAllText(_hostConfigPath, JsonSerializer.Serialize(hostSettings)); ProtectHostConfig();
