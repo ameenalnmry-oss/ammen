@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Data.SqlClient;
 using System.Text.Json;
 using PharmaLIMS.Infrastructure;
 using PharmaLIMS.TrustedSigning;
@@ -74,7 +75,14 @@ internal sealed partial class UatRun
         Check(Convert.ToInt32(await Scalar("SELECT COUNT(*) FROM dbo.PRM_SpecificationSignatures WHERE SpecificationNo=N'EQ001-PRM-E2E' AND ActionType=N'Approve Specification' AND SignedBy=N'uat-prm-qa'"))==1,"independent QA approval stores service-side signature evidence");
         string historical=(await Loaded(edited,1)).ExpectedSnapshotHash;
         await SqlDenied(()=>Exec(_admin,"UPDATE dbo.PRM_SpecificationContentHistory SET ChangeReason=N'forged' WHERE SpecificationNo=N'EQ001-PRM-E2E'"),"PRM content history remains append-only even for an administrator",56456);
-        await SqlDenied(()=>Exec(_admin,"DELETE dbo.PRM_SpecificationSignatures WHERE SpecificationNo=N'EQ001-PRM-E2E'"),"PRM signature history remains append-only",51050);
+        string signaturesBefore=Convert.ToHexString((byte[])(await Scalar("SELECT HASHBYTES('SHA2_256',(SELECT * FROM dbo.PRM_SpecificationSignatures WHERE SpecificationNo=N'EQ001-PRM-E2E' ORDER BY SignatureID FOR JSON PATH,INCLUDE_NULL_VALUES))"))!);
+        bool signatureDeleteRejected=false;
+        try { await Exec(_admin,"DELETE dbo.PRM_SpecificationSignatures WHERE SpecificationNo=N'EQ001-PRM-E2E'"); }
+        // R9's content-history FK can reject first, before the signature table's
+        // AFTER DELETE trigger. Both controls must leave the full evidence intact.
+        catch(SqlException ex) when(ex.Number is 51050 or 547) { signatureDeleteRejected=true; }
+        Check(signatureDeleteRejected && signaturesBefore==Convert.ToHexString((byte[])(await Scalar("SELECT HASHBYTES('SHA2_256',(SELECT * FROM dbo.PRM_SpecificationSignatures WHERE SpecificationNo=N'EQ001-PRM-E2E' ORDER BY SignatureID FOR JSON PATH,INCLUDE_NULL_VALUES))"))!),
+            "PRM signature deletion is rejected and complete signature evidence remains byte-for-byte unchanged");
         await SqlDenied(()=>Exec(_admin,"DELETE dbo.EQ001_PrmSigningRequests WHERE SpecificationNo=N'EQ001-PRM-E2E'"),"PRM replay evidence remains append-only",56808);
         var successorDraft=edited with { Version=0,ExpectedSnapshotHash="" };
         var second=await pipe.ApplicationAsync(await Proof("PrmSaveDraft","uat-prm-author",successorDraft));

@@ -16,7 +16,11 @@ class V308ActivitySigningSplit(unittest.TestCase):
         self.assertIn("ActivitySigningDatabasePolicy.IsAllowedUatDatabase(settings.InitialCatalog)", source)
         self.assertIn("request.DatabaseName.Equals(_databaseName", source)
         self.assertIn('"dbo.MicroEquipment_SignActivityStage"', source)
-        self.assertNotIn('"dbo.EQ001_CommitActivitySignature"', source)
+        self.assertIn('"dbo.EQ001_CommitActivitySignature" : "dbo.MicroEquipment_SignActivityStage"', source)
+        self.assertIn('_databaseName.StartsWith("EQ001_UAT_", StringComparison.Ordinal)', source)
+        self.assertIn('_databaseName.StartsWith("PharmaLIMS_EQ001_UAT_", StringComparison.Ordinal)', source)
+        self.assertIn('"@AuthenticationVersion"', source)
+        self.assertIn('"@RequestId"', source)
 
     def test_host_keeps_primary_eq001_connection_and_splits_only_activity_signing(self):
         settings = (ROOT / "tools/PharmaLIMS.TrustedSigning/TrustedHostSettings.cs").read_text(encoding="utf-8-sig")

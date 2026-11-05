@@ -7,6 +7,7 @@ public sealed class SqlTrustedActivitySignatureStore : ITrustedActivitySignature
 {
     private readonly string _connectionString;
     private readonly string _databaseName;
+    private readonly bool _usePrimaryBoundary;
 
     public SqlTrustedActivitySignatureStore(string connectionString)
     {
@@ -19,6 +20,11 @@ public sealed class SqlTrustedActivitySignatureStore : ITrustedActivitySignature
             throw new UnauthorizedAccessException("Activity signing is restricted to an explicitly isolated UAT database.");
         _connectionString = settings.ConnectionString;
         _databaseName = settings.InitialCatalog;
+        // The original EQ001 database retains AMEEN's guarded request/auth-version
+        // wrapper and denies direct stage execution. A separate R9 activity
+        // database exposes the controlled stage procedure instead.
+        _usePrimaryBoundary = _databaseName.StartsWith("EQ001_UAT_", StringComparison.Ordinal) ||
+            _databaseName.StartsWith("PharmaLIMS_EQ001_UAT_", StringComparison.Ordinal);
     }
 
     public async Task<ActivitySnapshot> ReadSnapshotAsync(ActivitySnapshotRequest request,
@@ -58,16 +64,23 @@ public sealed class SqlTrustedActivitySignatureStore : ITrustedActivitySignature
             throw new UnauthorizedAccessException("Activity signer or configured database does not match.");
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        // The controlled migration exposes this exact stage-transition procedure.
-        // Replay is rejected by the procedure's prior-status + ROWVERSION gate, and
-        // current signer eligibility is re-checked inside the same SQL transaction.
-        await using var command = new SqlCommand("dbo.MicroEquipment_SignActivityStage", connection)
+        // Preserve each reviewed SQL boundary; never remove a direct-execution
+        // DENY to make the newer split-database transport work on the original DB.
+        await using var command = new SqlCommand(_usePrimaryBoundary
+            ? "dbo.EQ001_CommitActivitySignature" : "dbo.MicroEquipment_SignActivityStage", connection)
         { CommandType = CommandType.StoredProcedure, CommandTimeout = 20 };
+        if (_usePrimaryBoundary)
+            command.Parameters.Add("@RequestId", SqlDbType.UniqueIdentifier).Value = request.RequestId;
         command.Parameters.Add("@Activity", SqlDbType.BigInt).Value = request.ActivityId;
         command.Parameters.Add("@Version", SqlDbType.Binary, 8).Value = request.ExpectedVersion;
         command.Parameters.Add("@Actor", SqlDbType.NVarChar, 100).Value = signer.Username;
         command.Parameters.Add("@Stage", SqlDbType.NVarChar, 30).Value = request.Stage;
         command.Parameters.Add("@Reason", SqlDbType.NVarChar, 500).Value = request.Reason.Trim();
+        if (_usePrimaryBoundary)
+        {
+            command.Parameters.Add("@AuthenticationVersion", SqlDbType.Binary, 8).Value = signer.AuthenticationRowVersion;
+            command.Parameters.Add("@IssuedAtUtc", SqlDbType.DateTimeOffset).Value = request.IssuedAtUtc;
+        }
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 }

@@ -97,6 +97,9 @@ try {
     python -B -m unittest discover -s tests -p "test_*.py" -v
     Assert-NativeExit 'Python source-control regression suite'
 
+    python -B scripts/Run-ModuleFunctionRegressions.py
+    Assert-NativeExit 'Module-level R9 source-control regression suite'
+
     ./scripts/Test-SourceManifest.ps1
     ./tests/Test-CodeSigningReleaseGuard.ps1
 

@@ -37,7 +37,10 @@ class Eq001SecurityBoundary(unittest.TestCase):
         self.assertNotIn("UPDATE dbo.MicroEquipmentActivities", signing)
         self.assertNotIn("INSERT dbo.MicroEquipmentActivitySignatures", signing)
 
-        self.assertIn('new SqlCommand("dbo.MicroEquipment_SignActivityStage"', store)
+        self.assertIn('new SqlCommand(_usePrimaryBoundary', store)
+        self.assertIn('"dbo.EQ001_CommitActivitySignature" : "dbo.MicroEquipment_SignActivityStage"', store)
+        self.assertIn('"@AuthenticationVersion"', store)
+        self.assertIn('"@IssuedAtUtc"', store)
         self.assertIn("CommandType = CommandType.StoredProcedure", store)
         self.assertNotIn("UPDATE dbo.MicroEquipmentActivities", store)
         self.assertNotIn("INSERT dbo.MicroEquipmentActivitySignatures", store)

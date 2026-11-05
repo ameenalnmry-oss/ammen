@@ -60,14 +60,10 @@ CREATE TABLE #Review_SampleTests(SampleTestID int PRIMARY KEY,SampleID int,TestI
 UnitSnapshot nvarchar(50),AlertLimitSnapshot decimal(18,4),ActionLimitSnapshot decimal(18,4),ResultValue nvarchar(200),
 ResultEnteredDate datetime2(0),EnteredBy nvarchar(100),Remarks nvarchar(max),ResultStatus nvarchar(60),DeviationType nvarchar(60),LimitDescription nvarchar(500),ResultRowVersion rowversion);
 CREATE TABLE #Review_LabEquipmentUsage(Module nvarchar(30),ParentRecordID int,ResultRecordID int,EquipmentID int);
-CREATE TABLE #Review_LabEquipmentUsageReconciliations(
-ReconciliationID bigint IDENTITY,Module nvarchar(30),ParentRecordID int,ResultRecordID int,EquipmentID int,
-GapType nvarchar(60),EvidenceReference nvarchar(500),SignedBy nvarchar(100),MeaningOfSignature nvarchar(255),
-ActionReason nvarchar(max),SupersedesReconciliationID bigint);
 CREATE TABLE #Review_LabEquipmentUsageHistory(HistoryID bigint IDENTITY,Module nvarchar(30),ParentRecordID int,ResultRecordID int,EquipmentID int,
 ChangeType nvarchar(30),SignedBy nvarchar(100),MeaningOfSignature nvarchar(255),ActionReason nvarchar(max),SignedAt datetime2(0));
 -- Mirror the current historical-reconciliation contract in disposable test fixtures.
--- WaterSql maps dbo.LabEquipmentUsageReconciliations by the LabEquipmentUsage prefix.
+-- WaterSql maps the complete reconciliation table name with token boundaries.
 CREATE TABLE #Review_LabEquipmentUsageReconciliations(
 ReconciliationID bigint IDENTITY PRIMARY KEY,Module nvarchar(20),ParentRecordID int,ResultRecordID int,
 EquipmentID int,EquipmentCodeSnapshot nvarchar(50),EquipmentNameSnapshot nvarchar(200),
