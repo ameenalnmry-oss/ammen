@@ -1,0 +1,54 @@
+PharmaLIMS R9 / AMEEN qualification checkpoint — 2026-11-05 Asia/Aden
+
+Original AMEEN project:
+E:\PharmaLIMS-MicroEquipment-SINGLE-VERIFY-20261012\PharmaLIMS
+No original source, runtime, service, SQL, certificate or ACL changes were made during R9 qualification.
+Original source remains v306; installed client and service application remain v309.
+Earlier 19-source repair and its original rollback records remain separate.
+
+Actual operator evidence:
+EQ001-Runtime-Inventory-20261104-210158-e5f941.json: service Running; settings unchanged; LocalMachine/My certificate observed; service-account key use unverified.
+EQ001-R9-Compatibility-20261104-212401-14049a.json: all six checks passed.
+Primary DB EQ001_UAT_AMEEN_20261024; activity DB PharmaLIMS_UAT_20261001; same server; Windows authentication; validated TLS; no attached file; client certificate pin matches.
+
+GitHub:
+PR62 verified Draft, unmerged, head f6b5cc2af3794727cc02233ad2ce171d95ce7f7c.
+New remote branch eq001-r9-ameen-qualification was CREATED at that SAME f6 commit.
+No new source/test commit was uploaded; no R9 CI run has started.
+Do not mistake branch creation for qualification or deployment.
+
+Cloud work (currently inaccessible, selected execution environment became unavailable):
+Existing checkout /workspace/ammen, local branch eq001-r9-ameen-qualification.
+No additional environment, worktree or project copy was created.
+R9 and local AMEEN source were reconciled in that existing checkout.
+WPF win-x64, host win-x64 and Windows UAT test project cross-compiled with zero warnings/errors on .NET8.
+818 Python source regressions passed, 7 declared skips.
+25 shared source buffers + 17 focused assertions passed.
+Security checks and portable pipe/deadline/reply/Gregorian tests passed.
+These are NOT actual native Windows / SQL / WPF / site UAT acceptance.
+
+Important unresolved production gaps found in final review:
+1. R9 merge disconnected EM investigation evidence capture/invalidation/QE submit-close/approval-print lifecycle. Restore connections surgically while preserving new typed source-plan/membership and shown-snapshot guards.
+2. PRM content-history append-only trigger readiness verification is missing. Verify enabled correct-table UPDATE+DELETE protection and unconditional rejection, accepting the controlled R9 AFTER and f6 INSTEAD OF variants as appropriate.
+
+Test-first work before production fixes:
+Actual active EM approval gate + typed source-plan methods extracted into disposable SQL test host; exact permissive before-fix gate retained as a frozen fixture.
+New SchemaReadinessRegression project tests six unsafe trigger variants against active SQL contract, with frozen permissive query witnesses; all DDL rolls back in owned runner LocalDB database.
+Both new native SQL projects compile with zero warnings/errors.
+Two hosted LocalDB CI matrix cases were prepared in the local workflow, not uploaded.
+The actual native SQL RED run is still required BEFORE claiming those fixes.
+Production code for the two identified gaps has NOT yet been corrected.
+
+Pending native RED publication payload:
+File /workspace/work/r9-review/native-red-tree-payload.json
+280 Git tree entries; 5,378,092 bytes; 5,373,603 characters.
+SHA256 767e7c365de2fc337703db537601825dfa089491c91e6817eec7947ec5fc2313
+Base tree cc57b4cbc7c11d6b902e6b65d382c3b87b872eb2
+Payload metadata /workspace/work/r9-review/native-red-tree-payload-meta.json
+921 controlled-source manifest entries in this test candidate.
+Full continuation ledger /workspace/work/2026-11-04-eq001-source-update-plan.md
+
+Keep old source receipts unchanged. Keep equipment SQL SECURITY HOLD and flags disabled. Preserve historical fixtures and evidence. No Production, permission weakening, PR62 merge or source/runtime downgrade.
+Restore access to the SAME existing cloud environment to recover the working tree/payload; do not recreate or copy the project. Current tool error: No usable execution environment is available.
+
+Checkpoint delivery note: Desktop write FAILED because no Desktop Commander device is online (Ameen last seen13h according to connector). This checkpoint is instead saved as a documentation-only GitHub commit on the qualification branch. No source/test candidate payload has been published and no new R9 CI run has started. PR62 remains unchanged.
