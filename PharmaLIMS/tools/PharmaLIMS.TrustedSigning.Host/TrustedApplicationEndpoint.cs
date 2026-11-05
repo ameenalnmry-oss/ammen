@@ -49,7 +49,16 @@ internal sealed class TrustedApplicationEndpoint(string connectionString, bool e
                     foreach(var entry in _tickets)if(entry.Value.Expires<DateTimeOffset.UtcNow)_tickets.TryRemove(entry.Key,out _);
                 }
                 user.ClearSensitivePasswordData();
-                return new(request.RequestId,true,user.Username,"",JsonSerializer.Serialize(user),ticket);
+                // User.AuthenticationRowVersion intentionally stays internal and
+                // is omitted by ordinary User serialization. The host-to-host
+                // activity proof must explicitly carry the committed version;
+                // it carries no password fields or desktop authorization ticket.
+                string userJson=request.Action=="ActivityReauthenticate"
+                    ? JsonSerializer.Serialize(new VerifiedActivitySigner(user.Username,user.IsActive,user.IsLocked,
+                        user.MustChangePassword,user.CanReviewResults,user.CanApproveResults,
+                        (byte[])user.AuthenticationRowVersion.Clone()))
+                    : JsonSerializer.Serialize(user);
+                return new(request.RequestId,true,user.Username,"",userJson,ticket);
             }
             bool equipmentConfirm=request.Action=="EquipmentConfirm";
             if(equipmentConfirm && !enableEquipmentConfirmUat) return new(request.RequestId,false,null,"EquipmentConfirmDisabled");

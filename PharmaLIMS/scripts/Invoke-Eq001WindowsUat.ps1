@@ -196,7 +196,7 @@ UPDATEENABLED="False"
     $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $fixture -Encoding utf8
     dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --settings $fixture 2>&1 | Tee-Object -FilePath (Join-Path $results 'windows-wpf-sql-uat.txt')
     if ($LASTEXITCODE -ne 0) { throw 'EQ-001 actual Windows/WPF/SQL UAT failed.' }
-    # A fresh process keeps AppConfig's cached connection separate from the 122-check fixture.
+    # A fresh process keeps AppConfig's cached connection separate from the 123-check fixture.
     Remove-Item -LiteralPath (Join-Path $results 'water-workflow-results.json') -ErrorAction SilentlyContinue
     dotnet run --project (Join-Path $project 'tests/PharmaLIMS.TrustedSigning.WindowsUat/PharmaLIMS.TrustedSigning.WindowsUat.csproj') --configuration Release -- --water-workflow --settings $fixture 2>&1 |
         Tee-Object -FilePath (Join-Path $results 'water-workflow-native.txt')
@@ -227,7 +227,8 @@ UPDATEENABLED="False"
     }
     finally { Remove-Item Env:\EQ001_SQL_TEST_SETTINGS -ErrorAction SilentlyContinue }
     $outcome = Get-Content (Join-Path $results 'results.json') -Raw | ConvertFrom-Json
-    if ($outcome.Passed -ne 122 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 122 checks must belong to this Release commit.' }
+    # The retained 122 checks plus the controlled R9 procedure-preservation check.
+    if ($outcome.Passed -ne 123 -or $outcome.Commit -ne $env:GITHUB_SHA -or $outcome.BuildConfiguration -ne 'Release' -or $outcome.DesktopRuntime -ne 'Production' -or $outcome.ProductionActivated) { throw 'Incomplete, stale, or invalid Windows UAT outcome; all 123 checks must belong to this Release commit.' }
     Write-Host "EQ-001 Windows UAT completed with $($outcome.Passed) passing checks. Production remains inactive."
     Write-Host "::notice title=EQ001 Windows UAT verified::$($outcome.Passed) actual Windows/WPF/SQL checks passed; production inactive; sanitized evidence in eq001-windows-wpf-sql-uat artifact."
     $report = @(

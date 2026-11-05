@@ -271,6 +271,17 @@ OUTPUT INSERTED.PlanID VALUES(@no,N'Routine',N'Manual','20261010','20261010','20
 OUTPUT INSERTED.Id VALUES(@no,N'v304 cancellation fixture',N'D');", t, Arg("@no", no))).Rows[0][0]);
             int eventId = Convert.ToInt32((await Query(c, @"INSERT dbo.EM_Events(EventNo,AreaId,EventDate,PlanID,WorkflowStatus,FinalResult)
 OUTPUT INSERTED.Id VALUES(@no,@area,'20261010',@plan,N'Pending',N'Pending');", t, Arg("@no", no), Arg("@area", area), Arg("@plan", plan))).Rows[0][0]);
+            // Exercise the active released-plan contract with a complete plate
+            // membership. The old event-only fixture is intentionally inadmissible.
+            await Exec(c,@"INSERT dbo.EM_GradeLimits(Grade,Method,AlertLimitTotal,ActionLimitTotal,IsActive)
+VALUES(N'D',N'Settle Plate',50,100,1);
+DECLARE @source int;
+INSERT dbo.EM_PlanSamples(PlanID,AreaID,Method,SampleCode,IsNegativeControl,Status,EventID)
+VALUES(@plan,@area,N'Settle Plate',@no,0,N'Ready for Results',@event);
+SET @source=CONVERT(int,SCOPE_IDENTITY());
+INSERT dbo.EM_EventPlates(EventId,Method,PlateCode,SequenceNo,Status,PlanSampleID)
+VALUES(@event,N'Settle Plate',@no,1,N'Pending',@source);",t,
+                Arg("@plan",plan),Arg("@area",area),Arg("@no",no),Arg("@event",eventId));
             SqlParameter[] CancelArgs(string status) => new[] { Arg("@Plan",plan),Arg("@Expected",status),Arg("@User","fixture"),Arg("@Role","QA"),Arg("@Meaning","Cancel plan and events"),Arg("@Reason","Controlled cancellation") };
             Require(PharmaLIMS.DatabaseHelper.EnsureEmSourcePlanInTransaction(c,t,eventId,true)==plan,"actual event source-plan guard accepts released plan");
             await Exec(c,"UPDATE dbo.EM_Events SET WorkflowStatus=NULL,FinalResult=N' Cancelled' WHERE Id=@id;",t,Arg("@id",eventId));

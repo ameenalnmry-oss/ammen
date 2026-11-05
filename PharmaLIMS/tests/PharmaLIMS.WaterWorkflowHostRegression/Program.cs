@@ -1,5 +1,6 @@
 using PharmaLIMS.Models;
 using PharmaLIMS.TrustedSigning;
+using System.Text.Json;
 
 // Portable boundary tests link the real endpoint. Database/authentication dependencies are
 // deterministic substitutes here; native/SQL suites test those dependencies independently.
@@ -85,3 +86,23 @@ Check(!new TrustedHostSettings().EnablePrmRegistrationUat,"PRM registration flag
 var prmSettings=new TrustedHostSettings { ConnectionString="Server=tcp:AMEEN,1433;Database=EQ001_UAT_AMEEN_20261024;Integrated Security=true;Encrypt=true;TrustServerCertificate=false", CertificatePath="protected.pfx",EnablePrmRegistrationUat=true};
 prmSettings.WindowsAccounts.Add(sid,"qa");prmSettings.Validate();
 prmSettings.ProductionActivationApproved=true;Reject(prmSettings.Validate,"PRM registration refuses Production activation");
+
+var activityActor=PharmaLIMS.Repositories.UserRepository.Actor;
+activityActor.PasswordChangedAt=DateTime.UtcNow;
+activityActor.PasswordHashNew="synthetic-password-material-must-not-be-serialized";
+var activityProof=await endpoint.HandleAsync(sid,request with{Action="ActivityReauthenticate",Password="fresh"},default);
+Check(activityProof.Success,"canonical activity reauthentication returns a successful proof");
+using(var json=JsonDocument.Parse(activityProof.UserJson!))
+{
+    var user=json.RootElement;
+    Check(user.GetProperty("AuthenticationRowVersion").GetBytesFromBase64().SequenceEqual(activityActor.AuthenticationRowVersion),
+        "canonical activity proof carries the exact committed authentication version");
+    Check(!user.TryGetProperty("PasswordHash",out _) && !user.TryGetProperty("PasswordHashNew",out _) && !user.TryGetProperty("PasswordSalt",out _),
+        "activity proof has no credential fields");
+}
+activityActor.MustChangePassword=true;
+Check((await endpoint.HandleAsync(sid,request with{Action="ActivityReauthenticate",Password="fresh"},default)).ErrorCode=="Inactive",
+    "activity proof rejects an unfinished password transition");
+activityActor.MustChangePassword=false;activityActor.PasswordChangedAt=null;
+Check((await endpoint.HandleAsync(sid,request with{Action="ActivityReauthenticate",Password="fresh"},default)).ErrorCode=="CredentialNotInitialized",
+    "activity proof rejects an uninitialized credential");
