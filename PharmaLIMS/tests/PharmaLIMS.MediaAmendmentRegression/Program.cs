@@ -18,11 +18,11 @@ try
  builder.InitialCatalog=db;
  using var c = new SqlConnection(builder.ConnectionString); c.Open();
  Execute(c,@"
-CREATE TABLE dbo.MediaPreparations(MediaPreparationID int PRIMARY KEY,MediaLotID int,PowderQuantityG decimal(18,3),FinalPH nvarchar(30),ReleaseStatus nvarchar(30),VisualCheckedBy nvarchar(100),VisualCheckedAt datetime2,SterilityReviewedBy nvarchar(100),SterilityReviewedAt datetime2,ReleasedBy nvarchar(100),ReleasedAt datetime2);
+CREATE TABLE dbo.MediaPreparations(MediaPreparationID int PRIMARY KEY,MediaLotID int,PowderQuantityG decimal(18,3),FinalPH nvarchar(30),ReleaseStatus nvarchar(30),VisualCheckedBy nvarchar(100),VisualCheckedAt datetime2,SterilityReviewedBy nvarchar(100),SterilityReviewedAt datetime2,ReleasedBy nvarchar(100),ReleasedAt datetime2,WorkflowRowVersion rowversion);
 CREATE TABLE dbo.CultureMediaSopFields(ID int IDENTITY PRIMARY KEY,EntityType nvarchar(50),EntityID int,AnnexureCode nvarchar(100),FieldName nvarchar(100),FieldValue nvarchar(max));
 CREATE TABLE dbo.CultureMediaSignatures(ID int IDENTITY PRIMARY KEY,EntityType nvarchar(50),EntityID int,ActionType nvarchar(100),SignedBy nvarchar(100));
 CREATE TABLE dbo.TestAudit(OldValue nvarchar(max),NewValue nvarchar(max));
-INSERT dbo.MediaPreparations VALUES(1,10,10,N'7.1',N'Under Release',NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT dbo.MediaPreparations(MediaPreparationID,MediaLotID,PowderQuantityG,FinalPH,ReleaseStatus,VisualCheckedBy,VisualCheckedAt,SterilityReviewedBy,SterilityReviewedAt,ReleasedBy,ReleasedAt) VALUES(1,10,10,N'7.1',N'Under Release',NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT dbo.CultureMediaSopFields VALUES(N'MediaPreparation',1,N'1035-L-0005/A6',N'LoadNo',N'LOAD-OLD');
 INSERT dbo.CultureMediaSignatures VALUES(N'MediaPreparation',1,N'Prepare Culture Media',N'preparer');");
  string source=File.ReadAllText(Path.Combine(root,"CultureMediaPreparation.xaml.Part2.cs"));
@@ -33,7 +33,15 @@ INSERT dbo.CultureMediaSignatures VALUES(N'MediaPreparation',1,N'Prepare Culture
   Execute(c,"UPDATE dbo.MediaPreparations SET VisualCheckedBy=N'reviewer',VisualCheckedAt=SYSUTCDATETIME()",tx);
   using var cmd=new SqlCommand(query,c,tx); cmd.Parameters.AddWithValue("@MediaPreparationID",1);
   using var reader=cmd.ExecuteReader();
-  Check(!reader.Read(),"an actor signed visual review during reauthentication, but actual amendment SQL still admits the signed scientific record");
+  bool rejected=!reader.Read();
+  if(!rejected)
+  {
+   bool signed=!string.IsNullOrWhiteSpace(Convert.ToString(reader.GetValue(3))) || !reader.IsDBNull(4) ||
+       !string.IsNullOrWhiteSpace(Convert.ToString(reader.GetValue(5))) || !reader.IsDBNull(6);
+   try { CultureMediaPreparationGuard.EnsureAmendable((byte[])reader.GetValue(2),(byte[])reader.GetValue(2),signed); }
+   catch(InvalidOperationException) { rejected=true; }
+  }
+  Check(rejected,"actual locked SQL plus active guard accepted a concurrently signed preparation");
   reader.Close(); tx.Rollback();
  }
  Console.WriteLine("PASS actual amendment SQL rejects concurrent signed review (baseline RED / fixed GREEN)");
@@ -114,9 +122,9 @@ INSERT dbo.CultureMediaSignatures VALUES(N'MediaPreparation',1,N'Prepare Culture
  int start=source.IndexOf("private void BtnSavePreparation_Click",StringComparison.Ordinal);
  int end=source.IndexOf("private void BtnSignPreparationVisualCheck_Click",start,StringComparison.Ordinal);
  string amendment=source[start..end];
- int guard=amendment.IndexOf("EnsureCanAmend(_loadedPreparationSnapshot, originalSnapshot)",StringComparison.Ordinal);
+ int guard=amendment.IndexOf("EnsureCanAmend(expectedPreparation, originalEvidence)",StringComparison.Ordinal);
  Check(guard>=0 && guard<amendment.IndexOf("UPDATE dbo.MediaPreparations",StringComparison.Ordinal),"guard not before production writes");
- Check(amendment.Contains("originalSnapshot?.AuditValue ?? string.Empty, savedSnapshot.AuditValue"),"audit not wired to real old/new evidence");
+ Check(amendment.Contains("originalEvidence?.AuditValue ?? string.Empty, savedEvidence.AuditValue"),"audit not wired to real old/new evidence");
  Check(amendment.Contains("originalPowderQuantityG, powderQuantityG"),"delta stock path lost");
  Check(amendment.Contains("if (originalLotId != mediaLotId)"),"immutable source lot lost");
  Console.WriteLine("PASS handler wires guard and full audits while preserving stock delta/source lot");

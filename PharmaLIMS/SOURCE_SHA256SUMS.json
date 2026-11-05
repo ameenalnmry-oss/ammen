@@ -1,5 +1,5 @@
 {
-  "package": "PharmaLIMS-v309-R9-AMEEN-20261105-isolated-native-water-evidence",
+  "package": "PharmaLIMS-v309-R9-AMEEN-20261105-active-media-guard-tests",
   "files": {
     ".github/workflows/ci.yml": "5a786048c32dfd163f1b99cf2367780898b6dda45843a33b4954670e299c9d15",
     ".gitignore": "aafb9c0113da2468afeb8555a30580d99b87a4f6c3f03d508e15252124e7b65b",
@@ -685,9 +685,9 @@
     "tests/PharmaLIMS.MediaAmendmentRegression/CultureUiBindingMethods.cs": "fab96deba8d62c3b38f0a5a64909ed592b7aaf6c67d6ca985c465cca1e4f2bc7",
     "tests/PharmaLIMS.MediaAmendmentRegression/CultureUiBindingProbe.cs": "c3e579bee31c019becee4a362a623265dc0cce9193297e1c77dce588d1bb2aef",
     "tests/PharmaLIMS.MediaAmendmentRegression/CultureVisibleEvidenceProbe.cs": "9db51efbad5b8a14eb5dd787622c168f45027640e9ef32e4f7f2470c67b0271a",
-    "tests/PharmaLIMS.MediaAmendmentRegression/PharmaLIMS.MediaAmendmentRegression.csproj": "526886f76985c75d283d9966a9e07d35715b041c06d8bda179c7be2f350e6c88",
-    "tests/PharmaLIMS.MediaAmendmentRegression/Program.cs": "7784dade09b9ec48d1ac331675c3e83ca2980adc512759b202025345656effe8",
-    "tests/PharmaLIMS.MediaAmendmentRegression/SiteCultureEvidenceCases.cs": "d42c99d07551b43beea1ef2e3fc2a0befe8567fed2c36455cd5d69a056557838",
+    "tests/PharmaLIMS.MediaAmendmentRegression/PharmaLIMS.MediaAmendmentRegression.csproj": "c6043f5ee5824564fad86125edbf5071f342006dfbb4623a2ef1ec7725bdd647",
+    "tests/PharmaLIMS.MediaAmendmentRegression/Program.cs": "23b88033e9df0a3599f0c4f63b7a12e8331395c520d8a8a79932f67adb6c952d",
+    "tests/PharmaLIMS.MediaAmendmentRegression/SiteCultureEvidenceCases.cs": "df5df2d1c233aab434a6a71886117064f0d83b1ec91720854c9ccf00c9a628f8",
     "tests/PharmaLIMS.PrmRegistrationRegression/PharmaLIMS.PrmRegistrationRegression.csproj": "272097078d1500ad9cff26e1042086f94d7664590b0da58ac05059e87a69cc74",
     "tests/PharmaLIMS.PrmRegistrationRegression/Program.cs": "36ed58218b0e58ac3f8b0a39b26d79dec1c7ed3cd6489ac2b350416a0c2aa1d3",
     "tests/PharmaLIMS.PrmRegistrationSqlRegression/PharmaLIMS.PrmRegistrationSqlRegression.csproj": "272097078d1500ad9cff26e1042086f94d7664590b0da58ac05059e87a69cc74",

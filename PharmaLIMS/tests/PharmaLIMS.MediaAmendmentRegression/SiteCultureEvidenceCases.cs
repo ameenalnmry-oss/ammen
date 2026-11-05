@@ -13,7 +13,8 @@ internal static class SiteCultureEvidenceCases
         VerifySources(root);
         CultureChildEvidenceProbe.Run(false);CultureVisibleEvidenceProbe.Run();CultureSigningScopeProbe.Run();
         // Existing-table DDL must finish before statements bind the new columns.
-        Sql(c,null,@"ALTER TABLE dbo.MediaPreparations ADD WorkflowRowVersion rowversion,MediaPreparationNo nvarchar(50),MediaID int,PreparationDate date,ExpiryDate date,QuantityPrepared nvarchar(80),PreparedBy nvarchar(100),BatchSize nvarchar(80),Appearance nvarchar(200),AutoclaveCycleNo nvarchar(100),AutoclaveTemperature nvarchar(50),AutoclaveHoldingTime nvarchar(50),Remarks nvarchar(500);");
+        Sql(c,null,@"IF COL_LENGTH(N'dbo.MediaPreparations',N'WorkflowRowVersion') IS NULL ALTER TABLE dbo.MediaPreparations ADD WorkflowRowVersion rowversion;
+ALTER TABLE dbo.MediaPreparations ADD MediaPreparationNo nvarchar(50),MediaID int,PreparationDate date,ExpiryDate date,QuantityPrepared nvarchar(80),PreparedBy nvarchar(100),BatchSize nvarchar(80),Appearance nvarchar(200),AutoclaveCycleNo nvarchar(100),AutoclaveTemperature nvarchar(50),AutoclaveHoldingTime nvarchar(50),Remarks nvarchar(500);");
         Sql(c,null,@"UPDATE dbo.MediaPreparations SET MediaPreparationNo=N'MP-1',MediaID=1,PreparationDate=CONVERT(date,SYSDATETIME()),ExpiryDate=DATEADD(day,30,CONVERT(date,SYSDATETIME())),QuantityPrepared=N'1000 mL',PreparedBy=N'preparer',BatchSize=N'1000 mL',Appearance=N'clear',AutoclaveCycleNo=N'C1',AutoclaveTemperature=N'121',AutoclaveHoldingTime=N'15',Remarks=N'controlled preparation' WHERE MediaPreparationID=1;");
         Sql(c,null,@"CREATE TABLE dbo.CultureMediaLots(MediaLotID int PRIMARY KEY,ReceiptStatus nvarchar(50),ExpiryDate date);INSERT dbo.CultureMediaLots VALUES(10,N'Released',DATEADD(day,30,CONVERT(date,SYSDATETIME())));");
         using(var tx=c.BeginTransaction())

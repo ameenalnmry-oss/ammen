@@ -748,7 +748,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        regression: [SchemaReadiness, EmLifecycle]
+        regression: [SchemaReadiness, EmLifecycle, MediaAmendment]
     defaults:
       run:
         shell: pwsh
