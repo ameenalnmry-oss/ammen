@@ -19,7 +19,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-// This is a separate process/phase: AppConfig must not retain the original 122-check fixture.
+// This is a separate process/phase: AppConfig must not retain the original 123-check fixture.
 internal sealed partial class UatRun
 {
     private readonly List<string> _waterPasses = new();
@@ -62,10 +62,13 @@ internal sealed partial class UatRun
         {
             await Exec(settings.MasterConnectionString, $"CREATE DATABASE [{_db}];CREATE LOGIN [{_serviceLogin}] FROM WINDOWS;CREATE LOGIN [{_clientLogin}] WITH PASSWORD='{_sqlPassword}',CHECK_POLICY=OFF;");
             _admin = new SqlConnectionStringBuilder(settings.MasterConnectionString) { InitialCatalog = _db }.ConnectionString;
+            // R9's controlled activity bridges require the dedicated principal
+            // before migration, exactly as in the primary native-signing phase.
+            await Exec(_admin,$"CREATE USER PharmaLIMS_TrustedEquipmentSigner FOR LOGIN [{_serviceLogin}];");
             await PrepareSchema();
             await PrepareNativeWaterSiteContract();
             // Retain the existing host's authentication rights; grant no direct clinical DML.
-            await Exec(_admin, $"CREATE USER PharmaLIMS_TrustedEquipmentSigner FOR LOGIN [{_serviceLogin}];GRANT SELECT ON SCHEMA::dbo TO PharmaLIMS_TrustedEquipmentSigner;GRANT UPDATE ON dbo.Users TO PharmaLIMS_TrustedEquipmentSigner;GRANT INSERT ON dbo.AuditTrail TO PharmaLIMS_TrustedEquipmentSigner;CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
+            await Exec(_admin, $"GRANT SELECT ON SCHEMA::dbo TO PharmaLIMS_TrustedEquipmentSigner;GRANT UPDATE ON dbo.Users TO PharmaLIMS_TrustedEquipmentSigner;GRANT INSERT ON dbo.AuditTrail TO PharmaLIMS_TrustedEquipmentSigner;CREATE USER [{_clientLogin}] FOR LOGIN [{_clientLogin}];GRANT SELECT ON SCHEMA::dbo TO [{_clientLogin}];DENY SELECT ON dbo.Users(PasswordHash,PasswordHashNew,PasswordSalt) TO [{_clientLogin}];");
             await PrepareActivitySchema();
             foreach (string actor in new[] { "uat-signer", author, reviewer, qa }) await SeedUser(actor, false);
             await Exec(_admin, "UPDATE dbo.Users SET Role=CASE Username WHEN N'uat-water-qa' THEN N'QA' WHEN N'uat-water-reviewer' THEN N'Supervisor' ELSE N'Analyst' END,CanRegisterSamples=1,CanEnterResults=1,CanReviewResults=1,CanApproveResults=1,PasswordChangedAt=SYSUTCDATETIME(),MustChangePassword=0,IsActive=1,IsLocked=0;");

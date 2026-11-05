@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" /><PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
     <Compile Include="../PharmaLIMS.SchemaReadinessRegression/AppendOnlyPreflightCases.cs" Link="AppendOnlyPreflightCases.cs" />
     <None Include="../fixtures/R9-ReviewClosureSchema-before-trigger-guard.sql" Link="fixtures/R9-ReviewClosureSchema-before-trigger-guard.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
