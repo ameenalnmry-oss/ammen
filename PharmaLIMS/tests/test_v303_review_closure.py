@@ -70,7 +70,10 @@ class V303ReviewClosureTests(unittest.TestCase):
         self.assertLess(creation.index("ExecuteInTransaction"), creation.index("EnsureUserPermissionInTransaction"))
         self.assertLess(creation.index("EnsureSaved"), creation.index("FindLinkedQualityEvent(conn, tx)"))
         self.assertLess(creation.index("FindLinkedQualityEvent(conn, tx)"), creation.index("INSERT INTO dbo.QualityEvents"))
-        self.assertIn("InsertEMQualityEventAffectedResults(createdQualityEventId, conn, tx, savedEvidence)", creation)
+        self.assertIn("InsertEMQualityEventAffectedResults(createdQualityEventId, conn, tx, savedEvidence,", creation)
+        self.assertIn("includeAllResults: !hasExcursion", creation)
+        self.assertIn("CaptureEMInvestigationEvidenceInTransaction", creation)
+        self.assertLess(creation.index("InsertEMQualityEventAffectedResults("), creation.index("CaptureEMInvestigationEvidenceInTransaction"))
 
     def test_em_affected_evidence_has_source_plate_identity(self):
         code = body("EMResultsEntry.xaml.Part2.cs", "private int InsertEMQualityEventAffectedResults", "private")

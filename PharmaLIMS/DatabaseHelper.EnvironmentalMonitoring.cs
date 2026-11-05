@@ -153,10 +153,18 @@ SELECT CASE WHEN
         WHERE Id = @eventId
           AND UPPER(LTRIM(RTRIM(ISNULL(FinalResult,N'')))) IN (N'OOS',N'ACTION',N'FAIL')
     )
+    OR EXISTS
+    (
+        SELECT 1 FROM dbo.QualityEvents WITH(UPDLOCK,HOLDLOCK)
+        WHERE (SourceRecordID=@eventId OR UPPER(LTRIM(RTRIM(ISNULL(SampleNumber,N''))))=UPPER(LTRIM(RTRIM(@eventNo))))
+          AND (UPPER(LTRIM(RTRIM(ISNULL(SourceModule,N'')))) IN(N'EM',N'ENVIRONMENTAL MONITORING')
+               OR UPPER(LTRIM(RTRIM(ISNULL(DetectionSource,N''))))=N'ENVIRONMENTAL MONITORING')
+    )
 THEN 1 ELSE 0 END;", connection, transaction))
             {
                 oosCommand.CommandTimeout = AppConfig.CommandTimeoutSeconds;
                 oosCommand.Parameters.Add("@eventId", SqlDbType.Int).Value = eventId;
+                oosCommand.Parameters.Add("@eventNo", SqlDbType.NVarChar, 80).Value = eventNo ?? string.Empty;
                 bool hasOos = Convert.ToInt32(oosCommand.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture) == 1;
                 if (!hasOos)
                     return;
@@ -179,7 +187,8 @@ SELECT TOP (1)
        ISNULL(FinalDisposition,N''),
        ISNULL(QAConclusion,N''),
        ISNULL(ClosedBy,N''),
-       ClosedDate
+       ClosedDate,
+       QualityEventID
 FROM dbo.QualityEvents WITH (UPDLOCK, HOLDLOCK)
 WHERE
     (
@@ -213,6 +222,10 @@ ORDER BY QualityEventID DESC;", connection, transaction);
             string qaConclusion = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
             string closedBy = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).Trim();
             bool hasClosedDate = !reader.IsDBNull(4);
+            int qualityEventId = reader.GetInt32(5);
+            reader.Close();
+            if (!HasCurrentEMInvestigationEvidenceInTransaction(connection, transaction, eventId, qualityEventId))
+                throw new InvalidOperationException("The closed EM investigation does not cover the current saved result evidence. Approval and report printing require a new investigation.");
 
             // Only an explicitly closed Quality Event can release an ACTION/OOS EM event.
             // "Approved" is an investigation workflow state, not a terminal closure. Cancelled/

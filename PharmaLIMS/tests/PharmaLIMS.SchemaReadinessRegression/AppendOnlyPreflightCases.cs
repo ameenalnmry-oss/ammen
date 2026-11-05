@@ -37,6 +37,18 @@ internal static class AppendOnlyPreflightCases
         }
         Require((await Query(c, ReviewClosureSchemaContract.Sql)).Rows.Count == 0,
             "readiness mutation tests restore the original protected trigger");
+        foreach (string timing in new[] { "AFTER", "INSTEAD OF" })
+        {
+            using var tx = c.BeginTransaction();
+            try
+            {
+                await Exec(c, "DROP TRIGGER " + name + ";", tx);
+                await Exec(c, "CREATE TRIGGER " + name + " ON dbo.PRM_SpecificationContentHistory " + timing + " UPDATE,DELETE" + body, tx);
+                Require((await Query(c, ReviewClosureSchemaContract.Sql, tx)).Rows.Count == 0,
+                    "controlled unconditional " + timing + " trigger must remain valid");
+            }
+            finally { tx.Rollback(); }
+        }
         Console.WriteLine("PASS PRM append-only preflight differential: six unsafe trigger variants escaped frozen R9 and are blocked by active contract; disposable DDL rolled back.");
     }
 

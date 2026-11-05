@@ -14,11 +14,12 @@ namespace PharmaLIMS
         internal static void EnsureEMQualityEventEvidenceCurrentInTransaction(SqlConnection connection, SqlTransaction transaction, int qualityEventId)
         {
             using SqlCommand context = new SqlCommand(@"
-SELECT SourceRecordID,SampleNumber FROM dbo.QualityEvents WITH(UPDLOCK,HOLDLOCK)
+SELECT SourceRecordID,SampleNumber FROM dbo.QualityEvents
 WHERE QualityEventID=@qualityEventId AND
 (UPPER(LTRIM(RTRIM(ISNULL(SourceModule,N'')))) IN(N'EM',N'ENVIRONMENTAL MONITORING')
  OR UPPER(LTRIM(RTRIM(ISNULL(DetectionSource,N''))))=N'ENVIRONMENTAL MONITORING');", connection, transaction);
             context.Parameters.Add("@qualityEventId", SqlDbType.Int).Value = qualityEventId;
+            context.CommandTimeout = AppConfig.CommandTimeoutSeconds;
             object sourceId; string eventNo;
             using (SqlDataReader reader = context.ExecuteReader())
             {
@@ -29,6 +30,7 @@ WHERE QualityEventID=@qualityEventId AND
 SELECT Id FROM dbo.EM_Events WHERE Id=@sourceId OR EventNo=@eventNo;", connection, transaction);
             resolve.Parameters.Add("@sourceId", SqlDbType.Int).Value = sourceId;
             resolve.Parameters.Add("@eventNo", SqlDbType.NVarChar, 100).Value = eventNo;
+            resolve.CommandTimeout = AppConfig.CommandTimeoutSeconds;
             int eventId;
             using (SqlDataReader reader = resolve.ExecuteReader())
             {
@@ -36,7 +38,18 @@ SELECT Id FROM dbo.EM_Events WHERE Id=@sourceId OR EventNo=@eventNo;", connectio
                 eventId = reader.GetInt32(0);
                 if (reader.Read()) throw new InvalidOperationException("The EM investigation source identity is ambiguous.");
             }
-            EnsureEMParentPlanActiveInTransaction(connection, transaction, eventId);
+            // Match the active source-plan policy, including historical aggregate
+            // personnel events. Acquire plan/event/plate/source locks before the
+            // QE lock, then verify that the initially resolved binding is unchanged.
+            EnsureEmSourcePlanInTransaction(connection, transaction, eventId, AppConfig.IsProduction);
+            context.CommandText = context.CommandText.Replace("FROM dbo.QualityEvents",
+                "FROM dbo.QualityEvents WITH(UPDLOCK,HOLDLOCK)", StringComparison.Ordinal);
+            using (SqlDataReader reader = context.ExecuteReader())
+            {
+                if (!reader.Read() || !Equals(reader[0], sourceId) ||
+                    !string.Equals(Convert.ToString(reader[1], CultureInfo.InvariantCulture) ?? "", eventNo, StringComparison.Ordinal))
+                    throw new DBConcurrencyException("The EM investigation source identity changed. Reload before continuing.");
+            }
             if (!HasCurrentEMInvestigationEvidenceInTransaction(connection, transaction, eventId, qualityEventId))
                 throw new InvalidOperationException("The EM investigation does not cover the current results. A new investigation is required.");
         }
@@ -75,12 +88,17 @@ IF EXISTS(SELECT 1 FROM dbo.EM_EventPlates P WITH(UPDLOCK,HOLDLOCK)
         {
             // Exclude workflow/signature timestamps: review itself must not change scientific evidence.
             using SqlCommand command = new SqlCommand(@"
-SELECT E.Id,E.EventNo,E.AreaId,E.AreaCodeSnapshot,E.AreaNameSnapshot,E.GradeSnapshot,
+SELECT E.Id,E.EventNo,E.PlanID,E.AreaId,E.AreaCodeSnapshot,E.AreaNameSnapshot,E.GradeSnapshot,
        E.EmployeeId,E.EmployeeName,E.EmployeeDepartment,E.EmployeeShift,
        JSON_QUERY((SELECT P.Id,P.Method,P.PlateCode,P.SequenceNo,P.SampleSite,P.PlanSampleID,
               P.TotalCount,P.FungalCount,P.CorrectedCount,P.ColoniesObserved,P.ResultCFU,P.Status,
               P.ResultCalculationVersion,EVID.AlertLimitSnapshot,EVID.ActionLimitSnapshot,
               EVID.ResultUnitSnapshot,EVID.AirVolumeLitersSnapshot,EVID.EvidenceSource,EVID.ReconciliationID,
+              JSON_QUERY((SELECT S.PlanSampleID,S.PlanID,S.EventID,S.AreaID,S.Method,S.IsNegativeControl,
+                      S.EmployeeID,S.EmployeeName
+                  FROM dbo.EM_PlanSamples S WITH(UPDLOCK,HOLDLOCK)
+                  WHERE S.PlanSampleID=P.PlanSampleID
+                  FOR JSON PATH,INCLUDE_NULL_VALUES)) AS SourceSampleIdentity,
               JSON_QUERY((SELECT U.UsageID,U.Module,U.ParentRecordID,U.ResultRecordID,U.EquipmentID,U.AssignedBy,U.AssignedAt
                   FROM dbo.LabEquipmentUsage U WITH(UPDLOCK,HOLDLOCK)
                   WHERE U.Module=N'EM' AND U.ResultRecordID=P.Id

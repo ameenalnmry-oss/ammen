@@ -18,17 +18,24 @@ internal sealed partial class UatRun
     {
         if (!_db.StartsWith("EQ001_UAT_",StringComparison.Ordinal)) throw new Exception("Activity fixture database guard failed.");
         string fixture = File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/fixtures/eq001_activity_site_procedures.sql"));
+        // PrepareSchema already applied the full controlled R9 ledger. Retain its
+        // tables, constraints, signing procedure and integrity triggers verbatim.
+        string stageBefore=Convert.ToString(await Scalar("SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.MicroEquipment_SignActivityStage',N'P'))"))!;
+        if(string.IsNullOrWhiteSpace(stageBefore)) throw new Exception("Controlled activity stage procedure is missing.");
         foreach (string batch in Regex.Split(fixture,@"^\s*GO\s*$",RegexOptions.Multiline|RegexOptions.IgnoreCase))
-            if (!string.IsNullOrWhiteSpace(batch)) await Exec(_admin,batch);
-        string stagePolicy=File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/eq001_activity_stage_policy_uat.sql"));
-        await Exec(_admin,stagePolicy);
-        await Exec(_admin,stagePolicy); // Idempotence must retain the corrected procedure.
+            // Only install retired compatibility endpoints so their explicit
+            // DENY remains testable. Do not replace controlled R9 SQL with the
+            // historical AMEEN schema fixture or its digest-specific patch.
+            if (Regex.IsMatch(batch,@"\A\s*CREATE\s+PROCEDURE\s+dbo\.EQ001_WindowsUat_",RegexOptions.IgnoreCase))
+                await Exec(_admin,batch);
         await Exec(_admin,$"CREATE ROLE PharmaLIMS_EquipmentWindowsUat;ALTER ROLE PharmaLIMS_EquipmentWindowsUat ADD MEMBER [{_clientLogin}];"+
             "GRANT EXECUTE ON dbo.EQ001_WindowsUat_ReadOwnUser TO PharmaLIMS_EquipmentWindowsUat;"+
             "GRANT EXECUTE ON dbo.EQ001_WindowsUat_CommitSuccess TO PharmaLIMS_EquipmentWindowsUat;"+
             "GRANT EXECUTE ON dbo.EQ001_WindowsUat_RecordFailure TO PharmaLIMS_EquipmentWindowsUat;"+
             "GRANT EXECUTE ON dbo.EQ001_WindowsUat_AssertActor TO PharmaLIMS_EquipmentWindowsUat;");
         await Exec(_admin,File.ReadAllText(Path.Combine(settings.RepositoryRoot,"tests/eq001_activity_service_boundary_uat.sql")));
+        Check(stageBefore==Convert.ToString(await Scalar("SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.MicroEquipment_SignActivityStage',N'P'))")),
+            "native fixture preserves the controlled R9 activity signing procedure");
     }
 
     private async Task ExerciseActivities(WindowsTrustedPipeClient pipe,AuthService auth,string client,TrustedHostSettings hostSettings)

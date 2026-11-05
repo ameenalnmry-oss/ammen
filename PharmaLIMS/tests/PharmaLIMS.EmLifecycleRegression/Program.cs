@@ -127,6 +127,17 @@ Check("instrument revert cannot revive historical closed decision",()=>{if(Instr
 Check("actual approval gate rejects reverted instrument evidence",()=>Reject(()=>ApprovalGate()));
 Call("InvalidateEMInvestigationEvidenceInTransaction",1,"EM-1","editor");
 Check("original instrument traceability and decision retained",()=>{using var c=new SqlConnection(cs);c.Open();using var q=new SqlCommand("SELECT COUNT(*) FROM dbo.LabEquipmentUsageHistory WHERE EquipmentCodeSnapshot=N'INC-1' AND ChangeType=N'ASSIGN' AND EXISTS(SELECT 1 FROM dbo.QualityEvents WHERE QualityEventID=3 AND CurrentStatus=N'Closed')",c);if((int)q.ExecuteScalar()! != 1)throw new Exception("original equipment evidence missing");});
+Sql(cs,@"UPDATE dbo.EM_Events SET EmployeeId=NULL,EmployeeName=NULL;
+UPDATE dbo.EM_PlanSamples SET EmployeeID=N'E1',EmployeeName=N'Alice' WHERE PlanSampleID=1;
+INSERT dbo.QualityEvents(QualityEventID,SourceRecordID,SampleNumber,SourceModule,DetectionSource,CurrentStatus,FinalDisposition,QAConclusion,ClosedBy,ClosedDate)
+VALUES(4,1,N'EM-1',N'EM',N'Environmental Monitoring',N'Closed',N'Approved',N'Complete aggregate review',N'qa',SYSDATETIME());");
+Call("EnsureEmSourcePlanInTransaction",1,false);
+Call("CaptureEMInvestigationEvidenceInTransaction",1,4,"aggregate-reviewer");
+Check("historical aggregate personnel source remains admissible",()=>ApprovalGate());
+Sql(cs,"UPDATE dbo.EM_PlanSamples SET EmployeeName=N'Bob' WHERE PlanSampleID=1;");
+Check("RED witness: frozen gate ignores aggregate source identity change",()=>ApprovalGate(true));
+Check("actual gate rejects aggregate source identity change",()=>Reject(()=>ApprovalGate()));
+Sql(cs,"UPDATE dbo.EM_PlanSamples SET EmployeeName=N'Alice' WHERE PlanSampleID=1; UPDATE dbo.EM_Events SET EmployeeId=N'E1',EmployeeName=N'Alice';");
 SiteEmWorkflowCases.RunNative(cs,root);
 SiteEmMembershipCases.Run(cs,root,true);
 }finally{Sql(master.ConnectionString,$"ALTER DATABASE [{db}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{db}]");}

@@ -16,7 +16,10 @@ internal static partial class SiteEmMembershipCases
             c.Open();
             // SQL Server binds existing-table columns before executing a batch.
             // Complete the schema-only fixture command before using its columns.
-            using(var schema=new SqlCommand("ALTER TABLE dbo.EM_PlanSamples ADD AreaID int,Method nvarchar(100),IsNegativeControl bit;",c){CommandTimeout=15})schema.ExecuteNonQuery();
+            using(var schema=new SqlCommand(@"
+IF COL_LENGTH(N'dbo.EM_PlanSamples',N'AreaID') IS NULL ALTER TABLE dbo.EM_PlanSamples ADD AreaID int;
+IF COL_LENGTH(N'dbo.EM_PlanSamples',N'Method') IS NULL ALTER TABLE dbo.EM_PlanSamples ADD Method nvarchar(100);
+IF COL_LENGTH(N'dbo.EM_PlanSamples',N'IsNegativeControl') IS NULL ALTER TABLE dbo.EM_PlanSamples ADD IsNegativeControl bit;",c){CommandTimeout=15})schema.ExecuteNonQuery();
             using var q=new SqlCommand(@"
 INSERT dbo.EM_Plans(PlanID,Status) VALUES(2,N'Ready for Results');
 INSERT dbo.EM_Events(Id,PlanID,EventNo,AreaId,EmployeeId,EmployeeName,WorkflowStatus,FinalResult) VALUES(2,2,N'EM-2',1,N'E9',N'Bob',N'Pending',N'Pending');

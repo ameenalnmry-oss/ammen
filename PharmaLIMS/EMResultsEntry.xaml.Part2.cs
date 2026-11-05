@@ -38,6 +38,9 @@ namespace PharmaLIMS
             RefreshGrid();
             RefreshCounters();
 
+            if (currentQualityEventId <= 0)
+                CheckLinkedDeviation();
+
             if (!HasQualityEventTriggerResults() && currentQualityEventId <= 0)
             {
                 MessageBox.Show(
@@ -48,9 +51,26 @@ namespace PharmaLIMS
                 return;
             }
 
-            if (currentQualityEventId <= 0)
+            if (currentQualityEventId > 0)
             {
-                CheckLinkedDeviation();
+                bool currentEvidence = false;
+                try
+                {
+                    DatabaseHelper.ExecuteInTransaction((connection, transaction) =>
+                    {
+                        DatabaseHelper.EnsureEmSourcePlanInTransaction(connection, transaction,
+                            currentEventId, AppConfig.IsProduction);
+                        currentEvidence = DatabaseHelper.HasCurrentEMInvestigationEvidenceInTransaction(
+                            connection, transaction, currentEventId, currentQualityEventId);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(UserFacingError.SafeMessage(ex, "EM investigation validation"),
+                        "Quality Event", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (!currentEvidence) currentQualityEventId = 0;
             }
 
             if (currentQualityEventId <= 0)
@@ -128,17 +148,19 @@ namespace PharmaLIMS
                     EmQualityEventEvidenceGuard.EnsureSaved(_loadedPlateSnapshot, locked, currentEventId,
                         plateItems.Select(item => (item.PlateId, item.TotalCount, item.Remarks)));
                     List<EMPlateResultItem> savedEvidence = BuildSavedQualityEventEvidence(locked);
-                    if (!savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase) || item.Status.Equals("Alert", StringComparison.OrdinalIgnoreCase)))
-                        throw new InvalidOperationException("No saved, assessable EM excursion exists. No Quality Event was committed.");
                     DataTable existing = FindLinkedQualityEvent(conn, tx);
-                    if (existing.Rows.Count > 0)
+                    bool hasExcursion = savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase) || item.Status.Equals("Alert", StringComparison.OrdinalIgnoreCase));
+                    if (!hasExcursion && existing.Rows.Count == 0)
+                        throw new InvalidOperationException("No saved EM excursion or earlier investigation requires assessment.");
+                    if (existing.Rows.Count > 0 && DatabaseHelper.HasCurrentEMInvestigationEvidenceInTransaction(
+                        conn, tx, currentEventId, Convert.ToInt32(existing.Rows[0]["QualityEventId"], CultureInfo.InvariantCulture)))
                     {
                         createdQualityEventId = Convert.ToInt32(existing.Rows[0]["QualityEventId"], CultureInfo.InvariantCulture);
                         createdQualityEventNo = Convert.ToString(existing.Rows[0]["QualityEventNo"], CultureInfo.InvariantCulture) ?? string.Empty;
                         return;
                     }
                     bool hasOos = savedEvidence.Any(item => item.Status.Equals("OOS", StringComparison.OrdinalIgnoreCase));
-                    string eventType = hasOos ? "OOS" : "Alert";
+                    string eventType = hasOos ? "OOS" : hasExcursion ? "Alert" : "Result Amendment";
                     string severity = hasOos ? "Major" : "Minor";
                     string profile = GetCurrentEMInvestigationProfile(savedEvidence);
                     string eventNumber = GenerateEMQualityEventNumber();
@@ -146,7 +168,8 @@ namespace PharmaLIMS
                     string description = BuildEMQualityEventDescription(eventType, profile, savedEvidence);
                     string immediateAction = hasOos
                         ? "EM event placed under Quality Event Investigation. Final approval and final report printing are blocked pending QA disposition."
-                        : "Alert result recorded. Trend follow-up and QA assessment required according to the approved EM procedure.";
+                        : hasExcursion ? "Alert result recorded. Trend follow-up and QA assessment required according to the approved EM procedure."
+                        : "Saved results changed after an earlier investigation. Approval and final printing require a new QA disposition of the amended evidence.";
 
                     List<string> columns = new List<string>();
                     List<string> values = new List<string>();
@@ -202,9 +225,13 @@ namespace PharmaLIMS
                         createdQualityEventId = Convert.ToInt32(created, CultureInfo.InvariantCulture);
                     }
 
-                    int affectedResultCount = InsertEMQualityEventAffectedResults(createdQualityEventId, conn, tx, savedEvidence);
+                    int affectedResultCount = InsertEMQualityEventAffectedResults(createdQualityEventId, conn, tx, savedEvidence,
+                        includeAllResults: !hasExcursion);
                     if (affectedResultCount <= 0)
                         throw new InvalidOperationException("No EM ALERT/ACTION/OOS result was linked to the Quality Event. The Quality Event was not committed.");
+
+                    DatabaseHelper.CaptureEMInvestigationEvidenceInTransaction(
+                        conn, tx, currentEventId, createdQualityEventId, currentUser);
 
                     InsertEMQualityEventAction(
                         createdQualityEventId,
@@ -298,7 +325,7 @@ namespace PharmaLIMS
         private string BuildEMQualityEventDescription(string eventType, string profile, IEnumerable<EMPlateResultItem> evidence)
         {
             List<string> affected = evidence
-                .Where(p => string.Equals(p.Status, "OOS", StringComparison.OrdinalIgnoreCase) || string.Equals(p.Status, "Alert", StringComparison.OrdinalIgnoreCase))
+                .Where(p => eventType.Equals("Result Amendment", StringComparison.Ordinal) || string.Equals(p.Status, "OOS", StringComparison.OrdinalIgnoreCase) || string.Equals(p.Status, "Alert", StringComparison.OrdinalIgnoreCase))
                 .Select(p => p.PlateCode + " (" + p.Method + ": " + FirstNonEmpty(p.ResultCFU, p.TotalCount?.ToString(CultureInfo.InvariantCulture)) + " " + GetReportUnitDisplay(p) + ", " + p.Status + ")")
                 .ToList();
 
@@ -309,7 +336,8 @@ namespace PharmaLIMS
             int qualityEventId,
             SqlConnection conn,
             SqlTransaction tx,
-            IEnumerable<EMPlateResultItem> evidence)
+            IEnumerable<EMPlateResultItem> evidence,
+            bool includeAllResults = false)
         {
             if (!TableExists("QualityEventAffectedResults"))
                 throw new InvalidOperationException("QualityEventAffectedResults table is missing. Run System Preflight before EM workflow use.");
@@ -317,7 +345,7 @@ namespace PharmaLIMS
             int inserted = 0;
             foreach (EMPlateResultItem item in evidence)
             {
-                if (!string.Equals(item.Status, "OOS", StringComparison.OrdinalIgnoreCase) &&
+                if (!includeAllResults && !string.Equals(item.Status, "OOS", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(item.Status, "Alert", StringComparison.OrdinalIgnoreCase))
                     continue;
 

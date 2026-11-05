@@ -4,7 +4,11 @@ using PharmaLIMS.TrustedSigning;
 namespace PharmaLIMS.Infrastructure
 {
     internal sealed class DatabaseConnection(string value) { internal string Value=>value; }
-    internal static class ApplicationLogger { internal static void Error(string message,Exception error){} }
+    internal static class ApplicationLogger
+    {
+        internal static void Error(string message,Exception error){}
+        internal static void Warning(string message){}
+    }
 }
 namespace PharmaLIMS.Repositories
 {
@@ -19,6 +23,8 @@ namespace PharmaLIMS.Services
     internal sealed class AuthService(PharmaLIMS.Repositories.UserRepository repository,bool useTrustedTransport)
     {
         internal Task<User?> AuthenticateAsync(string username,string password,CancellationToken token){_=repository;_=useTrustedTransport;return Task.FromResult<User?>(PharmaLIMS.Repositories.UserRepository.Actor);}
+        internal Task<User?> ReauthenticateForTrustedActionAsync(string username,string password,CancellationToken token)
+            => throw new Exception("Unexpected activity authentication in Water boundary test");
         internal Task<bool> ChangeCurrentUserPasswordAsync(string password,string next,CancellationToken token)=>Task.FromResult(true);
         internal User GetCurrentUser()=>PharmaLIMS.Repositories.UserRepository.Actor;
     }
@@ -29,6 +35,21 @@ namespace PharmaLIMS.Services
         internal Task ResetPasswordAsync(int id,string password,string actor,string reason,string meaning,string signer,byte[] version,CancellationToken token)=>throw new Exception("Unexpected admin");
         internal Task UnlockUserAsync(int id,string actor,string reason,string meaning,string signer,byte[] version,CancellationToken token)=>throw new Exception("Unexpected admin");
     }
+}
+internal sealed class TrustedEquipmentConfirmStore(string connection)
+{
+    internal Task<EquipmentConfirmReceipt> ExecuteAsync(TrustedApplicationRequest request,byte[] version,string sid,CancellationToken token)
+    { _=connection; throw new Exception("Unexpected equipment confirmation in Water boundary test"); }
+}
+internal sealed class TrustedEquipmentLinkStore(string connection)
+{
+    internal Task<EquipmentLinkReceipt> ExecuteAsync(TrustedApplicationRequest request,byte[] version,string sid,CancellationToken token)
+    { _=connection; throw new Exception("Unexpected equipment linking in Water boundary test"); }
+}
+internal sealed class TrustedEquipmentDraftStore(string connection)
+{
+    internal Task<EquipmentDraftReceipt> ExecuteAsync(TrustedApplicationRequest request,byte[] version,string sid,CancellationToken token)
+    { _=connection; throw new Exception("Unexpected equipment draft in Water boundary test"); }
 }
 internal sealed class TrustedPrmSpecificationStore(string connection)
 {

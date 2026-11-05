@@ -7,9 +7,7 @@ var sid="S-1-5-21-101-102-103-1001";
 var request=new TrustedApplicationRequest(Guid.NewGuid(),"WaterWorkflow","qa",Reason:"Verified",Meaning:"Approval");
 TrustedApplicationEndpoint Endpoint(bool enabled)
 {
-    var ctor=typeof(TrustedApplicationEndpoint).GetConstructors().Single();
-    return (TrustedApplicationEndpoint)ctor.Invoke(ctor.GetParameters().Length==5
-        ? new object[]{"unused",false,false,enabled,false} : new object[]{"unused",false,false,enabled});
+    return new TrustedApplicationEndpoint("unused", enableWaterAnalysisUat:enabled);
 }
 void Check(bool value,string name){if(!value)throw new Exception("FAIL: "+name);Console.WriteLine("PASS: "+name);}
 var disabled=Endpoint(false);

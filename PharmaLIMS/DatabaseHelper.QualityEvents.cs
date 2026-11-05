@@ -967,6 +967,7 @@ WHERE QualityEventID = @qualityEventId
             {
                 EnsureQualityEventManagementAuthorizationInTransaction(
                     conn, tx, submittedBy, "submit a Quality Event to QA review");
+                EnsureEMQualityEventEvidenceCurrentInTransaction(conn, tx, qualityEventId);
                 QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
 
                 int affected = ExecuteNonQueryWithTransaction(@"
@@ -1057,6 +1058,7 @@ WHERE QualityEventID = @qualityEventId
                 string authorizedRole = EnsureQaClosureAuthorizationInTransaction(
                     conn, tx, closedBy, "close a Quality Event");
                 userRole = authorizedRole;
+                EnsureEMQualityEventEvidenceCurrentInTransaction(conn, tx, qualityEventId);
                 QualityEventInvestigationConcurrencyGuard.EnsureUnchanged(conn, tx, qualityEventId, false, expectedInvestigationVersion);
 
                 int? linkedSampleId = null;
