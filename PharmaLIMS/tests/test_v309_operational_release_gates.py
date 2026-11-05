@@ -118,7 +118,7 @@ def test_runtime_smoke_bootstraps_trusted_signer_before_runtime_migrations() -> 
     assert provision_call in source
     assert migrate_call in source
     assert source.index(provision_call) < source.index(migrate_call)
-    assert "^PharmaLIMS_RuntimeSmoke_[0-9a-f]{12}$" in source
+    assert "^PharmaLIMS_Integration_RuntimeSmoke_[0-9a-f]{12}$" in source
     assert "Runtime-smoke trusted-signer provisioning refused outside a disposable runtime-smoke database." in source
     assert "CREATE USER [PharmaLIMS_TrustedEquipmentSigner] FOR LOGIN" in source
     assert "CREATE USER [PharmaLIMS_TrustedEquipmentSigner] WITHOUT LOGIN" in source

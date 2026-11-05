@@ -27,7 +27,7 @@ internal static class Program
 
         string masterConnectionString = Environment.GetEnvironmentVariable("PHARMALIMS_TEST_MASTER_CONNECTION_STRING")
             ?? "Server=(localdb)\\MSSQLLocalDB;Integrated Security=true;Encrypt=false;TrustServerCertificate=true;Connection Timeout=15;";
-        string databaseName = "PharmaLIMS_RuntimeSmoke_" + Guid.NewGuid().ToString("N")[..12];
+        string databaseName = "PharmaLIMS_Integration_RuntimeSmoke_" + Guid.NewGuid().ToString("N")[..12];
         string databaseConnectionString = new SqlConnectionStringBuilder(masterConnectionString)
         {
             InitialCatalog = databaseName
@@ -163,18 +163,18 @@ END;", 60);
     {
         if (!System.Text.RegularExpressions.Regex.IsMatch(
                 databaseName,
-                "^PharmaLIMS_RuntimeSmoke_[0-9a-f]{12}$",
+                "^PharmaLIMS_Integration_RuntimeSmoke_[0-9a-f]{12}$",
                 System.Text.RegularExpressions.RegexOptions.CultureInvariant))
         {
             throw new InvalidOperationException(
-                "Disposable runtime-smoke trusted-signer provisioning is restricted to generated PharmaLIMS_RuntimeSmoke databases.");
+                "Disposable runtime-smoke trusted-signer provisioning is restricted to generated PharmaLIMS_Integration_RuntimeSmoke databases.");
         }
 
         const string sql = @"
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_NAME() NOT LIKE N'PharmaLIMS_RuntimeSmoke[_]%'
+IF DB_NAME() NOT LIKE N'PharmaLIMS[_]Integration[_]RuntimeSmoke[_]%'
     THROW 56874, 'Runtime-smoke trusted-signer provisioning refused outside a disposable runtime-smoke database.', 1;
 
 IF DATABASE_PRINCIPAL_ID(N'PharmaLIMS_TrustedEquipmentSigner') IS NULL

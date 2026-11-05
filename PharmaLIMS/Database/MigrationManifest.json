@@ -662,6 +662,13 @@
       "file": "Migrations/20261031_001_Activity_Signing_Primary_Identity_Authority.sql",
       "sha256": "3fb2b5c67a6fd61cd19f33b8445bc896332208a2bdd9061c339dc0df2849a943",
       "databaseScope": "ActivitySigning"
+    },
+    {
+      "versionKey": "20261105_001",
+      "description": "Enforce independent activity approval and common execution evidence for every activity type without rewriting signed history",
+      "file": "Migrations/20261105_001_Activity_Independent_Approval_Guard.sql",
+      "sha256": "2660c20b71af74d4f2175bcfad05b4db05046f71d2c5abfac7854a67307c3b0a",
+      "databaseScope": "ActivitySigning"
     }
   ]
 }

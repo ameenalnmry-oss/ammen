@@ -25,6 +25,8 @@ CREATE UNIQUE INDEX UX_PRM_SpecificationContentHistory_Signature ON dbo.PRM_Spec
     using(var baseline=new SqlCommand(ReviewClosureSchemaContract.Sql,connection))using(var reader=await baseline.ExecuteReaderAsync())
         if(await reader.ReadAsync())throw new Exception("Healthy schema fixture must pass the actual readiness contract.");
     await AppendOnlyPreflightCases.RunAsync(connection);
+    if(args.Length!=1)throw new ArgumentException("Supply the reviewed PharmaLIMS source root.");
+    await ActivityStagePredicateCases.RunAsync(connection,Path.GetFullPath(args[0]));
 }
 finally
 {
